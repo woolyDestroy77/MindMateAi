@@ -61,9 +61,31 @@ export const useAIChat = () => {
 
       const { data, error } = await Promise.race([requestPromise, timeoutPromise]) as any;
 
-      console.log('Edge Function response:', data, error);
+      console.log('Edge Function response:', { data, error });
 
-      // Check for specific error messages in the Edge Function's response data first
+      // Handle Supabase function invocation errors first
+      if (error) {
+        console.error('Supabase function invocation error:', error);
+        
+        // Try to extract more details from the error
+        let errorMessage = 'Edge Function error';
+        let errorDetails = '';
+        
+        if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        if (error.details) {
+          errorDetails = error.details;
+        }
+        
+        // Log the full error object for debugging
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+        
+        throw new Error(`${errorMessage}${errorDetails ? ': ' + errorDetails : ''}`);
+      }
+
+      // Check for specific error messages in the Edge Function's response data
       if (data?.error) {
         console.error('API error from Edge Function:', data.error);
         console.error('Error details:', data.details);
@@ -72,27 +94,23 @@ export const useAIChat = () => {
         // Create a more specific error message based on the details
         let errorMessage = data.error;
         if (data.details) {
-          if (data.details.includes('DAPPIER_API_KEY')) {
-            errorMessage = 'AI service configuration error. Please contact support.';
+          if (data.details.includes('DAPPIER_API_KEY') || data.details.includes('Missing environment variables')) {
+            errorMessage = 'AI service configuration error. Environment variables may not be set in Supabase. Please check the Edge Function logs and ensure DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, and DAPPIER_AI_MODEL_API_KEY are set as Supabase secrets.';
           } else if (data.details.includes('Rate limit')) {
             errorMessage = 'AI service is busy. Please try again in a moment.';
           } else if (data.details.includes('timeout')) {
             errorMessage = 'Request timed out. Please try again.';
+          } else if (data.details.includes('Authentication failed') || data.details.includes('Invalid or expired API key')) {
+            errorMessage = 'AI service authentication failed. Please check that your API keys are correctly set in Supabase secrets.';
           }
         }
         
         throw new Error(errorMessage);
       }
 
-      // Only check for general Supabase invocation error if no specific error in data
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
       if (!data?.response) {
         console.error('No response from Edge Function:', data);
-        throw new Error('No response received from AI service');
+        throw new Error('No response received from AI service. Check Edge Function logs for details.');
       }
 
       // Update user message with sentiment
@@ -124,20 +142,20 @@ export const useAIChat = () => {
       
       if (errorMessage.includes('timeout')) {
         toast.error('Request timed out. Please try again.');
-      } else if (errorMessage.includes('configuration error')) {
-        toast.error('AI service is not properly configured. Please contact support.');
-      } else if (errorMessage.includes('Authentication failed')) {
-        toast.error('AI service authentication failed. Please contact support.');
+      } else if (errorMessage.includes('configuration error') || errorMessage.includes('Environment variables')) {
+        toast.error('AI service is not properly configured. Please check Supabase Edge Function environment variables.');
+      } else if (errorMessage.includes('Authentication failed') || errorMessage.includes('API keys')) {
+        toast.error('AI service authentication failed. Please check your API key configuration in Supabase.');
       } else if (errorMessage.includes('Service is busy')) {
         toast.error('AI service is busy. Please try again in a moment.');
       } else if (errorMessage.includes('Service temporarily unavailable')) {
         toast.error('AI service is temporarily unavailable. Please try again later.');
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network error')) {
         toast.error('Network error. Please check your connection and try again.');
-      } else if (errorMessage.includes('Edge Function error')) {
-        toast.error('Unable to connect to AI service. Please try again or contact support.');
+      } else if (errorMessage.includes('Edge Function')) {
+        toast.error('Unable to connect to AI service. Check the browser console and Edge Function logs for details.');
       } else {
-        toast.error('Unable to get a response from AI. Please try again.');
+        toast.error(`AI Chat Error: ${errorMessage}`);
       }
       
       throw error;

@@ -16,6 +16,8 @@ Deno.serve(async (req) => {
 
   try {
     console.log('Chat function invoked');
+    console.log('Request method:', req.method);
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()));
     
     const { message, context } = await req.json();
     console.log('Received message:', message);
@@ -26,6 +28,11 @@ Deno.serve(async (req) => {
     const datamodelExternalId = Deno.env.get('DAPPIER_DATAMODEL_ID');
     const aiModelApiKey = Deno.env.get('DAPPIER_AI_MODEL_API_KEY');
     
+    // Log all available environment variables for debugging (without values)
+    const allEnvKeys = Object.keys(Deno.env.toObject());
+    console.log('Available environment variables:', allEnvKeys);
+    console.log('Looking for: DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, DAPPIER_AI_MODEL_API_KEY');
+    
     // Check for missing environment variables
     const missingVars = [];
     if (!dappierApiKey) missingVars.push('DAPPIER_API_KEY');
@@ -34,11 +41,19 @@ Deno.serve(async (req) => {
     
     if (missingVars.length > 0) {
       console.error('Missing environment variables:', missingVars);
-      console.error('Available env vars:', Object.keys(Deno.env.toObject()));
+      console.error('This usually means the environment variables are not set as Supabase secrets.');
+      console.error('To fix this:');
+      console.error('1. Go to your Supabase project dashboard');
+      console.error('2. Navigate to Settings > Edge Functions');
+      console.error('3. Add the missing variables as secrets');
+      console.error('4. Redeploy the Edge Function');
+      
       return new Response(
         JSON.stringify({ 
-          error: 'API configuration error. Please contact support.',
-          details: `Missing environment variables: ${missingVars.join(', ')}`
+          error: 'API configuration error. Environment variables not found in deployed function.',
+          details: `Missing Supabase secrets: ${missingVars.join(', ')}. Please set these as Supabase Edge Function secrets, not just in your local .env file.`,
+          availableEnvVars: allEnvKeys,
+          missingVars: missingVars
         }),
         {
           status: 500,
@@ -91,6 +106,7 @@ If someone mentions self-harm or crisis:
     ];
 
     console.log('Sending request to Dappier API with', apiMessages.length, 'messages');
+    console.log('Using datamodel ID:', datamodelExternalId);
 
     // Call Dappier API directly using fetch with timeout
     const controller = new AbortController();
@@ -109,6 +125,13 @@ If someone mentions self-harm or crisis:
         headers['X-AI-Model-Key'] = aiModelApiKey;
       }
 
+      console.log('Making request to Dappier API...');
+      console.log('Request headers (without sensitive data):', {
+        'Content-Type': headers['Content-Type'],
+        'Authorization': 'Bearer [REDACTED]',
+        'X-AI-Model-Key': aiModelApiKey !== dappierApiKey ? '[REDACTED]' : 'Same as Authorization'
+      });
+
       dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
         method: 'POST',
         headers,
@@ -124,12 +147,14 @@ If someone mentions self-harm or crisis:
     } catch (fetchError) {
       clearTimeout(timeoutId);
       console.error('Fetch error:', fetchError);
+      console.error('Fetch error name:', fetchError.name);
+      console.error('Fetch error message:', fetchError.message);
       
       if (fetchError.name === 'AbortError') {
         return new Response(
           JSON.stringify({ 
             error: 'Request timeout. Please try again.',
-            details: 'The AI service took too long to respond'
+            details: 'The AI service took too long to respond (30 second timeout)'
           }),
           {
             status: 408,
@@ -143,8 +168,8 @@ If someone mentions self-harm or crisis:
       
       return new Response(
         JSON.stringify({ 
-          error: 'Network error. Please check your connection and try again.',
-          details: fetchError.message
+          error: 'Network error connecting to AI service.',
+          details: `Fetch failed: ${fetchError.message}. This could indicate network issues or incorrect API endpoint.`
         }),
         {
           status: 503,
@@ -158,34 +183,41 @@ If someone mentions self-harm or crisis:
 
     clearTimeout(timeoutId);
     console.log('Dappier API response status:', dappierResponse.status);
+    console.log('Dappier API response headers:', Object.fromEntries(dappierResponse.headers.entries()));
 
     if (!dappierResponse.ok) {
       const errorText = await dappierResponse.text();
-      console.error('Dappier API error:', dappierResponse.status, errorText);
+      console.error('Dappier API error response:', errorText);
+      console.error('Response status:', dappierResponse.status);
+      console.error('Response status text:', dappierResponse.statusText);
       
       // Return specific error based on status code
       let errorMessage = 'Unable to process your request right now.';
       let details = errorText;
       
       if (dappierResponse.status === 401) {
-        errorMessage = 'Authentication failed. Please contact support.';
-        details = 'Invalid or expired API key';
+        errorMessage = 'Authentication failed with Dappier API.';
+        details = 'Invalid or expired DAPPIER_API_KEY. Please check your API key in Supabase secrets.';
       } else if (dappierResponse.status === 403) {
-        errorMessage = 'Access denied. Please check your API configuration.';
-        details = 'Insufficient permissions or invalid AI model API key';
+        errorMessage = 'Access denied by Dappier API.';
+        details = 'Insufficient permissions. Check your DAPPIER_AI_MODEL_API_KEY or datamodel access rights.';
+      } else if (dappierResponse.status === 404) {
+        errorMessage = 'Dappier datamodel not found.';
+        details = `Invalid DAPPIER_DATAMODEL_ID: ${datamodelExternalId}. Please verify the datamodel ID.`;
       } else if (dappierResponse.status === 429) {
-        errorMessage = 'Service is busy. Please try again in a moment.';
-        details = 'Rate limit exceeded';
+        errorMessage = 'Dappier API rate limit exceeded.';
+        details = 'Too many requests. Please try again in a moment.';
       } else if (dappierResponse.status >= 500) {
-        errorMessage = 'Service temporarily unavailable. Please try again later.';
-        details = 'Dappier API server error';
+        errorMessage = 'Dappier API server error.';
+        details = `Server error (${dappierResponse.status}): ${errorText}`;
       }
       
       return new Response(
         JSON.stringify({ 
           error: errorMessage,
           details: details,
-          status: dappierResponse.status
+          status: dappierResponse.status,
+          statusText: dappierResponse.statusText
         }),
         {
           status: dappierResponse.status,
@@ -214,9 +246,10 @@ If someone mentions self-harm or crisis:
       console.error('Unexpected Dappier response format:', dappierData);
       return new Response(
         JSON.stringify({ 
-          error: 'Received unexpected response format from AI service.',
-          details: 'Unable to parse AI response',
-          responseFormat: Object.keys(dappierData)
+          error: 'Received unexpected response format from Dappier API.',
+          details: 'Unable to parse AI response. Expected response structure not found.',
+          responseFormat: Object.keys(dappierData),
+          actualResponse: dappierData
         }),
         {
           status: 502,
@@ -232,8 +265,9 @@ If someone mentions self-harm or crisis:
       console.error('Empty response from Dappier API');
       return new Response(
         JSON.stringify({ 
-          error: 'Received empty response from AI service.',
-          details: 'AI service returned empty content'
+          error: 'Received empty response from Dappier API.',
+          details: 'AI service returned empty content',
+          fullResponse: dappierData
         }),
         {
           status: 502,
@@ -277,13 +311,15 @@ If someone mentions self-harm or crisis:
     );
   } catch (error) {
     console.error('Error in chat function:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     
     // Return proper error response with more details
     return new Response(
       JSON.stringify({ 
-        error: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
-        details: error.message,
+        error: 'An unexpected error occurred in the Edge Function.',
+        details: `${error.name}: ${error.message}`,
         stack: error.stack
       }),
       {
