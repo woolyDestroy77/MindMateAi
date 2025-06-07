@@ -1,6 +1,3 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import { DappierClient } from 'npm:@dappier/client@1.0.0';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -20,16 +17,13 @@ Deno.serve(async (req) => {
   try {
     const { message, context } = await req.json();
 
-    // Get API keys from environment variables
+    // Get Dappier API key from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
       throw new Error('DAPPIER_API_KEY not found in environment variables');
     }
-
-    // Initialize Dappier client
-    const dappier = new DappierClient(dappierApiKey);
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -66,19 +60,44 @@ If someone mentions self-harm or crisis:
       { role: 'user', content: message }
     ];
 
-    console.log('Sending request to Dappier with messages:', apiMessages.length);
+    console.log('Sending request to Dappier API with', apiMessages.length, 'messages');
 
-    // Call Dappier API with better parameters
-    const response = await dappier.chat.completions.create({
-      messages: apiMessages,
-      temperature: 0.8,
-      max_tokens: 300,
-      presence_penalty: 0.3,
-      frequency_penalty: 0.2,
+    // Call Dappier API directly using fetch
+    const dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${dappierApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: apiMessages,
+        temperature: 0.8,
+        max_tokens: 300,
+        stream: false
+      }),
     });
 
-    const aiResponse = response.choices[0].message.content;
-    console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
+    if (!dappierResponse.ok) {
+      const errorText = await dappierResponse.text();
+      console.error('Dappier API error:', dappierResponse.status, errorText);
+      throw new Error(`Dappier API error: ${dappierResponse.status}`);
+    }
+
+    const dappierData = await dappierResponse.json();
+    console.log('Received response from Dappier API');
+
+    // Extract the AI response
+    let aiResponse = '';
+    if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
+      aiResponse = dappierData.choices[0].message.content;
+    } else if (dappierData.response) {
+      aiResponse = dappierData.response;
+    } else if (dappierData.content) {
+      aiResponse = dappierData.content;
+    } else {
+      console.error('Unexpected Dappier response format:', dappierData);
+      throw new Error('Unexpected response format from Dappier API');
+    }
 
     // Simple sentiment analysis
     let sentiment = 'NEUTRAL';
