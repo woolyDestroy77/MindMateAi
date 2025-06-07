@@ -21,17 +21,24 @@ Deno.serve(async (req) => {
     console.log('Received message:', message);
     console.log('Context length:', context?.length || 0);
 
-    // Get Dappier API key and datamodel ID from environment variables
+    // Get all required environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
     const datamodelExternalId = Deno.env.get('DAPPIER_DATAMODEL_ID');
+    const aiModelApiKey = Deno.env.get('DAPPIER_AI_MODEL_API_KEY');
     
-    if (!dappierApiKey) {
-      console.error('DAPPIER_API_KEY not found in environment variables');
+    // Check for missing environment variables
+    const missingVars = [];
+    if (!dappierApiKey) missingVars.push('DAPPIER_API_KEY');
+    if (!datamodelExternalId) missingVars.push('DAPPIER_DATAMODEL_ID');
+    if (!aiModelApiKey) missingVars.push('DAPPIER_AI_MODEL_API_KEY');
+    
+    if (missingVars.length > 0) {
+      console.error('Missing environment variables:', missingVars);
       console.error('Available env vars:', Object.keys(Deno.env.toObject()));
       return new Response(
         JSON.stringify({ 
           error: 'API configuration error. Please contact support.',
-          details: 'DAPPIER_API_KEY environment variable is not set'
+          details: `Missing environment variables: ${missingVars.join(', ')}`
         }),
         {
           status: 500,
@@ -43,25 +50,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!datamodelExternalId) {
-      console.error('DAPPIER_DATAMODEL_ID not found in environment variables');
-      return new Response(
-        JSON.stringify({ 
-          error: 'API configuration error. Please contact support.',
-          details: 'DAPPIER_DATAMODEL_ID environment variable is not set'
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
-
+    console.log('All required environment variables found');
     console.log('API Key found, length:', dappierApiKey.length);
     console.log('Datamodel ID found:', datamodelExternalId);
+    console.log('AI Model API Key found, length:', aiModelApiKey.length);
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -106,12 +98,20 @@ If someone mentions self-harm or crisis:
 
     let dappierResponse;
     try {
+      // Prepare headers with both API keys
+      const headers = {
+        'Authorization': `Bearer ${dappierApiKey}`,
+        'Content-Type': 'application/json',
+      };
+
+      // Add AI model API key if it's different from the main API key
+      if (aiModelApiKey !== dappierApiKey) {
+        headers['X-AI-Model-Key'] = aiModelApiKey;
+      }
+
       dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${dappierApiKey}`,
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           datamodelExternalId: datamodelExternalId,
           messages: apiMessages,
@@ -170,6 +170,9 @@ If someone mentions self-harm or crisis:
       if (dappierResponse.status === 401) {
         errorMessage = 'Authentication failed. Please contact support.';
         details = 'Invalid or expired API key';
+      } else if (dappierResponse.status === 403) {
+        errorMessage = 'Access denied. Please check your API configuration.';
+        details = 'Insufficient permissions or invalid AI model API key';
       } else if (dappierResponse.status === 429) {
         errorMessage = 'Service is busy. Please try again in a moment.';
         details = 'Rate limit exceeded';
