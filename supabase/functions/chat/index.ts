@@ -21,8 +21,9 @@ Deno.serve(async (req) => {
     console.log('Received message:', message);
     console.log('Context length:', context?.length || 0);
 
-    // Get Dappier API key from environment variables
+    // Get Dappier API key and datamodel ID from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
+    const datamodelExternalId = Deno.env.get('DAPPIER_DATAMODEL_ID');
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
@@ -42,7 +43,25 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (!datamodelExternalId) {
+      console.error('DAPPIER_DATAMODEL_ID not found in environment variables');
+      return new Response(
+        JSON.stringify({ 
+          error: 'API configuration error. Please contact support.',
+          details: 'DAPPIER_DATAMODEL_ID environment variable is not set'
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
+
     console.log('API Key found, length:', dappierApiKey.length);
+    console.log('Datamodel ID found:', datamodelExternalId);
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -94,6 +113,7 @@ If someone mentions self-harm or crisis:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          datamodelExternalId: datamodelExternalId,
           messages: apiMessages,
           temperature: 0.8,
           max_tokens: 300,
