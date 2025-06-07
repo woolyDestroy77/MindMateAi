@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, X, Loader, AlertCircle } from 'lucide-react';
+import { Send, Mic, X, Loader, AlertCircle, TestTube } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAIChat, ChatMessage } from '../../hooks/useAIChat';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -46,6 +46,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
       setError(error instanceof Error ? error.message : 'Failed to send message');
       // Restore the input if sending failed
       setInput(messageToSend);
+    }
+  };
+
+  const handleTestConversation = async () => {
+    setError(null);
+    try {
+      await sendMessage("Hello, I'm testing the AI chat functionality. Can you help me?");
+    } catch (error) {
+      console.error('Test conversation failed:', error);
+      setError('Test conversation failed. Please check your configuration.');
     }
   };
 
@@ -96,12 +106,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
           <div className="h-full flex flex-col">
             <div className="p-4 border-b bg-lavender-50 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">MindMate AI Chat</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTestConversation}
+                  disabled={isLoading}
+                  leftIcon={<TestTube size={16} />}
+                  className="text-xs"
+                >
+                  Test
+                </Button>
+                <button
+                  onClick={onClose}
+                  className="text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {error && (
@@ -118,6 +140,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
             )}
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.length === 1 && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500 mb-3">
+                    Start a conversation or test the AI connection
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestConversation}
+                    disabled={isLoading}
+                    leftIcon={<TestTube size={16} />}
+                  >
+                    Test AI Connection
+                  </Button>
+                </div>
+              )}
+              
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
