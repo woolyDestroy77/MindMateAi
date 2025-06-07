@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, X, Loader } from 'lucide-react';
+import { Send, Mic, X, Loader, AlertCircle } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAIChat, ChatMessage } from '../../hooks/useAIChat';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -12,6 +12,7 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const { messages, isLoading, sendMessage } = useAIChat();
   const { isRecording, transcript, startRecording, stopRecording } = useVoiceInput();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -34,21 +35,32 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const messageToSend = input.trim();
+    setInput('');
+    setError(null);
+
     try {
-      setInput('');
-      await sendMessage(input);
+      await sendMessage(messageToSend);
     } catch (error) {
       console.error('Failed to send message:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send message');
+      // Restore the input if sending failed
+      setInput(messageToSend);
     }
   };
 
   const handleVoiceToggle = async () => {
-    if (isRecording) {
-      stopRecording(recognition);
-      setRecognition(null);
-    } else {
-      const rec = await startRecording();
-      setRecognition(rec);
+    try {
+      if (isRecording) {
+        stopRecording(recognition);
+        setRecognition(null);
+      } else {
+        const rec = await startRecording();
+        setRecognition(rec);
+      }
+    } catch (error) {
+      console.error('Voice input error:', error);
+      setError('Voice input is not available in your browser');
     }
   };
 
@@ -92,6 +104,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
               </button>
             </div>
 
+            {error && (
+              <div className="p-3 bg-red-50 border-b border-red-200 flex items-center space-x-2">
+                <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+                <p className="text-sm text-red-700">{error}</p>
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-500 hover:text-red-700 ml-auto"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((message) => (
                 <motion.div
@@ -128,6 +153,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={handleVoiceToggle}
                   className={isRecording ? 'animate-pulse' : ''}
+                  disabled={isLoading}
                 >
                   <Mic size={20} />
                 </Button>
@@ -138,6 +164,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   placeholder="Type your message..."
                   className="flex-1 resize-none p-2 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                   rows={1}
+                  disabled={isLoading}
                 />
                 <Button
                   variant="primary"
@@ -145,7 +172,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
                 >
-                  {isLoading ? <Loader className="animate-spin\" size={20} /> : <Send size={20} />}
+                  {isLoading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
                 </Button>
               </div>
             </div>

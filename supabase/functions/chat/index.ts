@@ -15,15 +15,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Chat function invoked');
+    
     const { message, context } = await req.json();
+    console.log('Received message:', message);
+    console.log('Context length:', context?.length || 0);
 
     // Get Dappier API key from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
+      console.error('Available env vars:', Object.keys(Deno.env.toObject()));
       return new Response(
-        JSON.stringify({ error: 'API configuration error. Please contact support.' }),
+        JSON.stringify({ 
+          error: 'API configuration error. Please contact support.',
+          details: 'DAPPIER_API_KEY environment variable is not set'
+        }),
         {
           status: 500,
           headers: {
@@ -33,6 +41,8 @@ Deno.serve(async (req) => {
         },
       );
     }
+
+    console.log('API Key found, length:', dappierApiKey.length);
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -65,28 +75,68 @@ If someone mentions self-harm or crisis:
     // Prepare messages for the API call
     const apiMessages = [
       systemMessage,
-      ...context.slice(-5), // Only use last 5 messages for context
+      ...(context || []).slice(-5), // Only use last 5 messages for context
       { role: 'user', content: message }
     ];
 
     console.log('Sending request to Dappier API with', apiMessages.length, 'messages');
-    console.log('API Key present:', !!dappierApiKey);
 
-    // Call Dappier API directly using fetch
-    const dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dappierApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: apiMessages,
-        temperature: 0.8,
-        max_tokens: 300,
-        stream: false
-      }),
-    });
+    // Call Dappier API directly using fetch with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+    let dappierResponse;
+    try {
+      dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${dappierApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: apiMessages,
+          temperature: 0.8,
+          max_tokens: 300,
+          stream: false
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('Fetch error:', fetchError);
+      
+      if (fetchError.name === 'AbortError') {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Request timeout. Please try again.',
+            details: 'The AI service took too long to respond'
+          }),
+          {
+            status: 408,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Network error. Please check your connection and try again.',
+          details: fetchError.message
+        }),
+        {
+          status: 503,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
+
+    clearTimeout(timeoutId);
     console.log('Dappier API response status:', dappierResponse.status);
 
     if (!dappierResponse.ok) {
@@ -95,16 +145,25 @@ If someone mentions self-harm or crisis:
       
       // Return specific error based on status code
       let errorMessage = 'Unable to process your request right now.';
+      let details = errorText;
+      
       if (dappierResponse.status === 401) {
         errorMessage = 'Authentication failed. Please contact support.';
+        details = 'Invalid or expired API key';
       } else if (dappierResponse.status === 429) {
         errorMessage = 'Service is busy. Please try again in a moment.';
+        details = 'Rate limit exceeded';
       } else if (dappierResponse.status >= 500) {
         errorMessage = 'Service temporarily unavailable. Please try again later.';
+        details = 'Dappier API server error';
       }
       
       return new Response(
-        JSON.stringify({ error: errorMessage }),
+        JSON.stringify({ 
+          error: errorMessage,
+          details: details,
+          status: dappierResponse.status
+        }),
         {
           status: dappierResponse.status,
           headers: {
@@ -131,9 +190,13 @@ If someone mentions self-harm or crisis:
     } else {
       console.error('Unexpected Dappier response format:', dappierData);
       return new Response(
-        JSON.stringify({ error: 'Received unexpected response format from AI service.' }),
+        JSON.stringify({ 
+          error: 'Received unexpected response format from AI service.',
+          details: 'Unable to parse AI response',
+          responseFormat: Object.keys(dappierData)
+        }),
         {
-          status: 500,
+          status: 502,
           headers: {
             ...corsHeaders,
             'Content-Type': 'application/json',
@@ -145,9 +208,12 @@ If someone mentions self-harm or crisis:
     if (!aiResponse || aiResponse.trim() === '') {
       console.error('Empty response from Dappier API');
       return new Response(
-        JSON.stringify({ error: 'Received empty response from AI service.' }),
+        JSON.stringify({ 
+          error: 'Received empty response from AI service.',
+          details: 'AI service returned empty content'
+        }),
         {
-          status: 500,
+          status: 502,
           headers: {
             ...corsHeaders,
             'Content-Type': 'application/json',
@@ -190,10 +256,12 @@ If someone mentions self-harm or crisis:
     console.error('Error in chat function:', error);
     console.error('Error stack:', error.stack);
     
-    // Return proper error response instead of fallback
+    // Return proper error response with more details
     return new Response(
       JSON.stringify({ 
-        error: 'An unexpected error occurred. Please try again or contact support if the problem persists.'
+        error: 'An unexpected error occurred. Please try again or contact support if the problem persists.',
+        details: error.message,
+        stack: error.stack
       }),
       {
         status: 500,

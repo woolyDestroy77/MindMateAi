@@ -26,16 +26,17 @@ export const useAIChat = () => {
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    };
+
     try {
       setIsLoading(true);
 
       // Add user message to chat
-      const userMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'user',
-        content,
-        timestamp: new Date(),
-      };
       setMessages(prev => [...prev, userMessage]);
 
       // Prepare context from previous messages (last 10 messages)
@@ -46,13 +47,19 @@ export const useAIChat = () => {
 
       console.log('Sending message to Edge Function:', content);
 
-      // Call Edge Function
-      const { data, error } = await supabase.functions.invoke('chat', {
+      // Call Edge Function with timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 45000); // 45 second timeout
+      });
+
+      const requestPromise = supabase.functions.invoke('chat', {
         body: { 
           message: content,
           context,
         },
       });
+
+      const { data, error } = await Promise.race([requestPromise, timeoutPromise]) as any;
 
       console.log('Edge Function response:', data, error);
 
@@ -63,7 +70,22 @@ export const useAIChat = () => {
 
       if (data?.error) {
         console.error('API error from Edge Function:', data.error);
-        throw new Error(data.error);
+        console.error('Error details:', data.details);
+        console.error('Status code:', data.status);
+        
+        // Create a more specific error message based on the details
+        let errorMessage = data.error;
+        if (data.details) {
+          if (data.details.includes('DAPPIER_API_KEY')) {
+            errorMessage = 'AI service configuration error. Please contact support.';
+          } else if (data.details.includes('Rate limit')) {
+            errorMessage = 'AI service is busy. Please try again in a moment.';
+          } else if (data.details.includes('timeout')) {
+            errorMessage = 'Request timed out. Please try again.';
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (!data?.response) {
@@ -93,12 +115,14 @@ export const useAIChat = () => {
       console.error('Error in AI chat:', error);
       
       // Remove the user's message if the AI response failed
-      setMessages(prev => prev.slice(0, -1));
+      setMessages(prev => prev.filter(msg => msg.id !== userMessage.id));
       
       // Provide specific error messages
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      if (errorMessage.includes('API configuration error')) {
+      if (errorMessage.includes('timeout')) {
+        toast.error('Request timed out. Please try again.');
+      } else if (errorMessage.includes('configuration error')) {
         toast.error('AI service is not properly configured. Please contact support.');
       } else if (errorMessage.includes('Authentication failed')) {
         toast.error('AI service authentication failed. Please contact support.');
@@ -106,8 +130,10 @@ export const useAIChat = () => {
         toast.error('AI service is busy. Please try again in a moment.');
       } else if (errorMessage.includes('Service temporarily unavailable')) {
         toast.error('AI service is temporarily unavailable. Please try again later.');
-      } else if (errorMessage.includes('Failed to fetch')) {
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network error')) {
         toast.error('Network error. Please check your connection and try again.');
+      } else if (errorMessage.includes('Edge Function error')) {
+        toast.error('Unable to connect to AI service. Please try again or contact support.');
       } else {
         toast.error('Unable to get a response from AI. Please try again.');
       }
