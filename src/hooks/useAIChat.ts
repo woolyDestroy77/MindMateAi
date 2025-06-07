@@ -63,11 +63,7 @@ export const useAIChat = () => {
 
       console.log('Edge Function response:', data, error);
 
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw new Error(`Edge Function error: ${error.message}`);
-      }
-
+      // Check for specific error messages in the Edge Function's response data first
       if (data?.error) {
         console.error('API error from Edge Function:', data.error);
         console.error('Error details:', data.details);
@@ -86,6 +82,12 @@ export const useAIChat = () => {
         }
         
         throw new Error(errorMessage);
+      }
+
+      // Only check for general Supabase invocation error if no specific error in data
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
       }
 
       if (!data?.response) {
