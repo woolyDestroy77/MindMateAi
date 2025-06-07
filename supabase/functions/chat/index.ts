@@ -22,7 +22,16 @@ Deno.serve(async (req) => {
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
-      throw new Error('DAPPIER_API_KEY not found in environment variables');
+      return new Response(
+        JSON.stringify({ error: 'API configuration error. Please contact support.' }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
     }
 
     // Enhanced system message for more dynamic responses
@@ -61,6 +70,7 @@ If someone mentions self-harm or crisis:
     ];
 
     console.log('Sending request to Dappier API with', apiMessages.length, 'messages');
+    console.log('API Key present:', !!dappierApiKey);
 
     // Call Dappier API directly using fetch
     const dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
@@ -77,14 +87,36 @@ If someone mentions self-harm or crisis:
       }),
     });
 
+    console.log('Dappier API response status:', dappierResponse.status);
+
     if (!dappierResponse.ok) {
       const errorText = await dappierResponse.text();
       console.error('Dappier API error:', dappierResponse.status, errorText);
-      throw new Error(`Dappier API error: ${dappierResponse.status}`);
+      
+      // Return specific error based on status code
+      let errorMessage = 'Unable to process your request right now.';
+      if (dappierResponse.status === 401) {
+        errorMessage = 'Authentication failed. Please contact support.';
+      } else if (dappierResponse.status === 429) {
+        errorMessage = 'Service is busy. Please try again in a moment.';
+      } else if (dappierResponse.status >= 500) {
+        errorMessage = 'Service temporarily unavailable. Please try again later.';
+      }
+      
+      return new Response(
+        JSON.stringify({ error: errorMessage }),
+        {
+          status: dappierResponse.status,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
     }
 
     const dappierData = await dappierResponse.json();
-    console.log('Received response from Dappier API');
+    console.log('Received response from Dappier API:', JSON.stringify(dappierData, null, 2));
 
     // Extract the AI response
     let aiResponse = '';
@@ -94,9 +126,34 @@ If someone mentions self-harm or crisis:
       aiResponse = dappierData.response;
     } else if (dappierData.content) {
       aiResponse = dappierData.content;
+    } else if (dappierData.message) {
+      aiResponse = dappierData.message;
     } else {
       console.error('Unexpected Dappier response format:', dappierData);
-      throw new Error('Unexpected response format from Dappier API');
+      return new Response(
+        JSON.stringify({ error: 'Received unexpected response format from AI service.' }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
+
+    if (!aiResponse || aiResponse.trim() === '') {
+      console.error('Empty response from Dappier API');
+      return new Response(
+        JSON.stringify({ error: 'Received empty response from AI service.' }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
     }
 
     // Simple sentiment analysis
@@ -115,6 +172,8 @@ If someone mentions self-harm or crisis:
       sentiment = 'NEGATIVE';
     }
 
+    console.log('Sending successful response with sentiment:', sentiment);
+
     return new Response(
       JSON.stringify({ 
         response: aiResponse,
@@ -129,17 +188,15 @@ If someone mentions self-harm or crisis:
     );
   } catch (error) {
     console.error('Error in chat function:', error);
+    console.error('Error stack:', error.stack);
     
-    // Provide fallback response if API fails
-    const fallbackResponse = {
-      response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful.",
-      sentiment: 'NEUTRAL'
-    };
-    
-    // Return fallback instead of error for better user experience
+    // Return proper error response instead of fallback
     return new Response(
-      JSON.stringify(fallbackResponse),
+      JSON.stringify({ 
+        error: 'An unexpected error occurred. Please try again or contact support if the problem persists.'
+      }),
       {
+        status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',

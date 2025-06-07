@@ -44,7 +44,9 @@ export const useAIChat = () => {
         content: msg.content,
       }));
 
-      // Call Dappier through Edge Function
+      console.log('Sending message to Edge Function:', content);
+
+      // Call Edge Function
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           message: content,
@@ -52,17 +54,21 @@ export const useAIChat = () => {
         },
       });
 
+      console.log('Edge Function response:', data, error);
+
       if (error) {
-        // Handle specific error cases
-        if (error.message.includes('DAPPIER_API_KEY')) {
-          toast.error('AI service is currently unavailable. Please try again later or contact support.');
-          throw new Error('Dappier API key configuration error');
-        }
-        throw error;
+        console.error('Supabase function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
+      if (data?.error) {
+        console.error('API error from Edge Function:', data.error);
+        throw new Error(data.error);
       }
 
       if (!data?.response) {
-        throw new Error('Invalid response from AI service');
+        console.error('No response from Edge Function:', data);
+        throw new Error('No response received from AI service');
       }
 
       // Update user message with sentiment
@@ -90,16 +96,20 @@ export const useAIChat = () => {
       setMessages(prev => prev.slice(0, -1));
       
       // Provide specific error messages
-      if (error.message?.includes('429') || error.message?.includes('exceeded your current quota')) {
-        toast.error('Our AI service is temporarily unavailable due to high demand. Please try again later.');
-      } else if (error.message === 'Dappier API key configuration error') {
-        toast.error('AI service is currently unavailable. Please try again later.');
-      } else if (error.message === 'Invalid response from AI service') {
-        toast.error('Unable to get a valid response. Please try again.');
-      } else if (error.message.includes('Failed to fetch')) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      if (errorMessage.includes('API configuration error')) {
+        toast.error('AI service is not properly configured. Please contact support.');
+      } else if (errorMessage.includes('Authentication failed')) {
+        toast.error('AI service authentication failed. Please contact support.');
+      } else if (errorMessage.includes('Service is busy')) {
+        toast.error('AI service is busy. Please try again in a moment.');
+      } else if (errorMessage.includes('Service temporarily unavailable')) {
+        toast.error('AI service is temporarily unavailable. Please try again later.');
+      } else if (errorMessage.includes('Failed to fetch')) {
         toast.error('Network error. Please check your connection and try again.');
       } else {
-        toast.error('Unable to get a response. Please try again.');
+        toast.error('Unable to get a response from AI. Please try again.');
       }
       
       throw error;
