@@ -22,16 +22,10 @@ Deno.serve(async (req) => {
 
     // Get API keys from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
       throw new Error('DAPPIER_API_KEY not found in environment variables');
-    }
-
-    if (!openaiApiKey) {
-      console.error('OPENAI_API_KEY not found in environment variables');
-      throw new Error('OPENAI_API_KEY not found in environment variables');
     }
 
     // Initialize Dappier client
@@ -40,66 +34,71 @@ Deno.serve(async (req) => {
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
       role: 'system',
-      content: `You are MindMate AI, a highly empathetic and proactive mental wellness companion. Your purpose is to:
+      content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your responses should be:
 
-1. Provide active emotional support and practical coping strategies
-2. Help users explore and understand their feelings
-3. Suggest specific exercises and techniques for emotional regulation
-4. Encourage positive behavioral changes while acknowledging challenges
-5. Maintain a warm, conversational tone while being direct and action-oriented
+1. EMPATHETIC: Always acknowledge the user's feelings with genuine understanding
+2. HELPFUL: Provide specific, actionable advice and coping strategies
+3. CONVERSATIONAL: Use a warm, natural tone like talking to a trusted friend
+4. SUPPORTIVE: Encourage positive thinking while validating their struggles
 
-Guidelines for responses:
-- Start with empathy and validation
-- Follow up with specific, actionable suggestions
-- Include examples and exercises when relevant
-- Ask follow-up questions to better understand the situation
-- Provide clear, step-by-step guidance for coping strategies
-- Always maintain boundaries and remind users you're an AI support tool
+When someone expresses sadness or negative emotions:
+- Validate their feelings first
+- Ask gentle follow-up questions to understand better
+- Offer 2-3 specific techniques they can try immediately
+- Provide hope and encouragement
 
-If someone expresses thoughts of self-harm or severe distress:
+Example response structure:
+"I hear that you're feeling [emotion]. That's completely understandable, and I want you to know that these feelings are valid. Here are some things that might help..."
+
+Always provide substantive, helpful responses. Never give generic or overly brief answers.
+
+If someone mentions self-harm or crisis:
 - Express immediate concern
-- Provide crisis hotline information (988 Suicide & Crisis Lifeline)
-- Strongly encourage seeking professional help
-- Focus on immediate safety and grounding techniques`
+- Provide crisis resources (988 Suicide & Crisis Lifeline)
+- Encourage professional help
+- Focus on immediate safety`
     };
 
-    // Combine system message with context and new message
-    const messages = [
+    // Prepare messages for the API call
+    const apiMessages = [
       systemMessage,
-      ...context,
+      ...context.slice(-5), // Only use last 5 messages for context
       { role: 'user', content: message }
     ];
 
-    // Call Dappier API
+    console.log('Sending request to Dappier with messages:', apiMessages.length);
+
+    // Call Dappier API with better parameters
     const response = await dappier.chat.completions.create({
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-      presence_penalty: 0.6,
-      frequency_penalty: 0.3,
+      messages: apiMessages,
+      temperature: 0.8,
+      max_tokens: 300,
+      presence_penalty: 0.3,
+      frequency_penalty: 0.2,
     });
 
-    // Analyze sentiment using Dappier
-    const sentimentAnalysis = await dappier.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a sentiment analyzer. Respond with exactly one word: POSITIVE, NEGATIVE, or NEUTRAL.'
-        },
-        {
-          role: 'user',
-          content: message
-        }
-      ],
-      temperature: 0,
-      max_tokens: 10
-    });
+    const aiResponse = response.choices[0].message.content;
+    console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
 
-    const sentiment = sentimentAnalysis.choices[0].message.content.trim();
+    // Simple sentiment analysis
+    let sentiment = 'NEUTRAL';
+    const lowerMessage = message.toLowerCase();
+    
+    const positiveWords = ['happy', 'good', 'great', 'awesome', 'wonderful', 'excited', 'joy', 'love', 'amazing'];
+    const negativeWords = ['sad', 'depressed', 'angry', 'upset', 'terrible', 'awful', 'hate', 'anxious', 'worried', 'stressed'];
+    
+    const hasPositive = positiveWords.some(word => lowerMessage.includes(word));
+    const hasNegative = negativeWords.some(word => lowerMessage.includes(word));
+    
+    if (hasPositive && !hasNegative) {
+      sentiment = 'POSITIVE';
+    } else if (hasNegative && !hasPositive) {
+      sentiment = 'NEGATIVE';
+    }
 
     return new Response(
       JSON.stringify({ 
-        response: response.choices[0].message.content,
+        response: aiResponse,
         sentiment
       }),
       {
@@ -112,28 +111,16 @@ If someone expresses thoughts of self-harm or severe distress:
   } catch (error) {
     console.error('Error in chat function:', error);
     
-    // Return more specific error information
-    let errorMessage = 'An unexpected error occurred';
-    let statusCode = 500;
+    // Provide fallback response if API fails
+    const fallbackResponse = {
+      response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful.",
+      sentiment: 'NEUTRAL'
+    };
     
-    if (error.message.includes('DAPPIER_API_KEY')) {
-      errorMessage = 'DAPPIER_API_KEY not configured';
-      statusCode = 500;
-    } else if (error.message.includes('OPENAI_API_KEY')) {
-      errorMessage = 'OPENAI_API_KEY not configured';
-      statusCode = 500;
-    } else if (error.message.includes('rate limit') || error.message.includes('429')) {
-      errorMessage = 'Rate limit exceeded';
-      statusCode = 429;
-    } else if (error.message.includes('quota')) {
-      errorMessage = 'API quota exceeded';
-      statusCode = 429;
-    }
-    
+    // Return fallback instead of error for better user experience
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify(fallbackResponse),
       {
-        status: statusCode,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
