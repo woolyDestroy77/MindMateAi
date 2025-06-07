@@ -172,7 +172,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
                 >
-                  {isLoading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
+                  {isLoading ? <Loader className="animate-spin\" size={20} /> : <Send size={20} />}
                 </Button>
               </div>
             </div>
