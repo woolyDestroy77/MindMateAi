@@ -20,17 +20,20 @@ Deno.serve(async (req) => {
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // Get Dappier API key from environment variables
-    const apiKey = Deno.env.get('DAPPIER_API_KEY');
-    console.log('DAPPIER_API_KEY exists:', !!apiKey);
+    // Try Dappier API first, then fallback to OpenAI
+    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-    if (!apiKey) {
-      console.log('DAPPIER_API_KEY not found in environment variables');
+    console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
+    console.log('OPENAI_API_KEY exists:', !!openaiApiKey);
+
+    if (!dappierApiKey && !openaiApiKey) {
+      console.log('Neither DAPPIER_API_KEY nor OPENAI_API_KEY found in environment variables');
       
       return new Response(
         JSON.stringify({ 
           error: "API configuration error",
-          details: "DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here"
+          details: "Neither DAPPIER_API_KEY nor OPENAI_API_KEY environment variable is set. Please set at least one using: supabase secrets set DAPPIER_API_KEY=your_key_here or supabase secrets set OPENAI_API_KEY=your_key_here"
         }),
         {
           status: 500,
@@ -75,31 +78,88 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    console.log('Making request to Dappier API...');
+    let apiResponse;
+    let responseContent;
 
-    // Try multiple potential Dappier API endpoints
-    const endpoints = [
-      'https://api.dappier.com/app/chat/completions',
-      'https://api.dappier.com/v1/chat/completions',
-      'https://api.dappier.com/chat/completions',
-      'https://api.dappier.com/app/datamodelchat'
-    ];
+    // Try Dappier API first if available
+    if (dappierApiKey) {
+      console.log('Attempting to use Dappier API...');
+      
+      // Updated Dappier API endpoints - try the most common patterns
+      const dappierEndpoints = [
+        'https://api.dappier.com/app/datamodelchat',
+        'https://api.dappier.com/v1/chat/completions',
+        'https://api.dappier.com/chat/completions',
+        'https://dappier.com/api/v1/chat/completions'
+      ];
 
-    let dappierResponse;
-    let lastError;
+      let dappierSuccess = false;
 
-    for (const endpoint of endpoints) {
+      for (const endpoint of dappierEndpoints) {
+        try {
+          console.log(`Trying Dappier endpoint: ${endpoint}`);
+          
+          apiResponse = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dappierApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messages: messages,
+              temperature: 0.7,
+              max_tokens: 500,
+            }),
+          });
+
+          console.log(`Dappier response status for ${endpoint}:`, apiResponse.status);
+
+          if (apiResponse.ok) {
+            const dappierData = await apiResponse.json();
+            console.log(`Success with Dappier endpoint: ${endpoint}`);
+            
+            // Extract response content from various possible formats
+            if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
+              responseContent = dappierData.choices[0].message.content;
+            } else if (dappierData.response) {
+              responseContent = dappierData.response;
+            } else if (dappierData.message) {
+              responseContent = dappierData.message;
+            } else if (dappierData.text) {
+              responseContent = dappierData.text;
+            } else if (typeof dappierData === 'string') {
+              responseContent = dappierData;
+            }
+            
+            if (responseContent) {
+              dappierSuccess = true;
+              break;
+            }
+          }
+        } catch (error) {
+          console.log(`Error with Dappier endpoint ${endpoint}:`, error.message);
+          continue;
+        }
+      }
+
+      if (!dappierSuccess) {
+        console.log('All Dappier endpoints failed, falling back to OpenAI...');
+      }
+    }
+
+    // Fallback to OpenAI if Dappier failed or wasn't available
+    if (!responseContent && openaiApiKey) {
+      console.log('Using OpenAI API...');
+      
       try {
-        console.log(`Trying endpoint: ${endpoint}`);
-        
-        dappierResponse = await fetch(endpoint, {
+        apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${openaiApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-3.5-turbo', // Some APIs require a model parameter
+            model: 'gpt-3.5-turbo',
             messages: messages,
             temperature: 0.7,
             max_tokens: 500,
@@ -108,56 +168,26 @@ If someone expresses thoughts of self-harm or severe distress:
           }),
         });
 
-        console.log(`Response status for ${endpoint}:`, dappierResponse.status);
+        if (!apiResponse.ok) {
+          const errorData = await apiResponse.json();
+          throw new Error(`OpenAI API error: ${apiResponse.status} - ${errorData.error?.message || 'Unknown error'}`);
+        }
 
-        if (dappierResponse.ok) {
-          console.log(`Success with endpoint: ${endpoint}`);
-          break;
-        } else if (dappierResponse.status !== 404) {
-          // If it's not a 404, this might be the right endpoint but with a different error
-          const errorText = await dappierResponse.text();
-          console.log(`Non-404 error for ${endpoint}:`, errorText);
-          lastError = `${dappierResponse.status}: ${errorText}`;
-          break;
+        const openaiData = await apiResponse.json();
+        console.log('OpenAI API response received successfully');
+        
+        if (openaiData.choices && openaiData.choices[0] && openaiData.choices[0].message) {
+          responseContent = openaiData.choices[0].message.content;
         }
       } catch (error) {
-        console.log(`Error with endpoint ${endpoint}:`, error.message);
-        lastError = error.message;
-        continue;
+        console.error('OpenAI API error:', error);
+        throw new Error(`Failed to get response from OpenAI: ${error.message}`);
       }
     }
 
-    if (!dappierResponse || !dappierResponse.ok) {
-      console.error('All Dappier API endpoints failed');
-      
-      // If we have a specific error from a non-404 response, use that
-      if (lastError) {
-        throw new Error(`Dappier API error: ${lastError}`);
-      }
-      
-      // Otherwise, provide a generic error
-      throw new Error('Unable to connect to Dappier API. All endpoints returned 404. Please verify your API key and check Dappier documentation for the correct endpoint.');
-    }
-
-    const dappierData = await dappierResponse.json();
-    console.log('Dappier API response received successfully');
-
-    // Extract the response content - try multiple possible response formats
-    let responseContent;
-    
-    if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
-      responseContent = dappierData.choices[0].message.content;
-    } else if (dappierData.response) {
-      responseContent = dappierData.response;
-    } else if (dappierData.message) {
-      responseContent = dappierData.message;
-    } else if (dappierData.text) {
-      responseContent = dappierData.text;
-    } else if (typeof dappierData === 'string') {
-      responseContent = dappierData;
-    } else {
-      console.log('Unexpected response format:', dappierData);
-      responseContent = 'I apologize, but I encountered an issue processing your message. Please try again.';
+    // If we still don't have a response, return an error
+    if (!responseContent) {
+      throw new Error('Unable to get a response from any AI service. Please check your API keys and try again.');
     }
 
     // Simple sentiment analysis based on keywords
