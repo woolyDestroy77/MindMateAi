@@ -1,3 +1,6 @@
+import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
+import { DappierClient } from 'npm:@dappier/client@1.0.0';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -15,159 +18,67 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Chat function invoked');
-    
     const { message, context } = await req.json();
-    console.log('Received message:', message);
 
-    // Get environment variables
+    // Get API keys from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
-    
-    console.log('Environment check:');
-    console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
-      return new Response(
-        JSON.stringify({ 
-          error: 'API configuration error',
-          details: 'DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here'
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
+      throw new Error('DAPPIER_API_KEY not found in environment variables');
     }
 
-    console.log('API Key found, proceeding with request');
+    // Initialize Dappier client
+    const dappier = new DappierClient(dappierApiKey);
 
-    // Enhanced system message
+    // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
       role: 'system',
-      content: `You are MindMate AI, a compassionate mental wellness companion. Provide empathetic, helpful responses that:
+      content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your responses should be:
 
-1. Acknowledge the user's feelings with genuine understanding
-2. Offer specific, actionable advice and coping strategies
-3. Use a warm, conversational tone
-4. Encourage positive thinking while validating struggles
-5. Ask gentle follow-up questions when appropriate
+1. EMPATHETIC: Always acknowledge the user's feelings with genuine understanding
+2. HELPFUL: Provide specific, actionable advice and coping strategies
+3. CONVERSATIONAL: Use a warm, natural tone like talking to a trusted friend
+4. SUPPORTIVE: Encourage positive thinking while validating their struggles
 
-For mental health crises, provide crisis resources (988 Suicide & Crisis Lifeline) and encourage professional help.
+When someone expresses sadness or negative emotions:
+- Validate their feelings first
+- Ask gentle follow-up questions to understand better
+- Offer 2-3 specific techniques they can try immediately
+- Provide hope and encouragement
 
-Keep responses concise but meaningful (2-4 sentences).`
+Example response structure:
+"I hear that you're feeling [emotion]. That's completely understandable, and I want you to know that these feelings are valid. Here are some things that might help..."
+
+Always provide substantive, helpful responses. Never give generic or overly brief answers.
+
+If someone mentions self-harm or crisis:
+- Express immediate concern
+- Provide crisis resources (988 Suicide & Crisis Lifeline)
+- Encourage professional help
+- Focus on immediate safety`
     };
 
     // Prepare messages for the API call
     const apiMessages = [
       systemMessage,
-      ...(context || []).slice(-5),
+      ...context.slice(-5), // Only use last 5 messages for context
       { role: 'user', content: message }
     ];
 
-    console.log('Making request to Dappier API...');
+    console.log('Sending request to Dappier with messages:', apiMessages.length);
 
-    // Call Dappier API using the correct endpoint and format
-    const dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dappierApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        conversation: apiMessages,  // Changed from 'messages' to 'conversation'
-        model: 'gpt-3.5-turbo',     // Added model specification
-        temperature: 0.7,
-        max_tokens: 300,
-        stream: false
-      }),
+    // Call Dappier API with better parameters
+    const response = await dappier.chat.completions.create({
+      messages: apiMessages,
+      temperature: 0.8,
+      max_tokens: 300,
+      presence_penalty: 0.3,
+      frequency_penalty: 0.2,
     });
 
-    console.log('Dappier API response status:', dappierResponse.status);
-
-    if (!dappierResponse.ok) {
-      const errorText = await dappierResponse.text();
-      console.error('Dappier API error:', errorText);
-      
-      let errorMessage = 'AI service error';
-      let errorDetails = `Status ${dappierResponse.status}: ${errorText}`;
-      
-      if (dappierResponse.status === 401) {
-        errorMessage = 'Authentication failed';
-        errorDetails = 'Invalid DAPPIER_API_KEY. Please check that your API key is correct and set as a Supabase secret.';
-      } else if (dappierResponse.status === 429) {
-        errorMessage = 'Rate limit exceeded';
-        errorDetails = 'Too many requests. Please try again later.';
-      } else if (dappierResponse.status >= 500) {
-        errorMessage = 'AI service temporarily unavailable';
-        errorDetails = 'The Dappier service is experiencing issues. Please try again later.';
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          error: errorMessage,
-          details: errorDetails,
-          status: dappierResponse.status
-        }),
-        {
-          status: dappierResponse.status,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
-
-    const dappierData = await dappierResponse.json();
-    console.log('Dappier response received:', JSON.stringify(dappierData, null, 2));
-
-    // Extract the AI response - handle different possible response formats
-    let aiResponse = '';
-    if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
-      aiResponse = dappierData.choices[0].message.content;
-    } else if (dappierData.response) {
-      aiResponse = dappierData.response;
-    } else if (dappierData.content) {
-      aiResponse = dappierData.content;
-    } else if (dappierData.message) {
-      aiResponse = dappierData.message;
-    } else {
-      console.error('Unexpected response format from Dappier:', dappierData);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Unexpected response format from AI service',
-          details: 'Unable to parse AI response. Check Edge Function logs for the full response format.'
-        }),
-        {
-          status: 502,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
-
-    if (!aiResponse || aiResponse.trim() === '') {
-      console.error('Empty response from Dappier API');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Empty response from AI service',
-          details: 'AI service returned empty content'
-        }),
-        {
-          status: 502,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
+    const aiResponse = response.choices[0].message.content;
+    console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
 
     // Simple sentiment analysis
     let sentiment = 'NEUTRAL';
@@ -185,8 +96,6 @@ Keep responses concise but meaningful (2-4 sentences).`
       sentiment = 'NEGATIVE';
     }
 
-    console.log('Sending successful response');
-
     return new Response(
       JSON.stringify({ 
         response: aiResponse,
@@ -202,13 +111,16 @@ Keep responses concise but meaningful (2-4 sentences).`
   } catch (error) {
     console.error('Error in chat function:', error);
     
+    // Provide fallback response if API fails
+    const fallbackResponse = {
+      response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful.",
+      sentiment: 'NEUTRAL'
+    };
+    
+    // Return fallback instead of error for better user experience
     return new Response(
-      JSON.stringify({ 
-        error: 'Internal server error',
-        details: error.message
-      }),
+      JSON.stringify(fallbackResponse),
       {
-        status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',

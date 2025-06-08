@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, X, Loader, AlertCircle, TestTube } from 'lucide-react';
+import { Send, Mic, X, Loader } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAIChat, ChatMessage } from '../../hooks/useAIChat';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -12,7 +12,6 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const [input, setInput] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const { messages, isLoading, sendMessage } = useAIChat();
   const { isRecording, transcript, startRecording, stopRecording } = useVoiceInput();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -35,44 +34,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const messageToSend = input.trim();
-    setInput('');
-    setError(null);
-
     try {
-      await sendMessage(messageToSend);
+      setInput('');
+      await sendMessage(input);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
-      console.error('Failed to send message:', errorMessage);
-      setError(errorMessage);
-      // Restore the input if sending failed
-      setInput(messageToSend);
-    }
-  };
-
-  const handleTestConversation = async () => {
-    setError(null);
-    try {
-      await sendMessage("Hello, I'm testing the AI chat functionality. Can you help me?");
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Test conversation failed. Please check your configuration.';
-      console.error('Test conversation failed:', errorMessage);
-      setError(errorMessage);
+      console.error('Failed to send message:', error);
     }
   };
 
   const handleVoiceToggle = async () => {
-    try {
-      if (isRecording) {
-        stopRecording(recognition);
-        setRecognition(null);
-      } else {
-        const rec = await startRecording();
-        setRecognition(rec);
-      }
-    } catch (error) {
-      console.error('Voice input error:', error);
-      setError('Voice input is not available in your browser');
+    if (isRecording) {
+      stopRecording(recognition);
+      setRecognition(null);
+    } else {
+      const rec = await startRecording();
+      setRecognition(rec);
     }
   };
 
@@ -108,57 +84,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
           <div className="h-full flex flex-col">
             <div className="p-4 border-b bg-lavender-50 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">MindMate AI Chat</h2>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleTestConversation}
-                  disabled={isLoading}
-                  leftIcon={<TestTube size={16} />}
-                  className="text-xs"
-                >
-                  Test
-                </Button>
-                <button
-                  onClick={onClose}
-                  className="text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {error && (
-              <div className="p-3 bg-red-50 border-b border-red-200 flex items-center space-x-2">
-                <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
-                <button
-                  onClick={() => setError(null)}
-                  className="text-red-500 hover:text-red-700 ml-auto"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 1 && (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500 mb-3">
-                    Start a conversation or test the AI connection
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleTestConversation}
-                    disabled={isLoading}
-                    leftIcon={<TestTube size={16} />}
-                  >
-                    Test AI Connection
-                  </Button>
-                </div>
-              )}
-              
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
@@ -194,7 +128,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={handleVoiceToggle}
                   className={isRecording ? 'animate-pulse' : ''}
-                  disabled={isLoading}
                 >
                   <Mic size={20} />
                 </Button>
@@ -205,7 +138,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   placeholder="Type your message..."
                   className="flex-1 resize-none p-2 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                   rows={1}
-                  disabled={isLoading}
                 />
                 <Button
                   variant="primary"
