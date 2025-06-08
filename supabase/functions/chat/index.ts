@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import { DappierClient } from 'npm:@dappier/client@1.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,18 +24,43 @@ Deno.serve(async (req) => {
     const dataModelId = Deno.env.get('DAPPIER_DATA_MODEL_ID');
     const aiModelId = Deno.env.get('DAPPIER_AI_MODEL_ID');
     
+    console.log('Environment check:');
+    console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
+    console.log('Chat function invoked');
+    console.log('Received message:', message);
+
+    // If API key is missing, return fallback response immediately
     if (!dappierApiKey) {
-      console.error('DAPPIER_API_KEY not found in environment variables');
-      throw new Error('DAPPIER_API_KEY not found in environment variables');
+      console.log('DAPPIER_API_KEY not found, using fallback response');
+      
+      // Provide a helpful fallback response
+      const fallbackResponse = {
+        response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.",
+        sentiment: 'NEUTRAL'
+      };
+      
+      return new Response(
+        JSON.stringify(fallbackResponse),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
     }
 
-    // Initialize Dappier client
-    const dappier = new DappierClient(dappierApiKey);
+    // Only try to use Dappier if API key is available
+    try {
+      const { DappierClient } = await import('npm:@dappier/client@1.0.0');
+      
+      // Initialize Dappier client
+      const dappier = new DappierClient(dappierApiKey);
 
-    // Enhanced system message for more dynamic responses
-    const systemMessage: Message = {
-      role: 'system',
-      content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your responses should be:
+      // Enhanced system message for more dynamic responses
+      const systemMessage: Message = {
+        role: 'system',
+        content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your responses should be:
 
 1. EMPATHETIC: Always acknowledge the user's feelings with genuine understanding
 2. HELPFUL: Provide specific, actionable advice and coping strategies
@@ -59,81 +83,100 @@ If someone mentions self-harm or crisis:
 - Provide crisis resources (988 Suicide & Crisis Lifeline)
 - Encourage professional help
 - Focus on immediate safety`
-    };
+      };
 
-    // Prepare messages for the API call
-    const apiMessages = [
-      systemMessage,
-      ...context.slice(-5), // Only use last 5 messages for context
-      { role: 'user', content: message }
-    ];
+      // Prepare messages for the API call
+      const apiMessages = [
+        systemMessage,
+        ...context.slice(-5), // Only use last 5 messages for context
+        { role: 'user', content: message }
+      ];
 
-    console.log('Sending request to Dappier with messages:', apiMessages.length);
-    console.log('Using Data Model ID:', dataModelId);
-    console.log('Using AI Model ID:', aiModelId);
+      console.log('Sending request to Dappier with messages:', apiMessages.length);
+      console.log('Using Data Model ID:', dataModelId);
+      console.log('Using AI Model ID:', aiModelId);
 
-    // Prepare the request options with model IDs if available
-    const requestOptions: any = {
-      messages: apiMessages,
-      temperature: 0.8,
-      max_tokens: 300,
-      presence_penalty: 0.3,
-      frequency_penalty: 0.2,
-    };
+      // Prepare the request options with model IDs if available
+      const requestOptions: any = {
+        messages: apiMessages,
+        temperature: 0.8,
+        max_tokens: 300,
+        presence_penalty: 0.3,
+        frequency_penalty: 0.2,
+      };
 
-    // Add model IDs if they are provided
-    if (dataModelId) {
-      requestOptions.data_model_id = dataModelId;
-    }
-    
-    if (aiModelId) {
-      requestOptions.model = aiModelId;
-    }
+      // Add model IDs if they are provided
+      if (dataModelId) {
+        requestOptions.data_model_id = dataModelId;
+      }
+      
+      if (aiModelId) {
+        requestOptions.model = aiModelId;
+      }
 
-    // Call Dappier API with model IDs
-    const response = await dappier.chat.completions.create(requestOptions);
+      // Call Dappier API with model IDs
+      const response = await dappier.chat.completions.create(requestOptions);
 
-    const aiResponse = response.choices[0].message.content;
-    console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
+      const aiResponse = response.choices[0].message.content;
+      console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
 
-    // Simple sentiment analysis
-    let sentiment = 'NEUTRAL';
-    const lowerMessage = message.toLowerCase();
-    
-    const positiveWords = ['happy', 'good', 'great', 'awesome', 'wonderful', 'excited', 'joy', 'love', 'amazing'];
-    const negativeWords = ['sad', 'depressed', 'angry', 'upset', 'terrible', 'awful', 'hate', 'anxious', 'worried', 'stressed'];
-    
-    const hasPositive = positiveWords.some(word => lowerMessage.includes(word));
-    const hasNegative = negativeWords.some(word => lowerMessage.includes(word));
-    
-    if (hasPositive && !hasNegative) {
-      sentiment = 'POSITIVE';
-    } else if (hasNegative && !hasPositive) {
-      sentiment = 'NEGATIVE';
-    }
+      // Simple sentiment analysis
+      let sentiment = 'NEUTRAL';
+      const lowerMessage = message.toLowerCase();
+      
+      const positiveWords = ['happy', 'good', 'great', 'awesome', 'wonderful', 'excited', 'joy', 'love', 'amazing'];
+      const negativeWords = ['sad', 'depressed', 'angry', 'upset', 'terrible', 'awful', 'hate', 'anxious', 'worried', 'stressed'];
+      
+      const hasPositive = positiveWords.some(word => lowerMessage.includes(word));
+      const hasNegative = negativeWords.some(word => lowerMessage.includes(word));
+      
+      if (hasPositive && !hasNegative) {
+        sentiment = 'POSITIVE';
+      } else if (hasNegative && !hasPositive) {
+        sentiment = 'NEGATIVE';
+      }
 
-    return new Response(
-      JSON.stringify({ 
-        response: aiResponse,
-        sentiment
-      }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
+      return new Response(
+        JSON.stringify({ 
+          response: aiResponse,
+          sentiment
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
         },
-      },
-    );
+      );
+    } catch (dappierError) {
+      console.error('Error calling Dappier API:', dappierError);
+      
+      // Provide fallback response if Dappier API fails
+      const fallbackResponse = {
+        response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.",
+        sentiment: 'NEUTRAL'
+      };
+      
+      return new Response(
+        JSON.stringify(fallbackResponse),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
   } catch (error) {
     console.error('Error in chat function:', error);
     
-    // Provide fallback response if API fails
+    // Provide fallback response for any other errors
     const fallbackResponse = {
       response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful.",
       sentiment: 'NEUTRAL'
     };
     
-    // Return fallback instead of error for better user experience
+    // Always return a successful response with fallback content
     return new Response(
       JSON.stringify(fallbackResponse),
       {

@@ -53,24 +53,23 @@ export const useAIChat = () => {
       });
 
       if (error) {
-        // Handle specific error cases
-        if (error.message.includes('DAPPIER_API_KEY')) {
-          toast.error('AI service is currently unavailable. Please try again later or contact support.');
-          throw new Error('Dappier API key configuration error');
-        }
-        throw error;
+        console.error('Supabase function error:', error);
+        throw new Error(`Edge function error: ${error.message}`);
       }
 
       if (!data?.response) {
+        console.error('Invalid response data:', data);
         throw new Error('Invalid response from AI service');
       }
 
-      // Update user message with sentiment
-      setMessages(prev => prev.map(msg => 
-        msg.id === userMessage.id 
-          ? { ...msg, sentiment: data.sentiment }
-          : msg
-      ));
+      // Update user message with sentiment if provided
+      if (data.sentiment) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === userMessage.id 
+            ? { ...msg, sentiment: data.sentiment }
+            : msg
+        ));
+      }
 
       // Add AI response to chat
       const aiMessage: ChatMessage = {
@@ -89,14 +88,14 @@ export const useAIChat = () => {
       // Remove the user's message if the AI response failed
       setMessages(prev => prev.slice(0, -1));
       
-      // Provide specific error messages
-      if (error.message?.includes('429') || error.message?.includes('exceeded your current quota')) {
-        toast.error('Our AI service is temporarily unavailable due to high demand. Please try again later.');
-      } else if (error.message === 'Dappier API key configuration error') {
-        toast.error('AI service is currently unavailable. Please try again later.');
-      } else if (error.message === 'Invalid response from AI service') {
+      // Provide specific error messages based on error type
+      const errorMessage = error?.message || 'Unknown error';
+      
+      if (errorMessage.includes('Edge function error')) {
+        toast.error('Unable to connect to AI service. Please try again.');
+      } else if (errorMessage.includes('Invalid response')) {
         toast.error('Unable to get a valid response. Please try again.');
-      } else if (error.message.includes('Failed to fetch')) {
+      } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
         toast.error('Network error. Please check your connection and try again.');
       } else {
         toast.error('Unable to get a response. Please try again.');
