@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import { DappierClient } from 'npm:@dappier/client@1.0.0';
+import OpenAI from 'npm:openai@4.28.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,13 +23,13 @@ Deno.serve(async (req) => {
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // Get Dappier API key from environment variables
-    const apiKey = Deno.env.get('DAPPIER_API_KEY');
-    console.log('DAPPIER_API_KEY exists:', !!apiKey);
+    // Get OpenAI API key from environment variables
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('OPENAI_API_KEY exists:', !!apiKey);
     console.log('Environment variables available:', Object.keys(Deno.env.toObject()));
 
     if (!apiKey) {
-      console.log('DAPPIER_API_KEY not found in environment variables');
+      console.log('OPENAI_API_KEY not found in environment variables');
       
       // Return a helpful fallback response instead of an error
       const fallbackResponse = `I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.`;
@@ -45,10 +45,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Initializing Dappier client');
+    console.log('Initializing OpenAI client');
     
-    // Initialize Dappier client
-    const dappier = new DappierClient(apiKey);
+    // Initialize OpenAI client
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -83,10 +85,11 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    console.log('Calling Dappier API');
+    console.log('Calling OpenAI API');
 
-    // Call Dappier API
-    const response = await dappier.chat.completions.create({
+    // Call OpenAI API
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
       messages,
       temperature: 0.7,
       max_tokens: 500,
@@ -94,7 +97,7 @@ If someone expresses thoughts of self-harm or severe distress:
       frequency_penalty: 0.3,
     });
 
-    console.log('Dappier API response received');
+    console.log('OpenAI API response received');
 
     return new Response(
       JSON.stringify({ response: response.choices[0].message.content }),
