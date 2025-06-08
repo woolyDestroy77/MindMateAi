@@ -78,7 +78,8 @@ Keep responses concise but meaningful (2-4 sentences).`
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: apiMessages,
+        conversation: apiMessages,  // Changed from 'messages' to 'conversation'
+        model: 'gpt-3.5-turbo',     // Added model specification
         temperature: 0.7,
         max_tokens: 300,
         stream: false
