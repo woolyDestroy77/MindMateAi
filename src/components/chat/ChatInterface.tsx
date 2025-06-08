@@ -42,8 +42,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
     try {
       await sendMessage(messageToSend);
     } catch (error) {
-      console.error('Failed to send message:', error);
-      setError(error instanceof Error ? error.message : 'Failed to send message');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message';
+      console.error('Failed to send message:', errorMessage);
+      setError(errorMessage);
       // Restore the input if sending failed
       setInput(messageToSend);
     }
@@ -54,8 +55,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
     try {
       await sendMessage("Hello, I'm testing the AI chat functionality. Can you help me?");
     } catch (error) {
-      console.error('Test conversation failed:', error);
-      setError('Test conversation failed. Please check your configuration.');
+      const errorMessage = error instanceof Error ? error.message : 'Test conversation failed. Please check your configuration.';
+      console.error('Test conversation failed:', errorMessage);
+      setError(errorMessage);
     }
   };
 

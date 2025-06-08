@@ -158,26 +158,36 @@ export const useAIChat = () => {
       
       // Provide specific error messages
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let userFacingErrorMessage = errorMessage;
       
       if (errorMessage.includes('timeout')) {
-        toast.error('Request timed out. Please try again.');
+        userFacingErrorMessage = 'Request timed out. Please try again.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('configuration error') || errorMessage.includes('Environment variables') || errorMessage.includes('Missing Supabase secrets')) {
-        toast.error('AI service is not properly configured. Please ensure DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, and DAPPIER_AI_MODEL_API_KEY are set as Supabase Edge Function secrets.');
+        userFacingErrorMessage = 'AI service is not properly configured. Please ensure DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, and DAPPIER_AI_MODEL_API_KEY are set as Supabase Edge Function secrets.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('Authentication failed') || errorMessage.includes('API keys')) {
-        toast.error('AI service authentication failed. Please check your API key configuration in Supabase.');
+        userFacingErrorMessage = 'AI service authentication failed. Please check your API key configuration in Supabase.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('Service is busy')) {
-        toast.error('AI service is busy. Please try again in a moment.');
+        userFacingErrorMessage = 'AI service is busy. Please try again in a moment.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('Service temporarily unavailable')) {
-        toast.error('AI service is temporarily unavailable. Please try again later.');
+        userFacingErrorMessage = 'AI service is temporarily unavailable. Please try again later.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('Network error')) {
-        toast.error('Network error. Please check your connection and try again.');
+        userFacingErrorMessage = 'Network error. Please check your connection and try again.';
+        toast.error(userFacingErrorMessage);
       } else if (errorMessage.includes('Edge Function') || errorMessage.includes('FunctionsHttpError') || errorMessage.includes('non-2xx status code')) {
-        toast.error('AI service configuration error. Please ensure the required environment variables (DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, DAPPIER_AI_MODEL_API_KEY) are set as Supabase Edge Function secrets.');
+        userFacingErrorMessage = 'AI service configuration error. Please ensure the required environment variables (DAPPIER_API_KEY, DAPPIER_DATAMODEL_ID, DAPPIER_AI_MODEL_API_KEY) are set as Supabase Edge Function secrets and check the Edge Function logs for details.';
+        toast.error(userFacingErrorMessage);
       } else {
-        toast.error(`AI Chat Error: ${errorMessage}`);
+        userFacingErrorMessage = `AI Chat Error: ${errorMessage}`;
+        toast.error(userFacingErrorMessage);
       }
       
-      throw error;
+      // Re-throw with the user-facing error message for UI components
+      throw new Error(userFacingErrorMessage);
     } finally {
       setIsLoading(false);
     }
