@@ -54,6 +54,12 @@ export const useAIChat = () => {
 
       if (error) {
         console.error('Supabase function error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('DAPPIER_API_KEY')) {
+          toast.error('AI service is currently unavailable. Please check the API configuration.');
+          throw new Error('Dappier API key configuration error');
+        }
         throw new Error(`Edge function error: ${error.message}`);
       }
 
@@ -91,7 +97,9 @@ export const useAIChat = () => {
       // Provide specific error messages based on error type
       const errorMessage = error?.message || 'Unknown error';
       
-      if (errorMessage.includes('Edge function error')) {
+      if (errorMessage.includes('Dappier API key configuration error')) {
+        toast.error('AI service is currently unavailable. Please check the API configuration.');
+      } else if (errorMessage.includes('Edge function error')) {
         toast.error('Unable to connect to AI service. Please try again.');
       } else if (errorMessage.includes('Invalid response')) {
         toast.error('Unable to get a valid response. Please try again.');

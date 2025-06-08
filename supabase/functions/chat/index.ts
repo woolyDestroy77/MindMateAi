@@ -1,6 +1,3 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
-import OpenAI from 'npm:openai@4.28.0';
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -23,20 +20,20 @@ Deno.serve(async (req) => {
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // Get OpenAI API key from environment variables
-    const apiKey = Deno.env.get('OPENAI_API_KEY');
-    console.log('OPENAI_API_KEY exists:', !!apiKey);
-    console.log('Environment variables available:', Object.keys(Deno.env.toObject()));
+    // Get Dappier API key from environment variables
+    const apiKey = Deno.env.get('DAPPIER_API_KEY');
+    console.log('DAPPIER_API_KEY exists:', !!apiKey);
 
     if (!apiKey) {
-      console.log('OPENAI_API_KEY not found in environment variables');
-      
-      // Return a helpful fallback response instead of an error
-      const fallbackResponse = `I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.`;
+      console.log('DAPPIER_API_KEY not found in environment variables');
       
       return new Response(
-        JSON.stringify({ response: fallbackResponse }),
+        JSON.stringify({ 
+          error: "API configuration error",
+          details: "DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here"
+        }),
         {
+          status: 500,
           headers: {
             ...corsHeaders,
             'Content-Type': 'application/json',
@@ -44,13 +41,6 @@ Deno.serve(async (req) => {
         },
       );
     }
-
-    console.log('Initializing OpenAI client');
-    
-    // Initialize OpenAI client
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    });
 
     // Enhanced system message for more dynamic responses
     const systemMessage: Message = {
@@ -85,22 +75,57 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    console.log('Calling OpenAI API');
+    console.log('Making request to Dappier API');
 
-    // Call OpenAI API
-    const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages,
-      temperature: 0.7,
-      max_tokens: 500,
-      presence_penalty: 0.6,
-      frequency_penalty: 0.3,
+    // Make direct HTTP request to Dappier API
+    const dappierResponse = await fetch('https://api.dappier.com/app/datamodelchat', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 500,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.3,
+      }),
     });
 
-    console.log('OpenAI API response received');
+    if (!dappierResponse.ok) {
+      const errorText = await dappierResponse.text();
+      console.error('Dappier API error:', dappierResponse.status, errorText);
+      throw new Error(`Dappier API error: ${dappierResponse.status} ${errorText}`);
+    }
+
+    const dappierData = await dappierResponse.json();
+    console.log('Dappier API response received');
+
+    // Extract the response content
+    const responseContent = dappierData.choices?.[0]?.message?.content || dappierData.response || 'I apologize, but I encountered an issue processing your message. Please try again.';
+
+    // Simple sentiment analysis based on keywords
+    const sentimentAnalysis = (text: string): string => {
+      const positiveWords = ['happy', 'good', 'great', 'excellent', 'wonderful', 'amazing', 'fantastic', 'love', 'joy', 'excited'];
+      const negativeWords = ['sad', 'bad', 'terrible', 'awful', 'hate', 'angry', 'frustrated', 'depressed', 'anxious', 'worried'];
+      
+      const lowerText = text.toLowerCase();
+      const positiveCount = positiveWords.filter(word => lowerText.includes(word)).length;
+      const negativeCount = negativeWords.filter(word => lowerText.includes(word)).length;
+      
+      if (positiveCount > negativeCount) return 'POSITIVE';
+      if (negativeCount > positiveCount) return 'NEGATIVE';
+      return 'NEUTRAL';
+    };
+
+    const sentiment = sentimentAnalysis(message);
 
     return new Response(
-      JSON.stringify({ response: response.choices[0].message.content }),
+      JSON.stringify({ 
+        response: responseContent,
+        sentiment: sentiment
+      }),
       {
         headers: {
           ...corsHeaders,
@@ -111,19 +136,13 @@ If someone expresses thoughts of self-harm or severe distress:
   } catch (error) {
     console.error('Error in chat function:', error);
     
-    // Return a helpful fallback response for any errors
-    const fallbackResponse = `I'm experiencing some technical difficulties right now, but I'm still here to support you. While I work through these issues, here are some general wellness tips that might help:
-
-1. Take a few deep breaths - inhale for 4 counts, hold for 4, exhale for 6
-2. Try grounding yourself by naming 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste
-3. Remember that difficult feelings are temporary and will pass
-4. Consider reaching out to a trusted friend, family member, or mental health professional
-
-Is there anything specific you'd like to talk about? I'm here to listen.`;
-
     return new Response(
-      JSON.stringify({ response: fallbackResponse }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'An error occurred while processing your request. Please try again.'
+      }),
       {
+        status: 500,
         headers: {
           ...corsHeaders,
           'Content-Type': 'application/json',
