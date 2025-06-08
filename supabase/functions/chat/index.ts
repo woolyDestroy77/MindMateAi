@@ -20,15 +20,9 @@ Deno.serve(async (req) => {
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // Debug environment variables
-    console.log('Environment check:');
-    console.log('All env vars:', Object.keys(Deno.env.toObject()));
-    
     // Get Dappier API key from environment variables
     const apiKey = Deno.env.get('DAPPIER_API_KEY');
     console.log('DAPPIER_API_KEY exists:', !!apiKey);
-    console.log('DAPPIER_API_KEY length:', apiKey?.length || 0);
-    console.log('DAPPIER_API_KEY starts with:', apiKey?.substring(0, 10) || 'undefined');
 
     if (!apiKey) {
       console.log('DAPPIER_API_KEY not found in environment variables');
@@ -36,11 +30,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: "API configuration error",
-          details: "DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here",
-          debug: {
-            availableEnvVars: Object.keys(Deno.env.toObject()),
-            timestamp: new Date().toISOString()
-          }
+          details: "DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here"
         }),
         {
           status: 500,
@@ -85,50 +75,90 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    console.log('Making request to Dappier API with key:', apiKey.substring(0, 10) + '...');
+    console.log('Making request to Dappier API...');
 
-    // Make direct HTTP request to Dappier API
-    const dappierResponse = await fetch('https://api.dappier.com/app/datamodelchat', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.3,
-      }),
-    });
+    // Try multiple potential Dappier API endpoints
+    const endpoints = [
+      'https://api.dappier.com/app/chat/completions',
+      'https://api.dappier.com/v1/chat/completions',
+      'https://api.dappier.com/chat/completions',
+      'https://api.dappier.com/app/datamodelchat'
+    ];
 
-    console.log('Dappier API response status:', dappierResponse.status);
+    let dappierResponse;
+    let lastError;
 
-    if (!dappierResponse.ok) {
-      const errorText = await dappierResponse.text();
-      console.error('Dappier API error:', dappierResponse.status, errorText);
-      
-      // Handle specific Dappier API errors
-      if (dappierResponse.status === 401) {
-        throw new Error('Invalid API key. Please check your DAPPIER_API_KEY.');
-      } else if (dappierResponse.status === 403) {
-        throw new Error('API key does not have permission to access this resource.');
-      } else if (dappierResponse.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else {
-        throw new Error(`Dappier API error: ${dappierResponse.status} ${errorText}`);
+    for (const endpoint of endpoints) {
+      try {
+        console.log(`Trying endpoint: ${endpoint}`);
+        
+        dappierResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo', // Some APIs require a model parameter
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 500,
+            presence_penalty: 0.6,
+            frequency_penalty: 0.3,
+          }),
+        });
+
+        console.log(`Response status for ${endpoint}:`, dappierResponse.status);
+
+        if (dappierResponse.ok) {
+          console.log(`Success with endpoint: ${endpoint}`);
+          break;
+        } else if (dappierResponse.status !== 404) {
+          // If it's not a 404, this might be the right endpoint but with a different error
+          const errorText = await dappierResponse.text();
+          console.log(`Non-404 error for ${endpoint}:`, errorText);
+          lastError = `${dappierResponse.status}: ${errorText}`;
+          break;
+        }
+      } catch (error) {
+        console.log(`Error with endpoint ${endpoint}:`, error.message);
+        lastError = error.message;
+        continue;
       }
+    }
+
+    if (!dappierResponse || !dappierResponse.ok) {
+      console.error('All Dappier API endpoints failed');
+      
+      // If we have a specific error from a non-404 response, use that
+      if (lastError) {
+        throw new Error(`Dappier API error: ${lastError}`);
+      }
+      
+      // Otherwise, provide a generic error
+      throw new Error('Unable to connect to Dappier API. All endpoints returned 404. Please verify your API key and check Dappier documentation for the correct endpoint.');
     }
 
     const dappierData = await dappierResponse.json();
     console.log('Dappier API response received successfully');
 
-    // Extract the response content
-    const responseContent = dappierData.choices?.[0]?.message?.content || 
-                           dappierData.response || 
-                           dappierData.message ||
-                           'I apologize, but I encountered an issue processing your message. Please try again.';
+    // Extract the response content - try multiple possible response formats
+    let responseContent;
+    
+    if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
+      responseContent = dappierData.choices[0].message.content;
+    } else if (dappierData.response) {
+      responseContent = dappierData.response;
+    } else if (dappierData.message) {
+      responseContent = dappierData.message;
+    } else if (dappierData.text) {
+      responseContent = dappierData.text;
+    } else if (typeof dappierData === 'string') {
+      responseContent = dappierData;
+    } else {
+      console.log('Unexpected response format:', dappierData);
+      responseContent = 'I apologize, but I encountered an issue processing your message. Please try again.';
+    }
 
     // Simple sentiment analysis based on keywords
     const sentimentAnalysis = (text: string): string => {
