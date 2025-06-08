@@ -23,12 +23,15 @@ Deno.serve(async (req) => {
     // Get environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
     
+    console.log('Environment check:');
+    console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
+    
     if (!dappierApiKey) {
-      console.error('DAPPIER_API_KEY not found');
+      console.error('DAPPIER_API_KEY not found in environment variables');
       return new Response(
         JSON.stringify({ 
           error: 'API configuration error',
-          details: 'DAPPIER_API_KEY not found in environment variables'
+          details: 'DAPPIER_API_KEY environment variable is not set. Please set it as a Supabase Edge Function secret using: supabase secrets set DAPPIER_API_KEY=your_key_here'
         }),
         {
           status: 500,
@@ -89,18 +92,23 @@ Keep responses concise but meaningful (2-4 sentences).`
       console.error('Dappier API error:', errorText);
       
       let errorMessage = 'AI service error';
+      let errorDetails = `Status ${dappierResponse.status}: ${errorText}`;
+      
       if (dappierResponse.status === 401) {
-        errorMessage = 'Authentication failed - check API key';
+        errorMessage = 'Authentication failed';
+        errorDetails = 'Invalid DAPPIER_API_KEY. Please check that your API key is correct and set as a Supabase secret.';
       } else if (dappierResponse.status === 429) {
-        errorMessage = 'Rate limit exceeded - try again later';
+        errorMessage = 'Rate limit exceeded';
+        errorDetails = 'Too many requests. Please try again later.';
       } else if (dappierResponse.status >= 500) {
         errorMessage = 'AI service temporarily unavailable';
+        errorDetails = 'The Dappier service is experiencing issues. Please try again later.';
       }
       
       return new Response(
         JSON.stringify({ 
           error: errorMessage,
-          details: `Status ${dappierResponse.status}: ${errorText}`,
+          details: errorDetails,
           status: dappierResponse.status
         }),
         {
@@ -114,7 +122,7 @@ Keep responses concise but meaningful (2-4 sentences).`
     }
 
     const dappierData = await dappierResponse.json();
-    console.log('Dappier response received');
+    console.log('Dappier response received:', JSON.stringify(dappierData, null, 2));
 
     // Extract the AI response - handle different possible response formats
     let aiResponse = '';
@@ -127,11 +135,11 @@ Keep responses concise but meaningful (2-4 sentences).`
     } else if (dappierData.message) {
       aiResponse = dappierData.message;
     } else {
-      console.error('Unexpected response format:', dappierData);
+      console.error('Unexpected response format from Dappier:', dappierData);
       return new Response(
         JSON.stringify({ 
           error: 'Unexpected response format from AI service',
-          details: 'Unable to parse AI response'
+          details: 'Unable to parse AI response. Check Edge Function logs for the full response format.'
         }),
         {
           status: 502,
