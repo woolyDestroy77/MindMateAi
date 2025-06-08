@@ -20,8 +20,10 @@ Deno.serve(async (req) => {
   try {
     const { message, context } = await req.json();
 
-    // Get API keys from environment variables
+    // Get API keys and model IDs from environment variables
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
+    const dataModelId = Deno.env.get('DAPPIER_DATA_MODEL_ID');
+    const aiModelId = Deno.env.get('DAPPIER_AI_MODEL_ID');
     
     if (!dappierApiKey) {
       console.error('DAPPIER_API_KEY not found in environment variables');
@@ -67,15 +69,29 @@ If someone mentions self-harm or crisis:
     ];
 
     console.log('Sending request to Dappier with messages:', apiMessages.length);
+    console.log('Using Data Model ID:', dataModelId);
+    console.log('Using AI Model ID:', aiModelId);
 
-    // Call Dappier API with better parameters
-    const response = await dappier.chat.completions.create({
+    // Prepare the request options with model IDs if available
+    const requestOptions: any = {
       messages: apiMessages,
       temperature: 0.8,
       max_tokens: 300,
       presence_penalty: 0.3,
       frequency_penalty: 0.2,
-    });
+    };
+
+    // Add model IDs if they are provided
+    if (dataModelId) {
+      requestOptions.data_model_id = dataModelId;
+    }
+    
+    if (aiModelId) {
+      requestOptions.model = aiModelId;
+    }
+
+    // Call Dappier API with model IDs
+    const response = await dappier.chat.completions.create(requestOptions);
 
     const aiResponse = response.choices[0].message.content;
     console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
