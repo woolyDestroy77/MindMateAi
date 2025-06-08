@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.39.7';
+import { DappierClient } from 'npm:@dappier/client@1.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,28 +20,22 @@ Deno.serve(async (req) => {
   try {
     const { message, context } = await req.json();
 
-    // Get API keys and model IDs from environment variables
-    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
-    const dataModelId = Deno.env.get('DAPPIER_DATA_MODEL_ID');
-    const aiModelId = Deno.env.get('DAPPIER_AI_MODEL_ID');
-    
-    console.log('Environment check:');
-    console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // If API key is missing, return fallback response immediately
-    if (!dappierApiKey) {
-      console.log('DAPPIER_API_KEY not found, using fallback response');
+    // Get Dappier API key from environment variables
+    const apiKey = Deno.env.get('DAPPIER_API_KEY');
+    console.log('DAPPIER_API_KEY exists:', !!apiKey);
+    console.log('Environment variables available:', Object.keys(Deno.env.toObject()));
+
+    if (!apiKey) {
+      console.log('DAPPIER_API_KEY not found in environment variables');
       
-      // Provide a helpful fallback response
-      const fallbackResponse = {
-        response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.",
-        sentiment: 'NEUTRAL'
-      };
+      // Return a helpful fallback response instead of an error
+      const fallbackResponse = `I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.`;
       
       return new Response(
-        JSON.stringify(fallbackResponse),
+        JSON.stringify({ response: fallbackResponse }),
         {
           headers: {
             ...corsHeaders,
@@ -50,135 +45,81 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Only try to use Dappier if API key is available
-    try {
-      const { DappierClient } = await import('npm:@dappier/client@1.0.0');
-      
-      // Initialize Dappier client
-      const dappier = new DappierClient(dappierApiKey);
+    console.log('Initializing Dappier client');
+    
+    // Initialize Dappier client
+    const dappier = new DappierClient(apiKey);
 
-      // Enhanced system message for more dynamic responses
-      const systemMessage: Message = {
-        role: 'system',
-        content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your responses should be:
+    // Enhanced system message for more dynamic responses
+    const systemMessage: Message = {
+      role: 'system',
+      content: `You are MindMate AI, a highly empathetic and proactive mental wellness companion. Your purpose is to:
 
-1. EMPATHETIC: Always acknowledge the user's feelings with genuine understanding
-2. HELPFUL: Provide specific, actionable advice and coping strategies
-3. CONVERSATIONAL: Use a warm, natural tone like talking to a trusted friend
-4. SUPPORTIVE: Encourage positive thinking while validating their struggles
+1. Provide active emotional support and practical coping strategies
+2. Help users explore and understand their feelings
+3. Suggest specific exercises and techniques for emotional regulation
+4. Encourage positive behavioral changes while acknowledging challenges
+5. Maintain a warm, conversational tone while being direct and action-oriented
 
-When someone expresses sadness or negative emotions:
-- Validate their feelings first
-- Ask gentle follow-up questions to understand better
-- Offer 2-3 specific techniques they can try immediately
-- Provide hope and encouragement
+Guidelines for responses:
+- Start with empathy and validation
+- Follow up with specific, actionable suggestions
+- Include examples and exercises when relevant
+- Ask follow-up questions to better understand the situation
+- Provide clear, step-by-step guidance for coping strategies
+- Always maintain boundaries and remind users you're an AI support tool
 
-Example response structure:
-"I hear that you're feeling [emotion]. That's completely understandable, and I want you to know that these feelings are valid. Here are some things that might help..."
-
-Always provide substantive, helpful responses. Never give generic or overly brief answers.
-
-If someone mentions self-harm or crisis:
+If someone expresses thoughts of self-harm or severe distress:
 - Express immediate concern
-- Provide crisis resources (988 Suicide & Crisis Lifeline)
-- Encourage professional help
-- Focus on immediate safety`
-      };
+- Provide crisis hotline information (988 Suicide & Crisis Lifeline)
+- Strongly encourage seeking professional help
+- Focus on immediate safety and grounding techniques`
+    };
 
-      // Prepare messages for the API call
-      const apiMessages = [
-        systemMessage,
-        ...context.slice(-5), // Only use last 5 messages for context
-        { role: 'user', content: message }
-      ];
+    // Combine system message with context and new message
+    const messages = [
+      systemMessage,
+      ...context,
+      { role: 'user', content: message }
+    ];
 
-      console.log('Sending request to Dappier with messages:', apiMessages.length);
-      console.log('Using Data Model ID:', dataModelId);
-      console.log('Using AI Model ID:', aiModelId);
+    console.log('Calling Dappier API');
 
-      // Prepare the request options with model IDs if available
-      const requestOptions: any = {
-        messages: apiMessages,
-        temperature: 0.8,
-        max_tokens: 300,
-        presence_penalty: 0.3,
-        frequency_penalty: 0.2,
-      };
+    // Call Dappier API
+    const response = await dappier.chat.completions.create({
+      messages,
+      temperature: 0.7,
+      max_tokens: 500,
+      presence_penalty: 0.6,
+      frequency_penalty: 0.3,
+    });
 
-      // Add model IDs if they are provided
-      if (dataModelId) {
-        requestOptions.data_model_id = dataModelId;
-      }
-      
-      if (aiModelId) {
-        requestOptions.model = aiModelId;
-      }
+    console.log('Dappier API response received');
 
-      // Call Dappier API with model IDs
-      const response = await dappier.chat.completions.create(requestOptions);
-
-      const aiResponse = response.choices[0].message.content;
-      console.log('Received response from Dappier:', aiResponse?.substring(0, 100) + '...');
-
-      // Simple sentiment analysis
-      let sentiment = 'NEUTRAL';
-      const lowerMessage = message.toLowerCase();
-      
-      const positiveWords = ['happy', 'good', 'great', 'awesome', 'wonderful', 'excited', 'joy', 'love', 'amazing'];
-      const negativeWords = ['sad', 'depressed', 'angry', 'upset', 'terrible', 'awful', 'hate', 'anxious', 'worried', 'stressed'];
-      
-      const hasPositive = positiveWords.some(word => lowerMessage.includes(word));
-      const hasNegative = negativeWords.some(word => lowerMessage.includes(word));
-      
-      if (hasPositive && !hasNegative) {
-        sentiment = 'POSITIVE';
-      } else if (hasNegative && !hasPositive) {
-        sentiment = 'NEGATIVE';
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          response: aiResponse,
-          sentiment
-        }),
-        {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
+    return new Response(
+      JSON.stringify({ response: response.choices[0].message.content }),
+      {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
         },
-      );
-    } catch (dappierError) {
-      console.error('Error calling Dappier API:', dappierError);
-      
-      // Provide fallback response if Dappier API fails
-      const fallbackResponse = {
-        response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties with my AI service right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful, and I'll do my best to provide support based on common wellness practices.",
-        sentiment: 'NEUTRAL'
-      };
-      
-      return new Response(
-        JSON.stringify(fallbackResponse),
-        {
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
+      },
+    );
   } catch (error) {
     console.error('Error in chat function:', error);
     
-    // Provide fallback response for any other errors
-    const fallbackResponse = {
-      response: "I understand you're reaching out, and I want to help. I'm experiencing some technical difficulties right now, but I'm here to listen. Could you tell me more about what's on your mind? Sometimes just talking through your feelings can be helpful.",
-      sentiment: 'NEUTRAL'
-    };
-    
-    // Always return a successful response with fallback content
+    // Return a helpful fallback response for any errors
+    const fallbackResponse = `I'm experiencing some technical difficulties right now, but I'm still here to support you. While I work through these issues, here are some general wellness tips that might help:
+
+1. Take a few deep breaths - inhale for 4 counts, hold for 4, exhale for 6
+2. Try grounding yourself by naming 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, and 1 you can taste
+3. Remember that difficult feelings are temporary and will pass
+4. Consider reaching out to a trusted friend, family member, or mental health professional
+
+Is there anything specific you'd like to talk about? I'm here to listen.`;
+
     return new Response(
-      JSON.stringify(fallbackResponse),
+      JSON.stringify({ response: fallbackResponse }),
       {
         headers: {
           ...corsHeaders,
