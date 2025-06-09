@@ -18,9 +18,16 @@ Deno.serve(async (req) => {
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
 
     if (!dappierApiKey) {
+      console.error('Missing DAPPIER_API_KEY environment variable');
       return new Response(JSON.stringify({
         error: "API_CONFIGURATION_ERROR",
         message: "Missing DAPPIER_API_KEY in Supabase Edge Function settings.",
+        instructions: [
+          "1. Go to your Supabase project dashboard",
+          "2. Navigate to Edge Functions settings",
+          "3. Add DAPPIER_API_KEY environment variable",
+          "4. Get your API key from https://dappier.com"
+        ]
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -46,41 +53,112 @@ If someone expresses thoughts of self-harm or severe distress:
 
     const messages = [
       systemMessage,
-      ...context,
+      ...(context || []),
       { role: 'user', content: message }
     ];
 
     console.log('Making request to Dappier API...');
-    const dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${dappierApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        messages,
-        temperature: 0.7,
-        max_tokens: 500,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.3
-      })
-    });
+    console.log('Request payload:', JSON.stringify({
+      messages: messages.slice(-5), // Log only last 5 messages for brevity
+      temperature: 0.7,
+      max_tokens: 500
+    }));
+
+    let dappierResponse;
+    try {
+      dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${dappierApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages,
+          temperature: 0.7,
+          max_tokens: 500,
+          presence_penalty: 0.6,
+          frequency_penalty: 0.3
+        })
+      });
+    } catch (fetchError) {
+      console.error('Network error calling Dappier API:', fetchError);
+      return new Response(JSON.stringify({
+        error: "NETWORK_ERROR",
+        message: "Failed to connect to AI service.",
+        details: fetchError.message
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     console.log('Dappier response status:', dappierResponse.status);
+    console.log('Dappier response headers:', Object.fromEntries(dappierResponse.headers.entries()));
 
     if (!dappierResponse.ok) {
-      const errorData = await dappierResponse.text();
+      let errorData;
+      try {
+        errorData = await dappierResponse.text();
+        console.error('Dappier API error response:', errorData);
+      } catch (e) {
+        console.error('Failed to read error response:', e);
+        errorData = 'Unable to read error response';
+      }
+
+      // Handle specific status codes
+      if (dappierResponse.status === 429) {
+        return new Response(JSON.stringify({
+          error: "QUOTA_EXCEEDED",
+          message: "AI service rate limit exceeded. Please try again in a moment.",
+          details: errorData
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (dappierResponse.status === 401 || dappierResponse.status === 403) {
+        return new Response(JSON.stringify({
+          error: "AUTHENTICATION_ERROR",
+          message: "AI service authentication failed. Please check API key configuration.",
+          details: errorData,
+          instructions: [
+            "1. Verify your DAPPIER_API_KEY is correct",
+            "2. Check if your Dappier account is active",
+            "3. Ensure you have sufficient API credits"
+          ]
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       return new Response(JSON.stringify({
         error: "SERVICE_ERROR",
-        message: "AI service error.",
-        details: errorData
+        message: "AI service returned an error.",
+        details: errorData,
+        statusCode: dappierResponse.status
       }), {
         status: dappierResponse.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const dappierData = await dappierResponse.json();
+    let dappierData;
+    try {
+      dappierData = await dappierResponse.json();
+      console.log('Dappier response data:', JSON.stringify(dappierData, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse Dappier response as JSON:', parseError);
+      return new Response(JSON.stringify({
+        error: "PARSE_ERROR",
+        message: "Failed to parse AI service response.",
+        details: parseError.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     let responseContent =
       dappierData.choices?.[0]?.message?.content ??
@@ -91,10 +169,15 @@ If someone expresses thoughts of self-harm or severe distress:
       dappierData.answer ??
       (typeof dappierData === 'string' ? dappierData : null);
 
+    console.log('Extracted response content:', responseContent);
+
     if (!responseContent) {
+      console.error('No valid response content found in Dappier data:', dappierData);
       return new Response(JSON.stringify({
         error: "EMPTY_RESPONSE",
-        message: "No response from Dappier."
+        message: "No response content from AI service.",
+        details: "Response structure did not contain expected content fields",
+        responseStructure: Object.keys(dappierData || {})
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -114,20 +197,27 @@ If someone expresses thoughts of self-harm or severe distress:
 
     const sentiment = sentimentAnalysis(message);
 
-    return new Response(JSON.stringify({
+    const successResponse = {
       response: responseContent,
       sentiment,
       service: 'dappier'
-    }), {
+    };
+
+    console.log('Returning successful response:', successResponse);
+
+    return new Response(JSON.stringify(successResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error in chat function:', error);
+    console.error('Unexpected error in chat function:', error);
+    console.error('Error stack:', error.stack);
+    
     return new Response(JSON.stringify({
       error: "INTERNAL_ERROR",
-      message: "An unexpected error occurred.",
-      details: error.message
+      message: "An unexpected error occurred in the chat function.",
+      details: error.message,
+      stack: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
