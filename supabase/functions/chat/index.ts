@@ -20,8 +20,8 @@ Deno.serve(async (req) => {
     console.log('Chat function invoked');
     console.log('Received message:', message);
 
-    // Try Dappier API first, then fallback to OpenAI
-    const dappierApiKey = 'ak_01jx00ns9jfjkvkybhzamc2vyk';
+    // Get API keys from environment variables
+    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
