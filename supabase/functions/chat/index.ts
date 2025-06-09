@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     console.log('Received message:', message);
 
     // Try Dappier API first, then fallback to OpenAI
-    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
+    const dappierApiKey = 'ak_01jx00ns9jfjkvkybhzamc2vyk';
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
