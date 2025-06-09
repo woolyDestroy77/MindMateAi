@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { toast } from 'react-hot-toast';
 
 export interface ChatMessage {
@@ -66,6 +67,40 @@ export const useAIChat = () => {
         let shouldRetry = false;
         
         try {
+          // Check if this is a FunctionsHttpError and get the status code
+          if (error instanceof FunctionsHttpError && error.status) {
+            console.log('HTTP Status Code:', error.status);
+            
+            switch (error.status) {
+              case 401:
+                errorCode = 'AUTHENTICATION_ERROR';
+                userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
+                break;
+              case 403:
+                errorCode = 'AUTHENTICATION_ERROR';
+                userMessage = 'Access denied to AI service. Please check your API key permissions or contact support.';
+                break;
+              case 429:
+                errorCode = 'QUOTA_EXCEEDED';
+                userMessage = '🕒 The AI service has reached its rate limit. Please wait 2-3 minutes and try again.';
+                shouldRetry = true;
+                break;
+              case 500:
+              case 502:
+              case 503:
+              case 504:
+                errorCode = 'SERVICE_ERROR';
+                userMessage = '⏳ AI service is temporarily unavailable. Please try again in a few minutes.';
+                shouldRetry = true;
+                break;
+              default:
+                errorCode = 'EDGE_FUNCTION_ERROR';
+                userMessage = `AI service returned an error (${error.status}). Please try again.`;
+                shouldRetry = true;
+                break;
+            }
+          }
+          
           // Parse error details from Edge Function response
           if (error.context?.body) {
             const errorBody = typeof error.context.body === 'string' 
@@ -87,64 +122,63 @@ export const useAIChat = () => {
             }
           }
           
-          // Check for specific error patterns in the message
-          if (error.message?.includes('non-2xx status code')) {
-            // This indicates the Edge Function returned an error status
-            errorCode = 'EDGE_FUNCTION_ERROR';
-            errorDetails = 'Edge Function returned an error status code';
-          }
-          
-          // Provide specific user messages based on error type
-          switch (errorCode) {
-            case 'QUOTA_EXCEEDED':
-              userMessage = '🕒 The AI service has reached its rate limit. Please wait 2-3 minutes and try again.';
-              shouldRetry = true;
-              break;
-            case 'API_CONFIGURATION_ERROR':
-              userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
-              break;
-            case 'AUTHENTICATION_ERROR':
-              userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
-              break;
-            case 'SERVICE_UNAVAILABLE':
-            case 'SERVICE_ERROR':
-              userMessage = '⏳ AI service is temporarily unavailable due to high demand. Please wait 2-3 minutes and try again.';
-              shouldRetry = true;
-              break;
-            case 'INTERNAL_ERROR':
-              userMessage = 'An unexpected error occurred. Please try again.';
-              shouldRetry = true;
-              break;
-            case 'EDGE_FUNCTION_ERROR':
-              // This is likely a rate limit or service overload
-              userMessage = '⏳ AI service is experiencing high demand and rate limits. Please wait 2-3 minutes before trying again.';
-              shouldRetry = true;
-              break;
-            default:
-              // Handle legacy error messages and common patterns
-              if (errorDetails.includes('429') || errorDetails.includes('quota') || errorDetails.includes('Too Many Requests') || errorDetails.includes('rate limit')) {
-                userMessage = '🕒 AI service rate limit reached. Please wait 2-3 minutes and try again.';
+          // Provide specific user messages based on error type (if not already set by status code)
+          if (errorCode === 'UNKNOWN_ERROR') {
+            if (error.message?.includes('non-2xx status code')) {
+              errorCode = 'EDGE_FUNCTION_ERROR';
+              errorDetails = 'Edge Function returned an error status code';
+            }
+            
+            switch (errorCode) {
+              case 'QUOTA_EXCEEDED':
+                userMessage = '🕒 The AI service has reached its rate limit. Please wait 2-3 minutes and try again.';
                 shouldRetry = true;
-              } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('OPENAI_API_KEY') || errorDetails.includes('API configuration')) {
+                break;
+              case 'API_CONFIGURATION_ERROR':
                 userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
-              } else if (errorDetails.includes('authentication') || errorDetails.includes('401')) {
+                break;
+              case 'AUTHENTICATION_ERROR':
                 userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
-              } else if (errorDetails.includes('network') || errorDetails.includes('Failed to fetch')) {
-                userMessage = 'Network error. Please check your connection and try again.';
+                break;
+              case 'SERVICE_UNAVAILABLE':
+              case 'SERVICE_ERROR':
+                userMessage = '⏳ AI service is temporarily unavailable due to high demand. Please wait 2-3 minutes and try again.';
                 shouldRetry = true;
-              } else if (errorDetails.includes('non-2xx status code')) {
-                userMessage = '⏳ AI service is experiencing high demand. This is likely due to rate limits. Please wait 2-3 minutes and try again.';
+                break;
+              case 'INTERNAL_ERROR':
+                userMessage = 'An unexpected error occurred. Please try again.';
                 shouldRetry = true;
-              }
-              break;
+                break;
+              case 'EDGE_FUNCTION_ERROR':
+                // This is likely a rate limit or service overload
+                userMessage = '⏳ AI service is experiencing issues. Please check your API configuration or try again later.';
+                shouldRetry = true;
+                break;
+              default:
+                // Handle legacy error messages and common patterns
+                if (errorDetails.includes('429') || errorDetails.includes('quota') || errorDetails.includes('Too Many Requests') || errorDetails.includes('rate limit')) {
+                  userMessage = '🕒 AI service rate limit reached. Please wait 2-3 minutes and try again.';
+                  shouldRetry = true;
+                } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('OPENAI_API_KEY') || errorDetails.includes('API configuration')) {
+                  userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
+                } else if (errorDetails.includes('authentication') || errorDetails.includes('401')) {
+                  userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
+                } else if (errorDetails.includes('network') || errorDetails.includes('Failed to fetch')) {
+                  userMessage = 'Network error. Please check your connection and try again.';
+                  shouldRetry = true;
+                } else if (errorDetails.includes('non-2xx status code')) {
+                  userMessage = '⚠️ AI service configuration issue detected. Please check your API keys or contact support.';
+                }
+                break;
+            }
           }
           
-          console.error('Edge Function error details:', { errorCode, errorDetails, originalError: error, shouldRetry });
+          console.error('Edge Function error details:', { errorCode, errorDetails, originalError: error, shouldRetry, status: error instanceof FunctionsHttpError ? error.status : 'unknown' });
         } catch (parseError) {
           console.error('Error parsing Edge Function error details:', parseError);
           errorDetails = error.message || 'Unknown parsing error';
-          userMessage = '⏳ AI service is experiencing issues. Please wait a few minutes and try again.';
-          shouldRetry = true;
+          userMessage = '⚠️ AI service encountered an error. Please check your configuration or try again later.';
+          shouldRetry = false;
         }
         
         // Show appropriate toast message
@@ -203,10 +237,7 @@ export const useAIChat = () => {
         } else if (errorMessage.includes('Invalid response')) {
           toast.error('Unable to get a valid response. Please try again.');
         } else if (errorMessage.includes('configuration') || errorMessage.includes('non-2xx')) {
-          toast.error('⏳ AI service is experiencing high demand. Please wait 2-3 minutes and try again.', {
-            duration: 6000,
-            icon: '⏳',
-          });
+          toast.error('⚠️ AI service configuration issue. Please check your API keys or contact support.');
         } else {
           toast.error('Unable to get a response. Please try again.');
         }
