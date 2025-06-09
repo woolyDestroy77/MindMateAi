@@ -55,12 +55,42 @@ export const useAIChat = () => {
       if (error) {
         console.error('Supabase function error:', error);
         
+        // Try to extract detailed error information from the Edge Function response
+        let detailedError = error.message;
+        let specificErrorMessage = 'Unable to get a response. Please try again.';
+        
+        try {
+          // Check if error.context.body contains detailed error information
+          if (error.context?.body) {
+            const errorBody = typeof error.context.body === 'string' 
+              ? JSON.parse(error.context.body) 
+              : error.context.body;
+            
+            if (errorBody.error) {
+              detailedError = errorBody.error;
+              
+              // Handle specific OpenAI quota exceeded error
+              if (detailedError.includes('429') && detailedError.includes('exceeded your current quota')) {
+                specificErrorMessage = 'OpenAI API quota exceeded. Please check your OpenAI plan and billing details to continue using the AI chat feature.';
+              } else if (detailedError.includes('OpenAI API error')) {
+                specificErrorMessage = 'OpenAI service error. Please try again later.';
+              } else if (detailedError.includes('DAPPIER_API_KEY')) {
+                specificErrorMessage = 'AI service is currently unavailable. Please check the API configuration.';
+              }
+            }
+          }
+        } catch (parseError) {
+          console.error('Error parsing Edge Function error details:', parseError);
+        }
+        
         // Handle specific error cases
         if (error.message.includes('DAPPIER_API_KEY')) {
           toast.error('AI service is currently unavailable. Please check the API configuration.');
           throw new Error('Dappier API key configuration error');
         }
-        throw new Error(`Edge function error: ${error.message}`);
+        
+        toast.error(specificErrorMessage);
+        throw new Error(`Edge function error: ${detailedError}`);
       }
 
       if (!data?.response) {
@@ -100,7 +130,8 @@ export const useAIChat = () => {
       if (errorMessage.includes('Dappier API key configuration error')) {
         toast.error('AI service is currently unavailable. Please check the API configuration.');
       } else if (errorMessage.includes('Edge function error')) {
-        toast.error('Unable to connect to AI service. Please try again.');
+        // Don't show another toast here as we already showed one above
+        console.error('Edge function error details:', errorMessage);
       } else if (errorMessage.includes('Invalid response')) {
         toast.error('Unable to get a valid response. Please try again.');
       } else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
