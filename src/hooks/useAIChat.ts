@@ -59,6 +59,13 @@ export const useAIChat = () => {
       if (error) {
         console.error('Supabase function error:', error);
         
+        // Handle 429 (Too Many Requests) specifically
+        if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
+          console.log('Rate limit detected - 429 error');
+          toast.error('AI service is temporarily busy due to high demand. Please wait a moment and try again.');
+          throw new Error('Rate limit exceeded - please try again in a moment');
+        }
+        
         // Handle different types of errors with user-friendly messages
         let userMessage = 'Unable to get a response. Please try again.';
         let errorCode = 'UNKNOWN_ERROR';
@@ -91,13 +98,13 @@ export const useAIChat = () => {
             // This indicates the Edge Function returned an error status
             errorCode = 'EDGE_FUNCTION_ERROR';
             errorDetails = 'Edge Function returned an error status code';
-            userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
+            userMessage = 'AI service is experiencing issues. This could be due to rate limits or configuration. Please try again in a few minutes.';
           }
           
           // Provide specific user messages based on error type
           switch (errorCode) {
             case 'QUOTA_EXCEEDED':
-              userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
+              userMessage = 'AI service has reached its usage limit. Please try again in a few minutes.';
               break;
             case 'API_CONFIGURATION_ERROR':
               userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
@@ -112,12 +119,12 @@ export const useAIChat = () => {
               userMessage = 'An unexpected error occurred. Please try again.';
               break;
             case 'EDGE_FUNCTION_ERROR':
-              userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
+              userMessage = 'AI service is experiencing issues. This could be due to rate limits or high demand. Please try again in a few minutes.';
               break;
             default:
               // Handle legacy error messages for backward compatibility
-              if (errorDetails.includes('429') || errorDetails.includes('quota')) {
-                userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
+              if (errorDetails.includes('429') || errorDetails.includes('quota') || errorDetails.includes('Too Many Requests')) {
+                userMessage = 'AI service is temporarily busy due to high demand. Please wait a moment and try again.';
               } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('OPENAI_API_KEY') || errorDetails.includes('API configuration')) {
                 userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
               } else if (errorDetails.includes('authentication') || errorDetails.includes('401')) {
@@ -125,7 +132,7 @@ export const useAIChat = () => {
               } else if (errorDetails.includes('network') || errorDetails.includes('Failed to fetch')) {
                 userMessage = 'Network error. Please check your connection and try again.';
               } else if (errorDetails.includes('non-2xx status code')) {
-                userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
+                userMessage = 'AI service is experiencing issues. This could be due to rate limits or high demand. Please try again in a few minutes.';
               }
               break;
           }
@@ -177,13 +184,13 @@ export const useAIChat = () => {
       
       // Only show toast if we haven't already shown one
       const errorMessage = error?.message || 'Unknown error';
-      if (!errorMessage.includes('Edge function error')) {
+      if (!errorMessage.includes('Edge function error') && !errorMessage.includes('Rate limit exceeded')) {
         if (errorMessage.includes('Failed to fetch') || errorMessage.includes('network')) {
           toast.error('Network error. Please check your connection and try again.');
         } else if (errorMessage.includes('Invalid response')) {
           toast.error('Unable to get a valid response. Please try again.');
         } else if (errorMessage.includes('configuration') || errorMessage.includes('non-2xx')) {
-          toast.error('AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.');
+          toast.error('AI service is experiencing issues. Please try again in a few minutes.');
         } else {
           toast.error('Unable to get a response. Please try again.');
         }
