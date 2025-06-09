@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
 
     const systemMessage = {
       role: 'system',
-      content: `You are MindMate AI, a highly empathetic and proactive mental wellness companion. ...`
+      content: `You are MindMate AI, a highly empathetic and proactive mental wellness companion. Your purpose is to: 1. Provide active emotional support and practical coping strategies 2. Help users explore and understand their feelings 3. Suggest specific exercises and techniques for emotional regulation 4. Encourage positive behavioral changes while acknowledging challenges 5. Maintain a warm, conversational tone while being direct and action-oriented. Guidelines for responses: Start with empathy and validation, follow up with specific actionable suggestions, include examples and exercises when relevant, ask follow-up questions to better understand the situation, provide clear step-by-step guidance for coping strategies, always maintain boundaries and remind users you're an AI support tool. If someone expresses thoughts of self-harm or severe distress: Express immediate concern, provide crisis hotline information (988 Suicide & Crisis Lifeline), strongly encourage seeking professional help, focus on immediate safety and grounding techniques.`
     };
 
     const messages = [
@@ -39,11 +39,7 @@ Deno.serve(async (req) => {
     const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n');
 
     const graphQLQuery = {
-      query: `
-        query RunChat($input: ChatInput!) {
-          run(input: $input)
-        }
-      `,
+      query: "query RunChat($input: ChatInput!) { run(input: $input) }",
       variables: {
         input: {
           prompt: prompt,
@@ -65,6 +61,7 @@ Deno.serve(async (req) => {
     const responseBody = await response.json();
 
     if (!response.ok || responseBody.errors) {
+      console.error('Dappier API error response:', JSON.stringify(responseBody));
       return new Response(JSON.stringify({
         error: "DAPPIER_API_ERROR",
         message: "Dappier API returned an error.",
@@ -78,6 +75,7 @@ Deno.serve(async (req) => {
     const aiResponse = responseBody.data?.run;
 
     if (!aiResponse) {
+      console.error('No response data from Dappier:', responseBody);
       return new Response(JSON.stringify({
         error: "EMPTY_RESPONSE",
         message: "No valid response from Dappier."
@@ -106,6 +104,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
+    console.error('Error in chat function:', error);
     return new Response(JSON.stringify({
       error: "INTERNAL_ERROR",
       message: "Unexpected server error.",
