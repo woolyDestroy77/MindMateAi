@@ -51,7 +51,7 @@ If someone expresses thoughts of self-harm or severe distress:
     ];
 
     console.log('Making request to Dappier API...');
-    const dappierResponse = await fetch('https://api.dappier.ai/v1/chat/completions', {
+    const dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${dappierApiKey}`,
