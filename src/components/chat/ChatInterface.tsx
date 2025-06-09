@@ -34,11 +34,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const messageToSend = input.trim();
+    console.log('Attempting to send message:', messageToSend);
+
     try {
       setInput('');
-      await sendMessage(input);
+      await sendMessage(messageToSend);
+      console.log('Message sent successfully');
     } catch (error) {
       console.error('Failed to send message:', error);
+      // The error handling is already done in useAIChat hook
     }
   };
 
@@ -145,9 +150,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
                 >
-                  {isLoading ? <Loader className="animate-spin\" size={20} /> : <Send size={20} />}
+                  {isLoading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
                 </Button>
               </div>
+              {isLoading && (
+                <div className="mt-2 text-sm text-gray-500 text-center">
+                  MindMate AI is thinking...
+                </div>
+              )}
             </div>
           </div>
         </motion.div>

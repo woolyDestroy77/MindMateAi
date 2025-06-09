@@ -44,6 +44,8 @@ export const useAIChat = () => {
         content: msg.content,
       }));
 
+      console.log('Sending message to Edge Function:', { message: content, context });
+
       // Call AI service through Edge Function
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
@@ -51,6 +53,8 @@ export const useAIChat = () => {
           context,
         },
       });
+
+      console.log('Edge Function response:', { data, error });
 
       if (error) {
         console.error('Supabase function error:', error);
@@ -66,6 +70,8 @@ export const useAIChat = () => {
             const errorBody = typeof error.context.body === 'string' 
               ? JSON.parse(error.context.body) 
               : error.context.body;
+            
+            console.log('Parsed error body:', errorBody);
             
             if (errorBody.error) {
               errorCode = errorBody.error;
@@ -134,6 +140,8 @@ export const useAIChat = () => {
         throw new Error(`Edge function error: ${errorDetails}`);
       }
 
+      console.log('Received data from Edge Function:', data);
+
       if (!data?.response) {
         console.error('Invalid response data:', data);
         toast.error('Invalid response from AI service. Please try again.');
@@ -159,6 +167,7 @@ export const useAIChat = () => {
       };
       setMessages(prev => [...prev, aiMessage]);
 
+      console.log('Successfully added AI message to chat');
       return aiMessage;
     } catch (error) {
       console.error('Error in AI chat:', error);
