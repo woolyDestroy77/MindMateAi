@@ -84,25 +84,18 @@ If someone expresses thoughts of self-harm or severe distress:
 - Focus on immediate safety and grounding techniques`
     };
 
-    // Combine system message with context and new message into a single query string
-    let queryContent = `System: ${systemMessage.content}\n\n`;
-    
-    // Add context messages
-    if (context && context.length > 0) {
-      for (const msg of context) {
-        queryContent += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n\n`;
-      }
-    }
-    
-    // Add the current user message
-    queryContent += `User: ${message}\n\nAssistant:`;
+    // Combine system message with context and new message
+    const messages = [
+      systemMessage,
+      ...context,
+      { role: 'user', content: message }
+    ];
 
     console.log('Using Dappier API...');
     console.log('Dappier API key length:', dappierApiKey.length);
-    console.log('Query content length:', queryContent.length);
     
     try {
-      // Use Dappier's chat completions endpoint with query parameter
+      // Use Dappier's chat completions endpoint
       console.log('Making request to Dappier chat completions API');
       
       const dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
@@ -112,9 +105,11 @@ If someone expresses thoughts of self-harm or severe distress:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: queryContent,
+          messages: messages,
           temperature: 0.7,
           max_tokens: 500,
+          presence_penalty: 0.6,
+          frequency_penalty: 0.3,
         }),
       });
 
