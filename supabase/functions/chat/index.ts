@@ -67,7 +67,7 @@ If someone expresses thoughts of self-harm or severe distress:
     // Try the correct Dappier API endpoint - using /v1/completions instead of /v1/chat/completions
     let dappierResponse;
     try {
-      dappierResponse = await fetch('https://api.dappier.com/app/datamodelconversation', {
+      dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${dappierApiKey}`,
