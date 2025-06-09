@@ -95,20 +95,17 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Dappier API key length:', dappierApiKey.length);
     
     try {
-      // Use Dappier's specific datamodel endpoint
-      console.log('Making request to Dappier datamodel API');
+      // Use Dappier's completions endpoint - Fixed URL
+      console.log('Making request to Dappier completions API');
       
-      // Create query content by combining all message contents
-      const queryContent = messages.map(msg => msg.content).join('\n\n');
-      
-      const dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
+      const dappierResponse = await fetch('https://api.dappier.com/v1/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${dappierApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          query: queryContent,
+          messages: messages,
           temperature: 0.7,
           max_tokens: 500,
           presence_penalty: 0.6,
