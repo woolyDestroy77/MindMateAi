@@ -150,9 +150,9 @@ export const useAIChat = () => {
                 shouldRetry = true;
                 break;
               case 'EDGE_FUNCTION_ERROR':
-                // This is likely a rate limit or service overload
-                userMessage = '⏳ AI service is experiencing issues. Please check your API configuration or try again later.';
-                shouldRetry = true;
+                // Provide more specific guidance for Edge Function errors
+                userMessage = '🔧 Edge Function encountered an error. Please check your Supabase project\'s Edge Function logs in the Supabase Dashboard for detailed error information. The issue may be with API configuration or service availability.';
+                shouldRetry = false; // Don't auto-retry, user needs to check logs
                 break;
               default:
                 // Handle legacy error messages and common patterns
@@ -167,7 +167,7 @@ export const useAIChat = () => {
                   userMessage = 'Network error. Please check your connection and try again.';
                   shouldRetry = true;
                 } else if (errorDetails.includes('non-2xx status code')) {
-                  userMessage = '⚠️ AI service configuration issue detected. Please check your API keys or contact support.';
+                  userMessage = '🔧 Edge Function returned an error. Please check your Supabase project\'s Edge Function logs in the Dashboard for detailed error information.';
                 }
                 break;
             }
@@ -177,7 +177,7 @@ export const useAIChat = () => {
         } catch (parseError) {
           console.error('Error parsing Edge Function error details:', parseError);
           errorDetails = error.message || 'Unknown parsing error';
-          userMessage = '⚠️ AI service encountered an error. Please check your configuration or try again later.';
+          userMessage = '🔧 Edge Function encountered an error. Please check your Supabase project\'s Edge Function logs for detailed error information.';
           shouldRetry = false;
         }
         
@@ -188,7 +188,9 @@ export const useAIChat = () => {
             icon: '⏳',
           });
         } else {
-          toast.error(userMessage);
+          toast.error(userMessage, {
+            duration: 8000, // Show longer for debugging messages
+          });
         }
         
         throw new Error(`Edge function error: ${errorDetails}`);
@@ -237,7 +239,7 @@ export const useAIChat = () => {
         } else if (errorMessage.includes('Invalid response')) {
           toast.error('Unable to get a valid response. Please try again.');
         } else if (errorMessage.includes('configuration') || errorMessage.includes('non-2xx')) {
-          toast.error('⚠️ AI service configuration issue. Please check your API keys or contact support.');
+          toast.error('🔧 Edge Function error. Please check your Supabase project\'s Edge Function logs for detailed error information.');
         } else {
           toast.error('Unable to get a response. Please try again.');
         }
