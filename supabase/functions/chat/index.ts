@@ -64,9 +64,10 @@ If someone expresses thoughts of self-harm or severe distress:
       max_tokens: 500
     }));
 
+    // Try the correct Dappier API endpoint - using /v1/completions instead of /v1/chat/completions
     let dappierResponse;
     try {
-      dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
+      dappierResponse = await fetch('https://api.dappier.com/v1/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${dappierApiKey}`,
@@ -95,6 +96,52 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Dappier response status:', dappierResponse.status);
     console.log('Dappier response headers:', Object.fromEntries(dappierResponse.headers.entries()));
 
+    // If we still get 404, try alternative endpoints
+    if (dappierResponse.status === 404) {
+      console.log('404 error with /v1/completions, trying alternative endpoints...');
+      
+      // Try /v1/chat/completions (OpenAI-compatible)
+      try {
+        console.log('Trying /v1/chat/completions endpoint...');
+        dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dappierApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'gpt-3.5-turbo', // Some APIs require a model parameter
+            messages,
+            temperature: 0.7,
+            max_tokens: 500
+          })
+        });
+        
+        console.log('Alternative endpoint response status:', dappierResponse.status);
+        
+        if (dappierResponse.status === 404) {
+          // Try without /v1 prefix
+          console.log('Trying /chat/completions endpoint...');
+          dappierResponse = await fetch('https://api.dappier.com/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${dappierApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              messages,
+              temperature: 0.7,
+              max_tokens: 500
+            })
+          });
+          
+          console.log('No /v1 prefix response status:', dappierResponse.status);
+        }
+      } catch (altError) {
+        console.error('Error trying alternative endpoints:', altError);
+      }
+    }
+
     if (!dappierResponse.ok) {
       let errorData;
       try {
@@ -106,6 +153,23 @@ If someone expresses thoughts of self-harm or severe distress:
       }
 
       // Handle specific status codes
+      if (dappierResponse.status === 404) {
+        return new Response(JSON.stringify({
+          error: "ENDPOINT_NOT_FOUND",
+          message: "Dappier API endpoint not found. The API structure may have changed.",
+          details: errorData,
+          statusCode: dappierResponse.status,
+          instructions: [
+            "1. Check Dappier documentation for correct API endpoints",
+            "2. Verify your API key has access to the completions endpoint",
+            "3. Contact Dappier support if the issue persists"
+          ]
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       if (dappierResponse.status === 429) {
         return new Response(JSON.stringify({
           error: "QUOTA_EXCEEDED",
