@@ -68,30 +68,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify(graphQLQuery)
     });
 
+    const responseBody = await response.json();
     console.log('Dappier API response status:', response.status);
-
-    // Read response as text first, then try to parse as JSON
-    const responseText = await response.text();
-    console.log('Dappier API response text:', responseText);
-
-    let responseBody;
-    try {
-      responseBody = JSON.parse(responseText);
-    } catch (jsonError) {
-      console.error('Failed to parse Dappier API response as JSON:', jsonError);
-      console.error('Raw response text:', responseText);
-      
-      return new Response(JSON.stringify({
-        error: "INVALID_JSON_RESPONSE",
-        message: "Dappier API returned an invalid JSON response.",
-        details: `Response parsing failed: ${jsonError.message}`,
-        rawResponse: responseText.substring(0, 500) // Limit raw response length
-      }), {
-        status: 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
     console.log('Dappier API response body:', JSON.stringify(responseBody, null, 2));
 
     if (!response.ok) {
