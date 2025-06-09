@@ -160,30 +160,58 @@ If someone expresses thoughts of self-harm or severe distress:
       });
     }
 
-    let responseContent =
-      dappierData.choices?.[0]?.message?.content ??
-      dappierData.choices?.[0]?.text ??
-      dappierData.response ??
-      dappierData.message ??
-      dappierData.text ??
-      dappierData.answer ??
-      (typeof dappierData === 'string' ? dappierData : null);
+    // Enhanced response content extraction with better error handling
+    let responseContent = null;
+    
+    // Try different possible response structures
+    if (dappierData?.choices?.[0]?.message?.content) {
+      responseContent = dappierData.choices[0].message.content;
+    } else if (dappierData?.choices?.[0]?.text) {
+      responseContent = dappierData.choices[0].text;
+    } else if (dappierData?.response) {
+      responseContent = dappierData.response;
+    } else if (dappierData?.message) {
+      responseContent = dappierData.message;
+    } else if (dappierData?.text) {
+      responseContent = dappierData.text;
+    } else if (dappierData?.answer) {
+      responseContent = dappierData.answer;
+    } else if (typeof dappierData === 'string') {
+      responseContent = dappierData;
+    }
 
     console.log('Extracted response content:', responseContent);
 
-    if (!responseContent) {
+    if (!responseContent || responseContent.trim() === '') {
       console.error('No valid response content found in Dappier data:', dappierData);
+      
+      // Check if this is an error response from Dappier
+      if (dappierData?.error) {
+        console.error('Dappier returned an error:', dappierData.error);
+        return new Response(JSON.stringify({
+          error: "DAPPIER_API_ERROR",
+          message: "Dappier API returned an error.",
+          details: dappierData.error.message || dappierData.error,
+          dappierError: dappierData.error
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
       return new Response(JSON.stringify({
         error: "EMPTY_RESPONSE",
         message: "No response content from AI service.",
         details: "Response structure did not contain expected content fields",
-        responseStructure: Object.keys(dappierData || {})
+        responseStructure: Object.keys(dappierData || {}),
+        fullResponse: dappierData
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    // Simple sentiment analysis
     const sentimentAnalysis = (text: string) => {
       const positiveWords = ['happy', 'good', 'great', 'excellent', 'wonderful', 'amazing', 'fantastic', 'love', 'joy', 'excited'];
       const negativeWords = ['sad', 'bad', 'terrible', 'awful', 'hate', 'angry', 'frustrated', 'depressed', 'anxious', 'worried'];
@@ -206,6 +234,7 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Returning successful response:', successResponse);
 
     return new Response(JSON.stringify(successResponse), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
