@@ -85,65 +85,52 @@ If someone expresses thoughts of self-harm or severe distress:
     if (dappierApiKey) {
       console.log('Attempting to use Dappier API...');
       
-      // Updated Dappier API endpoints - try the most common patterns
-      const dappierEndpoints = [
-        'https://api.dappier.com/app/datamodelchat',
-        'https://api.dappier.com/v1/chat/completions',
-        'https://api.dappier.com/chat/completions',
-        'https://dappier.com/api/v1/chat/completions'
-      ];
+      try {
+        console.log('Using specific Dappier endpoint: https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge');
+        
+        apiResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${dappierApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            query: message
+          }),
+        });
 
-      let dappierSuccess = false;
+        console.log('Dappier response status:', apiResponse.status);
 
-      for (const endpoint of dappierEndpoints) {
-        try {
-          console.log(`Trying Dappier endpoint: ${endpoint}`);
+        if (apiResponse.ok) {
+          const dappierData = await apiResponse.json();
+          console.log('Success with Dappier API');
           
-          apiResponse = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${dappierApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              messages: messages,
-              temperature: 0.7,
-              max_tokens: 500,
-            }),
-          });
-
-          console.log(`Dappier response status for ${endpoint}:`, apiResponse.status);
-
-          if (apiResponse.ok) {
-            const dappierData = await apiResponse.json();
-            console.log(`Success with Dappier endpoint: ${endpoint}`);
-            
-            // Extract response content from various possible formats
-            if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
-              responseContent = dappierData.choices[0].message.content;
-            } else if (dappierData.response) {
-              responseContent = dappierData.response;
-            } else if (dappierData.message) {
-              responseContent = dappierData.message;
-            } else if (dappierData.text) {
-              responseContent = dappierData.text;
-            } else if (typeof dappierData === 'string') {
-              responseContent = dappierData;
-            }
-            
-            if (responseContent) {
-              dappierSuccess = true;
-              break;
-            }
+          // Extract response content from various possible formats
+          if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
+            responseContent = dappierData.choices[0].message.content;
+          } else if (dappierData.response) {
+            responseContent = dappierData.response;
+          } else if (dappierData.message) {
+            responseContent = dappierData.message;
+          } else if (dappierData.text) {
+            responseContent = dappierData.text;
+          } else if (dappierData.answer) {
+            responseContent = dappierData.answer;
+          } else if (typeof dappierData === 'string') {
+            responseContent = dappierData;
+          } else {
+            console.log('Dappier response format:', dappierData);
+            // Try to extract any text content from the response
+            responseContent = JSON.stringify(dappierData);
           }
-        } catch (error) {
-          console.log(`Error with Dappier endpoint ${endpoint}:`, error.message);
-          continue;
+        } else {
+          const errorData = await apiResponse.text();
+          console.log('Dappier API error response:', errorData);
+          throw new Error(`Dappier API error: ${apiResponse.status} - ${errorData}`);
         }
-      }
-
-      if (!dappierSuccess) {
-        console.log('All Dappier endpoints failed, falling back to OpenAI...');
+      } catch (error) {
+        console.log('Error with Dappier API:', error.message);
+        console.log('Falling back to OpenAI...');
       }
     }
 
