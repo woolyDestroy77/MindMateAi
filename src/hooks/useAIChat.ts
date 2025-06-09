@@ -57,12 +57,11 @@ export const useAIChat = () => {
         
         // Handle different types of errors with user-friendly messages
         let userMessage = 'Unable to get a response. Please try again.';
+        let errorCode = 'UNKNOWN_ERROR';
+        let errorDetails = error.message || 'Unknown error';
         
         try {
           // Parse error details from Edge Function response
-          let errorDetails = error.message;
-          let errorCode = 'UNKNOWN_ERROR';
-          
           if (error.context?.body) {
             const errorBody = typeof error.context.body === 'string' 
               ? JSON.parse(error.context.body) 
@@ -74,13 +73,21 @@ export const useAIChat = () => {
             }
           }
           
+          // Check for specific error patterns in the message
+          if (error.message?.includes('non-2xx status code')) {
+            // This indicates the Edge Function returned an error status
+            errorCode = 'EDGE_FUNCTION_ERROR';
+            errorDetails = 'Edge Function returned an error status code';
+            userMessage = 'AI service is currently experiencing issues. This may be due to missing API configuration. Please contact support if this persists.';
+          }
+          
           // Provide specific user messages based on error type
           switch (errorCode) {
             case 'QUOTA_EXCEEDED':
               userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
               break;
             case 'API_CONFIGURATION_ERROR':
-              userMessage = 'AI service is currently unavailable. Please contact support if this persists.';
+              userMessage = 'AI service is currently unavailable due to configuration issues. Please contact support.';
               break;
             case 'AUTHENTICATION_ERROR':
               userMessage = 'AI service authentication failed. Please contact support.';
@@ -91,27 +98,33 @@ export const useAIChat = () => {
             case 'INTERNAL_ERROR':
               userMessage = 'An unexpected error occurred. Please try again.';
               break;
+            case 'EDGE_FUNCTION_ERROR':
+              userMessage = 'AI service is currently experiencing configuration issues. Please contact support if this persists.';
+              break;
             default:
               // Handle legacy error messages for backward compatibility
               if (errorDetails.includes('429') || errorDetails.includes('quota')) {
                 userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
-              } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('API configuration')) {
-                userMessage = 'AI service is currently unavailable. Please contact support if this persists.';
+              } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('OPENAI_API_KEY') || errorDetails.includes('API configuration')) {
+                userMessage = 'AI service is currently unavailable due to configuration issues. Please contact support.';
               } else if (errorDetails.includes('authentication') || errorDetails.includes('401')) {
                 userMessage = 'AI service authentication failed. Please contact support.';
               } else if (errorDetails.includes('network') || errorDetails.includes('Failed to fetch')) {
                 userMessage = 'Network error. Please check your connection and try again.';
+              } else if (errorDetails.includes('non-2xx status code')) {
+                userMessage = 'AI service is currently experiencing configuration issues. Please contact support if this persists.';
               }
               break;
           }
           
-          console.error('Edge Function error details:', { errorCode, errorDetails });
+          console.error('Edge Function error details:', { errorCode, errorDetails, originalError: error });
         } catch (parseError) {
           console.error('Error parsing Edge Function error details:', parseError);
+          errorDetails = error.message || 'Unknown parsing error';
         }
         
         toast.error(userMessage);
-        throw new Error(`Edge function error: ${error.message}`);
+        throw new Error(`Edge function error: ${errorDetails}`);
       }
 
       if (!data?.response) {
@@ -153,6 +166,8 @@ export const useAIChat = () => {
           toast.error('Network error. Please check your connection and try again.');
         } else if (errorMessage.includes('Invalid response')) {
           toast.error('Unable to get a valid response. Please try again.');
+        } else if (errorMessage.includes('configuration') || errorMessage.includes('non-2xx')) {
+          toast.error('AI service is currently experiencing configuration issues. Please contact support if this persists.');
         } else {
           toast.error('Unable to get a response. Please try again.');
         }
