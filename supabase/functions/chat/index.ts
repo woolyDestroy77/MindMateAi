@@ -84,18 +84,25 @@ If someone expresses thoughts of self-harm or severe distress:
 - Focus on immediate safety and grounding techniques`
     };
 
-    // Combine system message with context and new message
-    const messages = [
-      systemMessage,
-      ...context,
-      { role: 'user', content: message }
-    ];
+    // Combine system message with context and new message into a single query string
+    let queryContent = `System: ${systemMessage.content}\n\n`;
+    
+    // Add context messages
+    if (context && context.length > 0) {
+      for (const msg of context) {
+        queryContent += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n\n`;
+      }
+    }
+    
+    // Add the current user message
+    queryContent += `User: ${message}\n\nAssistant:`;
 
     console.log('Using Dappier API...');
     console.log('Dappier API key length:', dappierApiKey.length);
+    console.log('Query content length:', queryContent.length);
     
     try {
-      // Use Dappier's completions endpoint - Fixed URL
+      // Use Dappier's completions endpoint with query parameter
       console.log('Making request to Dappier completions API');
       
       const dappierResponse = await fetch('https://api.dappier.com/v1/completions', {
@@ -105,11 +112,9 @@ If someone expresses thoughts of self-harm or severe distress:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: messages,
+          query: queryContent,
           temperature: 0.7,
           max_tokens: 500,
-          presence_penalty: 0.6,
-          frequency_penalty: 0.3,
         }),
       });
 
@@ -129,6 +134,22 @@ If someone expresses thoughts of self-harm or severe distress:
               error: "AUTHENTICATION_ERROR",
               message: "Dappier API authentication failed. Please check your API key configuration.",
               details: "Dappier API authentication error - invalid API key"
+            }),
+            {
+              status: 500,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+        } else if (dappierResponse.status === 422) {
+          console.error('Dappier validation error:', errorData);
+          return new Response(
+            JSON.stringify({ 
+              error: "VALIDATION_ERROR",
+              message: "Invalid request format. Please try again.",
+              details: `Dappier API validation error: ${errorData}`
             }),
             {
               status: 500,
@@ -181,6 +202,8 @@ If someone expresses thoughts of self-harm or severe distress:
       // Extract response content from Dappier's response format
       if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
         responseContent = dappierData.choices[0].message.content;
+      } else if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].text) {
+        responseContent = dappierData.choices[0].text;
       } else if (dappierData.response) {
         responseContent = dappierData.response;
       } else if (dappierData.message) {
