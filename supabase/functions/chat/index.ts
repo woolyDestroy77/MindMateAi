@@ -26,15 +26,29 @@ Deno.serve(async (req) => {
 
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
     console.log('OPENAI_API_KEY exists:', !!openaiApiKey);
+    console.log('Available environment variables:', Object.keys(Deno.env.toObject()));
 
     if (!dappierApiKey && !openaiApiKey) {
       console.log('Neither DAPPIER_API_KEY nor OPENAI_API_KEY found in environment variables');
+      console.log('Please configure these environment variables in your Supabase project dashboard:');
+      console.log('1. Go to your Supabase project dashboard');
+      console.log('2. Navigate to Edge Functions');
+      console.log('3. Select the "chat" function');
+      console.log('4. Go to the Configuration tab');
+      console.log('5. Add DAPPIER_API_KEY and OPENAI_API_KEY with their respective values');
       
       return new Response(
         JSON.stringify({ 
           error: "API_CONFIGURATION_ERROR",
-          message: "AI service is currently unavailable. Please contact support.",
-          details: "Neither DAPPIER_API_KEY nor OPENAI_API_KEY environment variable is set."
+          message: "AI service configuration is missing. Please configure API keys in Supabase Edge Functions settings.",
+          details: "Environment variables DAPPIER_API_KEY and OPENAI_API_KEY are not configured in Supabase Edge Functions. Please add them in your Supabase project dashboard under Edge Functions > chat > Configuration.",
+          instructions: [
+            "1. Go to your Supabase project dashboard",
+            "2. Navigate to Edge Functions",
+            "3. Select the 'chat' function",
+            "4. Go to the Configuration tab",
+            "5. Add DAPPIER_API_KEY and OPENAI_API_KEY with their respective values"
+          ]
         }),
         {
           status: 500,
@@ -85,6 +99,7 @@ If someone expresses thoughts of self-harm or severe distress:
     // Try Dappier API first if available
     if (dappierApiKey) {
       console.log('Attempting to use Dappier API...');
+      console.log('Dappier API key length:', dappierApiKey.length);
       
       try {
         console.log('Using specific Dappier endpoint: https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge');
@@ -101,10 +116,12 @@ If someone expresses thoughts of self-harm or severe distress:
         });
 
         console.log('Dappier response status:', dappierResponse.status);
+        console.log('Dappier response headers:', Object.fromEntries(dappierResponse.headers.entries()));
 
         if (dappierResponse.ok) {
           const dappierData = await dappierResponse.json();
           console.log('Success with Dappier API');
+          console.log('Dappier response structure:', Object.keys(dappierData));
           
           // Extract response content from various possible formats
           if (dappierData.choices && dappierData.choices[0] && dappierData.choices[0].message) {
@@ -131,10 +148,22 @@ If someone expresses thoughts of self-harm or severe distress:
         } else {
           const errorData = await dappierResponse.text();
           console.log('Dappier API error response:', errorData);
+          console.log('Dappier API error status:', dappierResponse.status);
+          
+          // Handle specific Dappier errors
+          if (dappierResponse.status === 401) {
+            console.error('Dappier authentication failed - check API key');
+            throw new Error(`Dappier API authentication error: Invalid API key`);
+          } else if (dappierResponse.status === 429) {
+            console.error('Dappier quota exceeded');
+            throw new Error(`Dappier API quota exceeded`);
+          }
+          
           throw new Error(`Dappier API error: ${dappierResponse.status} - ${errorData}`);
         }
       } catch (error) {
         console.log('Error with Dappier API:', error.message);
+        console.log('Dappier error details:', error);
         console.log('Falling back to OpenAI...');
       }
     }
@@ -142,6 +171,7 @@ If someone expresses thoughts of self-harm or severe distress:
     // Fallback to OpenAI if Dappier failed or wasn't available
     if (!responseContent && openaiApiKey) {
       console.log('Using OpenAI API...');
+      console.log('OpenAI API key length:', openaiApiKey.length);
       
       try {
         const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -160,9 +190,13 @@ If someone expresses thoughts of self-harm or severe distress:
           }),
         });
 
+        console.log('OpenAI response status:', openaiResponse.status);
+        console.log('OpenAI response headers:', Object.fromEntries(openaiResponse.headers.entries()));
+
         if (!openaiResponse.ok) {
           const errorData = await openaiResponse.json();
           const errorMessage = errorData.error?.message || 'Unknown error';
+          console.log('OpenAI API error response:', errorData);
           
           // Handle specific OpenAI errors
           if (openaiResponse.status === 429) {
@@ -182,12 +216,12 @@ If someone expresses thoughts of self-harm or severe distress:
               },
             );
           } else if (openaiResponse.status === 401) {
-            console.error('OpenAI authentication failed');
+            console.error('OpenAI authentication failed - check API key');
             return new Response(
               JSON.stringify({ 
                 error: "AUTHENTICATION_ERROR",
-                message: "AI service authentication failed. Please contact support.",
-                details: "OpenAI API authentication error"
+                message: "OpenAI API authentication failed. Please check your API key configuration.",
+                details: "OpenAI API authentication error - invalid API key"
               }),
               {
                 status: 500,
@@ -204,6 +238,7 @@ If someone expresses thoughts of self-harm or severe distress:
 
         const openaiData = await openaiResponse.json();
         console.log('OpenAI API response received successfully');
+        console.log('OpenAI response structure:', Object.keys(openaiData));
         
         if (openaiData.choices && openaiData.choices[0] && openaiData.choices[0].message) {
           responseContent = openaiData.choices[0].message.content;
@@ -211,6 +246,7 @@ If someone expresses thoughts of self-harm or severe distress:
         }
       } catch (error) {
         console.error('OpenAI API error:', error);
+        console.log('OpenAI error details:', error);
         
         // If this is a quota error, return specific error
         if (error.message.includes('429')) {
@@ -241,7 +277,7 @@ If someone expresses thoughts of self-harm or severe distress:
         JSON.stringify({ 
           error: "SERVICE_UNAVAILABLE",
           message: "AI service is currently unavailable. Please try again later.",
-          details: "Unable to get a response from any AI service"
+          details: "Unable to get a response from any AI service. Check API key configuration."
         }),
         {
           status: 503,

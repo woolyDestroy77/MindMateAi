@@ -70,6 +70,13 @@ export const useAIChat = () => {
             if (errorBody.error) {
               errorCode = errorBody.error;
               errorDetails = errorBody.details || errorBody.message || errorDetails;
+              
+              // Show configuration instructions if available
+              if (errorBody.instructions && Array.isArray(errorBody.instructions)) {
+                console.log('Configuration instructions:', errorBody.instructions);
+                const instructionText = errorBody.instructions.join('\n');
+                console.log('Please follow these steps to configure your API keys:\n' + instructionText);
+              }
             }
           }
           
@@ -78,7 +85,7 @@ export const useAIChat = () => {
             // This indicates the Edge Function returned an error status
             errorCode = 'EDGE_FUNCTION_ERROR';
             errorDetails = 'Edge Function returned an error status code';
-            userMessage = 'AI service is currently experiencing issues. This may be due to missing API configuration. Please contact support if this persists.';
+            userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
           }
           
           // Provide specific user messages based on error type
@@ -87,10 +94,10 @@ export const useAIChat = () => {
               userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
               break;
             case 'API_CONFIGURATION_ERROR':
-              userMessage = 'AI service is currently unavailable due to configuration issues. Please contact support.';
+              userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
               break;
             case 'AUTHENTICATION_ERROR':
-              userMessage = 'AI service authentication failed. Please contact support.';
+              userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
               break;
             case 'SERVICE_UNAVAILABLE':
               userMessage = 'AI service is temporarily unavailable. Please try again later.';
@@ -99,20 +106,20 @@ export const useAIChat = () => {
               userMessage = 'An unexpected error occurred. Please try again.';
               break;
             case 'EDGE_FUNCTION_ERROR':
-              userMessage = 'AI service is currently experiencing configuration issues. Please contact support if this persists.';
+              userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
               break;
             default:
               // Handle legacy error messages for backward compatibility
               if (errorDetails.includes('429') || errorDetails.includes('quota')) {
                 userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again in a few minutes.';
               } else if (errorDetails.includes('DAPPIER_API_KEY') || errorDetails.includes('OPENAI_API_KEY') || errorDetails.includes('API configuration')) {
-                userMessage = 'AI service is currently unavailable due to configuration issues. Please contact support.';
+                userMessage = 'AI service needs to be configured. Please check the browser console for setup instructions, or contact support.';
               } else if (errorDetails.includes('authentication') || errorDetails.includes('401')) {
-                userMessage = 'AI service authentication failed. Please contact support.';
+                userMessage = 'AI service authentication failed. Please check your API key configuration or contact support.';
               } else if (errorDetails.includes('network') || errorDetails.includes('Failed to fetch')) {
                 userMessage = 'Network error. Please check your connection and try again.';
               } else if (errorDetails.includes('non-2xx status code')) {
-                userMessage = 'AI service is currently experiencing configuration issues. Please contact support if this persists.';
+                userMessage = 'AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.';
               }
               break;
           }
@@ -167,7 +174,7 @@ export const useAIChat = () => {
         } else if (errorMessage.includes('Invalid response')) {
           toast.error('Unable to get a valid response. Please try again.');
         } else if (errorMessage.includes('configuration') || errorMessage.includes('non-2xx')) {
-          toast.error('AI service is currently experiencing configuration issues. Please contact support if this persists.');
+          toast.error('AI service configuration issue detected. Please check the browser console for setup instructions, or contact support if this persists.');
         } else {
           toast.error('Unable to get a response. Please try again.');
         }
