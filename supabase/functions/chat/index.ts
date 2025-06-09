@@ -102,10 +102,10 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Query content length:', queryContent.length);
     
     try {
-      // Use Dappier's completions endpoint with query parameter
-      console.log('Making request to Dappier completions API');
+      // Use Dappier's chat completions endpoint with query parameter
+      console.log('Making request to Dappier chat completions API');
       
-      const dappierResponse = await fetch('https://api.dappier.com/v1/completions', {
+      const dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${dappierApiKey}`,
