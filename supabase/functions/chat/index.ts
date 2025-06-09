@@ -32,8 +32,9 @@ Deno.serve(async (req) => {
       
       return new Response(
         JSON.stringify({ 
-          error: "API configuration error",
-          details: "Neither DAPPIER_API_KEY nor OPENAI_API_KEY environment variable is set. Please set at least one using: supabase secrets set DAPPIER_API_KEY=your_key_here or supabase secrets set OPENAI_API_KEY=your_key_here"
+          error: "API_CONFIGURATION_ERROR",
+          message: "AI service is currently unavailable. Please contact support.",
+          details: "Neither DAPPIER_API_KEY nor OPENAI_API_KEY environment variable is set."
         }),
         {
           status: 500,
@@ -78,8 +79,8 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    let apiResponse;
     let responseContent;
+    let usedService = 'none';
 
     // Try Dappier API first if available
     if (dappierApiKey) {
@@ -88,7 +89,7 @@ If someone expresses thoughts of self-harm or severe distress:
       try {
         console.log('Using specific Dappier endpoint: https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge');
         
-        apiResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
+        const dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${dappierApiKey}`,
@@ -99,10 +100,10 @@ If someone expresses thoughts of self-harm or severe distress:
           }),
         });
 
-        console.log('Dappier response status:', apiResponse.status);
+        console.log('Dappier response status:', dappierResponse.status);
 
-        if (apiResponse.ok) {
-          const dappierData = await apiResponse.json();
+        if (dappierResponse.ok) {
+          const dappierData = await dappierResponse.json();
           console.log('Success with Dappier API');
           
           // Extract response content from various possible formats
@@ -123,10 +124,14 @@ If someone expresses thoughts of self-harm or severe distress:
             // Try to extract any text content from the response
             responseContent = JSON.stringify(dappierData);
           }
+          
+          if (responseContent) {
+            usedService = 'dappier';
+          }
         } else {
-          const errorData = await apiResponse.text();
+          const errorData = await dappierResponse.text();
           console.log('Dappier API error response:', errorData);
-          throw new Error(`Dappier API error: ${apiResponse.status} - ${errorData}`);
+          throw new Error(`Dappier API error: ${dappierResponse.status} - ${errorData}`);
         }
       } catch (error) {
         console.log('Error with Dappier API:', error.message);
@@ -139,7 +144,7 @@ If someone expresses thoughts of self-harm or severe distress:
       console.log('Using OpenAI API...');
       
       try {
-        apiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openaiApiKey}`,
@@ -155,26 +160,97 @@ If someone expresses thoughts of self-harm or severe distress:
           }),
         });
 
-        if (!apiResponse.ok) {
-          const errorData = await apiResponse.json();
-          throw new Error(`OpenAI API error: ${apiResponse.status} - ${errorData.error?.message || 'Unknown error'}`);
+        if (!openaiResponse.ok) {
+          const errorData = await openaiResponse.json();
+          const errorMessage = errorData.error?.message || 'Unknown error';
+          
+          // Handle specific OpenAI errors
+          if (openaiResponse.status === 429) {
+            console.error('OpenAI quota exceeded');
+            return new Response(
+              JSON.stringify({ 
+                error: "QUOTA_EXCEEDED",
+                message: "AI service is temporarily unavailable due to usage limits. Please try again later.",
+                details: "OpenAI API quota exceeded"
+              }),
+              {
+                status: 429,
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': 'application/json',
+                },
+              },
+            );
+          } else if (openaiResponse.status === 401) {
+            console.error('OpenAI authentication failed');
+            return new Response(
+              JSON.stringify({ 
+                error: "AUTHENTICATION_ERROR",
+                message: "AI service authentication failed. Please contact support.",
+                details: "OpenAI API authentication error"
+              }),
+              {
+                status: 500,
+                headers: {
+                  ...corsHeaders,
+                  'Content-Type': 'application/json',
+                },
+              },
+            );
+          }
+          
+          throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorMessage}`);
         }
 
-        const openaiData = await apiResponse.json();
+        const openaiData = await openaiResponse.json();
         console.log('OpenAI API response received successfully');
         
         if (openaiData.choices && openaiData.choices[0] && openaiData.choices[0].message) {
           responseContent = openaiData.choices[0].message.content;
+          usedService = 'openai';
         }
       } catch (error) {
         console.error('OpenAI API error:', error);
+        
+        // If this is a quota error, return specific error
+        if (error.message.includes('429')) {
+          return new Response(
+            JSON.stringify({ 
+              error: "QUOTA_EXCEEDED",
+              message: "AI service is temporarily unavailable due to usage limits. Please try again later.",
+              details: error.message
+            }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+        }
+        
         throw new Error(`Failed to get response from OpenAI: ${error.message}`);
       }
     }
 
     // If we still don't have a response, return an error
     if (!responseContent) {
-      throw new Error('Unable to get a response from any AI service. Please check your API keys and try again.');
+      console.error('No AI service available or all services failed');
+      return new Response(
+        JSON.stringify({ 
+          error: "SERVICE_UNAVAILABLE",
+          message: "AI service is currently unavailable. Please try again later.",
+          details: "Unable to get a response from any AI service"
+        }),
+        {
+          status: 503,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
     }
 
     // Simple sentiment analysis based on keywords
@@ -193,10 +269,13 @@ If someone expresses thoughts of self-harm or severe distress:
 
     const sentiment = sentimentAnalysis(message);
 
+    console.log(`Successfully generated response using ${usedService} service`);
+
     return new Response(
       JSON.stringify({ 
         response: responseContent,
-        sentiment: sentiment
+        sentiment: sentiment,
+        service: usedService
       }),
       {
         headers: {
@@ -210,8 +289,9 @@ If someone expresses thoughts of self-harm or severe distress:
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: 'An error occurred while processing your request. Please try again.',
+        error: "INTERNAL_ERROR",
+        message: "An unexpected error occurred. Please try again.",
+        details: error.message,
         timestamp: new Date().toISOString()
       }),
       {
