@@ -95,10 +95,10 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Dappier API key length:', dappierApiKey.length);
     
     try {
-      // Use Dappier's chat completions endpoint
+      // Use Dappier's chat completions endpoint - Updated to correct URL
       console.log('Making request to Dappier chat completions API');
       
-      const dappierResponse = await fetch('https://api.dappier.com/app/chat/completions', {
+      const dappierResponse = await fetch('https://api.dappier.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${dappierApiKey}`,
