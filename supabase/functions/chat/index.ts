@@ -98,6 +98,9 @@ If someone expresses thoughts of self-harm or severe distress:
       // Use Dappier's specific datamodel endpoint
       console.log('Making request to Dappier datamodel API');
       
+      // Create query content by combining all message contents
+      const queryContent = messages.map(msg => msg.content).join('\n\n');
+      
       const dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
         method: 'POST',
         headers: {
@@ -105,7 +108,7 @@ If someone expresses thoughts of self-harm or severe distress:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: messages,
+          query: queryContent,
           temperature: 0.7,
           max_tokens: 500,
           presence_penalty: 0.6,
