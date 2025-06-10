@@ -5,6 +5,7 @@ import { useAuth } from './hooks/useAuth';
 import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
+import AIAgent from './pages/AIAgent';
 
 function App() {
   const { user, isInitialized } = useAuth();
@@ -17,13 +18,16 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={
-          user ? <Navigate to="/dashboard\" replace /> : <LandingPage />
+          user ? <Navigate to="/dashboard" replace /> : <LandingPage />
         } />
         <Route path="/dashboard" element={
-          user ? <Dashboard /> : <Navigate to="/\" replace />
+          user ? <Dashboard /> : <Navigate to="/" replace />
         } />
         <Route path="/journal" element={
-          user ? <Journal /> : <Navigate to="/\" replace />
+          user ? <Journal /> : <Navigate to="/" replace />
+        } />
+        <Route path="/ai-agent" element={
+          user ? <AIAgent /> : <Navigate to="/" replace />
         } />
       </Routes>
       <Toaster position="top-right" />
