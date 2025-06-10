@@ -97,9 +97,9 @@ Remember: You are a supportive companion, not a replacement for professional the
       },
     ];
 
-    // Use Dappier's conversation endpoint with correct path
-    const dappierUrl = `https://api.dappier.com/app/agent/${dataModelId}/conversation`;
-    console.log('Making request to Dappier conversation API:', dappierUrl);
+    // Use correct Dappier API endpoint
+    const dappierUrl = `https://api.dappier.com/v1/datamodels/${dataModelId}/predict`;
+    console.log('Making request to Dappier API:', dappierUrl);
 
     const requestBody = {
       messages: messages,
@@ -205,7 +205,7 @@ Remember: You are a supportive companion, not a replacement for professional the
     return new Response(
       JSON.stringify({
         response: responseContent,
-        service: 'dappier-conversation',
+        service: 'dappier-predict',
         dataModelId: dataModelId,
       }),
       {
