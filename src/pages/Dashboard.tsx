@@ -33,6 +33,7 @@ import {
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import ChatInterface from '../components/chat/ChatInterface';
 
 ChartJS.register(
   CategoryScale,
@@ -96,6 +97,8 @@ const chartOptions = {
 };
 
 const Dashboard = () => {
+  const [showChatPanel, setShowChatPanel] = useState(false);
+  
   const currentMood = '😌';
   const moodInterpretation = "You seem calm and balanced today. Your emotional stability has been consistent over the past week.";
   
@@ -344,9 +347,10 @@ const Dashboard = () => {
                     variant="outline"
                     size="lg"
                     className="flex-col h-24"
-                    leftIcon={<PenSquare size={24} />}
+                    leftIcon={<MessageSquare size={24} />}
+                    onClick={() => setShowChatPanel(true)}
                   >
-                    Journal Entry
+                    Start AI Chat
                   </Button>
                   <Button
                     variant="outline"
@@ -378,6 +382,12 @@ const Dashboard = () => {
           </motion.div>
         </div>
       </main>
+
+      {/* AI Chat Interface */}
+      <ChatInterface 
+        isOpen={showChatPanel}
+        onClose={() => setShowChatPanel(false)}
+      />
     </div>
   );
 };
