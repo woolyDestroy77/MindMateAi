@@ -146,8 +146,41 @@ If someone expresses thoughts of self-harm or severe distress:
     console.log('Dappier API response status:', response.status);
     console.log('Dappier API response headers:', Object.fromEntries(response.headers.entries()));
 
-    const responseBody = await response.json();
-    console.log('Dappier API response body:', responseBody);
+    // Handle Dappier API response with proper JSON parsing error handling
+    let responseBody;
+    try {
+      const responseText = await response.text();
+      console.log('Dappier API raw response:', responseText);
+      
+      if (!responseText || responseText.trim() === '') {
+        console.error('Empty response from Dappier API');
+        return new Response(JSON.stringify({
+          error: "DAPPIER_EMPTY_RESPONSE",
+          message: "Dappier API returned an empty response.",
+          details: "The API response body was empty or whitespace only",
+          status: response.status
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      responseBody = JSON.parse(responseText);
+      console.log('Dappier API parsed response:', responseBody);
+    } catch (jsonError) {
+      console.error('Failed to parse Dappier API response as JSON:', jsonError);
+      console.error('Response was not valid JSON');
+      
+      return new Response(JSON.stringify({
+        error: "DAPPIER_INVALID_JSON",
+        message: "Dappier API returned invalid JSON response.",
+        details: `JSON parsing failed: ${jsonError.message}`,
+        status: response.status
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     if (!response.ok || responseBody.errors) {
       console.error('Dappier API error:', responseBody);
