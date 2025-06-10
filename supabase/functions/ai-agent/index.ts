@@ -69,18 +69,40 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create a comprehensive query that includes context and system instructions
-    let enhancedQuery = query;
-    
+    // Create messages array with system prompt and conversation context
+    const messages: Message[] = [
+      {
+        role: 'system',
+        content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your purpose is to:
+
+1. Provide empathetic emotional support and practical wellness guidance
+2. Help users understand and manage their mental health
+3. Suggest evidence-based coping strategies and techniques
+4. Encourage healthy habits and positive behavioral changes
+5. Maintain a warm, supportive, and professional tone
+
+Guidelines:
+- Always validate the user's feelings and experiences
+- Provide specific, actionable advice when appropriate
+- Include examples and step-by-step guidance for techniques
+- Ask thoughtful follow-up questions to better understand their needs
+- Encourage professional help when appropriate
+- Keep responses conversational and supportive`
+      }
+    ];
+
     // Add context if available
-    if (context && context.length > 0) {
-      const contextString = context.map(msg => `${msg.role}: ${msg.content}`).join('\n');
-      enhancedQuery = `Previous conversation:\n${contextString}\n\nCurrent message: ${query}\n\nPlease respond as MindMate AI, a compassionate mental wellness companion. Provide empathetic support and practical guidance.`;
-    } else {
-      enhancedQuery = `As MindMate AI, a compassionate mental wellness companion, please respond to: ${query}\n\nProvide empathetic support and practical guidance for mental wellness.`;
+    if (context && Array.isArray(context) && context.length > 0) {
+      messages.push(...context);
     }
 
-    console.log('Enhanced query for Dappier:', enhancedQuery);
+    // Add the current user query
+    messages.push({
+      role: 'user',
+      content: query
+    });
+
+    console.log('Sending to Dappier:', { messages });
 
     // Use the Dappier API endpoint directly
     console.log('Making request to Dappier API...');
@@ -92,7 +114,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        query: enhancedQuery
+        messages: messages
       }),
     });
 
