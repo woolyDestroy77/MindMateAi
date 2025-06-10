@@ -69,11 +69,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create messages array with system prompt and conversation context
-    const messages: Message[] = [
-      {
-        role: 'system',
-        content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your purpose is to:
+    // Build the system prompt
+    const systemPrompt = `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your purpose is to:
 
 1. Provide empathetic emotional support and practical wellness guidance
 2. Help users understand and manage their mental health
@@ -87,24 +84,26 @@ Guidelines:
 - Include examples and step-by-step guidance for techniques
 - Ask thoughtful follow-up questions to better understand their needs
 - Encourage professional help when appropriate
-- Keep responses conversational and supportive`
-      }
-    ];
+- Keep responses conversational and supportive`;
+
+    // Build the complete query by combining system prompt, context, and user query
+    let completeQuery = systemPrompt + '\n\n';
 
     // Add context if available
     if (context && Array.isArray(context) && context.length > 0) {
-      messages.push(...context);
+      completeQuery += 'Previous conversation:\n';
+      context.forEach((message: Message) => {
+        completeQuery += `${message.role}: ${message.content}\n`;
+      });
+      completeQuery += '\n';
     }
 
-    // Add the current user query as the last message in the conversation
-    messages.push({
-      role: 'user',
-      content: query
-    });
+    // Add the current user query
+    completeQuery += `User: ${query}\n\nAssistant:`;
 
-    console.log('Sending to Dappier with messages array:', messages);
+    console.log('Sending to Dappier with complete query');
 
-    // Use the Dappier API endpoint with only the messages array
+    // Use the Dappier API endpoint with the query field
     console.log('Making request to Dappier API...');
     
     const dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
@@ -114,7 +113,7 @@ Guidelines:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        messages: messages
+        query: completeQuery
       }),
     });
 
