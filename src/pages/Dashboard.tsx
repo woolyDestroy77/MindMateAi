@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -308,15 +307,13 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Journal</h2>
-                  <Link to="/journal">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leftIcon={<PenSquare size={16} />}
-                    >
-                      New Entry
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<PenSquare size={16} />}
+                  >
+                    New Entry
+                  </Button>
                 </div>
                 <div className="space-y-3">
                   {journalEntries.map((entry, index) => (
@@ -343,16 +340,14 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  <Link to="/journal">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="flex-col h-24 w-full"
-                      leftIcon={<PenSquare size={24} />}
-                    >
-                      Journal Entry
-                    </Button>
-                  </Link>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-col h-24"
+                    leftIcon={<PenSquare size={24} />}
+                  >
+                    Journal Entry
+                  </Button>
                   <Button
                     variant="outline"
                     size="lg"
@@ -361,16 +356,6 @@ const Dashboard = () => {
                   >
                     Voice Check-in
                   </Button>
-                  <Link to="/ai-agent">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="flex-col h-24 w-full"
-                      leftIcon={<Brain size={24} />}
-                    >
-                      AI Agent
-                    </Button>
-                  </Link>
                   <Button
                     variant="outline"
                     size="lg"
@@ -378,6 +363,14 @@ const Dashboard = () => {
                     leftIcon={<Target size={24} />}
                   >
                     Set Goals
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="flex-col h-24"
+                    leftIcon={<Brain size={24} />}
+                  >
+                    Meditate
                   </Button>
                 </div>
               </div>
