@@ -96,15 +96,9 @@ Guidelines:
       messages.push(...context);
     }
 
-    // Add the current user query
-    messages.push({
-      role: 'user',
-      content: query
-    });
+    console.log('Sending to Dappier with query and messages:', { query, messages });
 
-    console.log('Sending to Dappier:', { messages });
-
-    // Use the Dappier API endpoint directly
+    // Use the Dappier API endpoint with the correct format
     console.log('Making request to Dappier API...');
     
     const dappierResponse = await fetch('https://api.dappier.com/app/datamodel/dm_01jx62jyczecdv0gkh2gbp7pge', {
@@ -114,6 +108,7 @@ Guidelines:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        query: query,
         messages: messages
       }),
     });
