@@ -5,23 +5,23 @@ import { FaqItem } from '../../types';
 
 const faqs: FaqItem[] = [
   {
-    question: "How does MindMate AI detect emotions?",
-    answer: "MindMate AI uses natural language processing and voice analysis to detect emotions from your text and voice inputs. The system analyzes patterns, tone, word choice, and voice characteristics to determine your emotional state.",
+    question: "How does MindMate AI track emotions?",
+    answer: "MindMate AI uses natural language processing to analyze patterns in your journal entries and voice recordings. The system looks for emotional indicators in your writing style, word choice, and tone to help you understand your emotional patterns.",
     category: "technical"
   },
   {
     question: "Is MindMate AI a replacement for therapy?",
-    answer: "No, MindMate AI is not a replacement for professional therapy or medical advice. It's designed as a supportive tool to complement professional care, provide emotional support, and help with daily mental wellness practices.",
+    answer: "No, MindMate AI is not a replacement for professional therapy or medical advice. It's designed as a supportive tool to complement professional care, provide emotional tracking, and help with daily mental wellness practices.",
     category: "general"
   },
   {
     question: "How is my personal data protected?",
-    answer: "Your privacy is our priority. All conversations are encrypted, and we follow strict data protection protocols. You can delete your data at any time, and we never share your personal information with third parties without your explicit consent.",
+    answer: "Your privacy is our priority. All journal entries are encrypted, and we follow strict data protection protocols. You can delete your data at any time, and we never share your personal information with third parties without your explicit consent.",
     category: "privacy"
   },
   {
     question: "Can I use MindMate AI in my native language?",
-    answer: "Yes! MindMate AI supports multiple languages through our integration with Lingo. The emotion detection and responses are calibrated to work effectively across different languages and cultural expressions of emotion.",
+    answer: "Yes! MindMate AI supports multiple languages. The emotion detection and analysis are calibrated to work effectively across different languages and cultural expressions of emotion.",
     category: "general"
   },
   {
@@ -31,7 +31,7 @@ const faqs: FaqItem[] = [
   },
   {
     question: "How accurate is the emotion detection?",
-    answer: "Our emotion detection technology has been trained on diverse datasets and continues to improve over time. While it's highly accurate for most users, individual variations in expressing emotions may affect results. The system learns from your interactions to improve personalization.",
+    answer: "Our emotion detection technology has been trained on diverse datasets and continues to improve over time. While it's highly accurate for most users, individual variations in expressing emotions may affect results. The system learns from your patterns to improve personalization.",
     category: "technical"
   },
 ];

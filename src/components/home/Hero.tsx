@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, MessageSquare, BarChart, Mic } from 'lucide-react';
+import { ArrowRight, PenTool, BarChart, Mic } from 'lucide-react';
 import Button from '../ui/Button';
 
 const Hero: React.FC = () => {
@@ -50,7 +50,7 @@ const Hero: React.FC = () => {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="block text-gray-900"
                 >
-                  Your Emotion-Aware
+                  Your Digital
                 </motion.span>
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
@@ -58,7 +58,7 @@ const Hero: React.FC = () => {
                   transition={{ duration: 0.5, delay: 0.4 }}
                   className="block bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent"
                 >
-                  Mental Wellness AI
+                  Mental Wellness Companion
                 </motion.span>
               </span>
             </h1>
@@ -68,7 +68,7 @@ const Hero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.6 }}
               className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl"
             >
-              MindMate AI uses advanced emotion detection to adapt to how you feel, providing personalized mental wellness support through AI chat, voice responses, and mood tracking.
+              MindMate AI helps you track your emotional journey through intelligent journaling, mood analysis, and personalized wellness insights.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -83,7 +83,7 @@ const Hero: React.FC = () => {
                     size="lg"
                     rightIcon={<ArrowRight size={18} />}
                   >
-                    Try MindMate AI
+                    Start Your Journey
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -125,12 +125,12 @@ const Hero: React.FC = () => {
                     >
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-lavender-100">
-                          <MessageSquare className="h-5 w-5 text-lavender-600" />
+                          <PenTool className="h-5 w-5 text-lavender-600" />
                         </span>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-gray-900">AI Chat Support</h3>
-                        <p className="text-sm text-gray-500">Talk with your AI wellness companion</p>
+                        <h3 className="text-lg font-medium text-gray-900">Digital Journaling</h3>
+                        <p className="text-sm text-gray-500">Express your thoughts and feelings</p>
                       </div>
                     </motion.div>
                     
@@ -146,8 +146,8 @@ const Hero: React.FC = () => {
                         </span>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-gray-900">Voice Recognition</h3>
-                        <p className="text-sm text-gray-500">Emotion detection from your voice</p>
+                        <h3 className="text-lg font-medium text-gray-900">Voice Check-ins</h3>
+                        <p className="text-sm text-gray-500">Record your emotional state</p>
                       </div>
                     </motion.div>
                     

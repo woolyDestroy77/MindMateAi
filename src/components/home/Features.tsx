@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, MessageSquare, Mic, BarChart2, Globe, Heart, Shield, Zap } from 'lucide-react';
+import { Brain, PenTool, Mic, BarChart2, Globe, Heart, Shield, Zap } from 'lucide-react';
 import Card from '../ui/Card';
 
 interface FeatureProps {
@@ -49,32 +49,32 @@ const Features: React.FC = () => {
       color: "bg-lavender-100"
     },
     {
-      icon: <MessageSquare className="h-6 w-6 text-sage-600" />,
-      title: "AI Copilot Chat",
-      description: "Have therapy-like conversations with our GPT-powered AI that adapts to your needs.",
+      icon: <PenTool className="h-6 w-6 text-sage-600" />,
+      title: "Digital Journaling",
+      description: "Document your thoughts and feelings with our intuitive journaling interface.",
       color: "bg-sage-100"
     },
     {
       icon: <Mic className="h-6 w-6 text-lavender-600" />,
-      title: "Voice Responses",
-      description: "Receive voice feedback with appropriate emotional tones using ElevenLabs technology.",
+      title: "Voice Check-ins",
+      description: "Record voice notes and track your emotional state through voice analysis.",
       color: "bg-lavender-100"
     },
     {
       icon: <BarChart2 className="h-6 w-6 text-sage-600" />,
-      title: "Mood Journal & Tracking",
-      description: "Document your emotional journey and visualize progress over time.",
+      title: "Mood Tracking",
+      description: "Visualize your emotional journey and identify patterns over time.",
       color: "bg-sage-100"
     },
     {
       icon: <Globe className="h-6 w-6 text-lavender-600" />,
       title: "Multilingual Support",
-      description: "Access emotional support in your preferred language through Lingo integration.",
+      description: "Access emotional support in your preferred language.",
       color: "bg-lavender-100"
     },
     {
       icon: <Heart className="h-6 w-6 text-sage-600" />,
-      title: "Personalized Care",
+      title: "Personalized Insights",
       description: "Receive customized advice and exercises based on your emotional patterns.",
       color: "bg-sage-100"
     },
@@ -87,7 +87,7 @@ const Features: React.FC = () => {
     {
       icon: <Zap className="h-6 w-6 text-sage-600" />,
       title: "24/7 Availability",
-      description: "Access support whenever you need it, day or night, from any device.",
+      description: "Access your wellness tools whenever you need them, from any device.",
       color: "bg-sage-100"
     }
   ];
