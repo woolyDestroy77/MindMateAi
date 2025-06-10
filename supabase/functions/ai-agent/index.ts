@@ -97,8 +97,8 @@ Remember: You are a supportive companion, not a replacement for professional the
       },
     ];
 
-    // Use Dappier's conversation endpoint
-    const dappierUrl = `https://api.dappier.com/app/datamodel/${dataModelId}/conversation`;
+    // Use Dappier's conversation endpoint with correct path
+    const dappierUrl = `https://api.dappier.com/app/agent/${dataModelId}/conversation`;
     console.log('Making request to Dappier conversation API:', dappierUrl);
 
     const requestBody = {
