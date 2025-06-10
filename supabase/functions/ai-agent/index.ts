@@ -4,6 +4,11 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+interface Message {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -34,18 +39,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY') || 'ak_01jx00ns9jfjkvkybhzamc2vyk';
-    const dataModelId = Deno.env.get('DAPPIER_DATAMODEL_ID') || 'dm_01jx62jyczecdv0gkh2gbp7pge';
+    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
+    const dataModelId = Deno.env.get('DAPPIER_DATAMODEL_ID');
 
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
     console.log('DAPPIER_DATAMODEL_ID exists:', !!dataModelId);
-    console.log('Using data model ID:', dataModelId);
 
     if (!dappierApiKey || !dataModelId) {
       return new Response(
         JSON.stringify({
           error: "API_CONFIGURATION_ERROR",
           message: "Missing DAPPIER_API_KEY or DAPPIER_DATAMODEL_ID in configuration.",
+          details: "Please configure both DAPPIER_API_KEY and DAPPIER_DATAMODEL_ID in your Supabase Edge Functions settings.",
         }),
         {
           status: 500,
@@ -57,34 +62,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    const dappierUrl = `https://api.dappier.com/app/datamodel/${dataModelId}`;
-    console.log('Making request to Dappier datamodel API:', dappierUrl);
+    // Define system message for the AI agent
+    const systemMessage: Message = {
+      role: 'system',
+      content: `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your purpose is to:
 
-    const fullPrompt = (context && context.length > 0)
-      ? context.map(msg => `${msg.role}: ${msg.content}`).join('\n') + `\n\nUser: ${query}`
-      : query;
+1. Provide empathetic emotional support and practical wellness guidance
+2. Help users understand and manage their mental health
+3. Suggest evidence-based coping strategies and techniques
+4. Encourage healthy habits and positive behavioral changes
+5. Maintain a warm, supportive, and professional tone
 
-    // Add defensive check for fullPrompt
-    if (!fullPrompt || fullPrompt.trim().length === 0) {
-      console.error('Empty fullPrompt constructed:', fullPrompt);
-      return new Response(
-        JSON.stringify({
-          error: "EMPTY_PROMPT",
-          message: "Unable to construct a valid prompt from the provided input.",
-          details: "The constructed prompt is empty after processing query and context.",
-        }),
-        {
-          status: 400,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-    }
+Guidelines:
+- Always validate the user's feelings and experiences
+- Provide specific, actionable advice when appropriate
+- Include examples and step-by-step guidance for techniques
+- Ask thoughtful follow-up questions to better understand their needs
+- Maintain appropriate boundaries as an AI support tool
+- If someone expresses thoughts of self-harm, provide crisis resources immediately
+
+Remember: You are a supportive companion, not a replacement for professional therapy or medical care.`
+    };
+
+    // Construct messages array for conversational API
+    const messages: Message[] = [
+      systemMessage,
+      ...(context || []).map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+      {
+        role: 'user',
+        content: query,
+      },
+    ];
+
+    // Use Dappier's conversation endpoint
+    const dappierUrl = `https://api.dappier.com/app/datamodel/${dataModelId}/conversation`;
+    console.log('Making request to Dappier conversation API:', dappierUrl);
 
     const requestBody = {
-      query: fullPrompt,
+      messages: messages,
     };
 
     console.log('Sending to Dappier:', JSON.stringify(requestBody, null, 2));
@@ -103,6 +121,25 @@ Deno.serve(async (req) => {
     if (!dappierResponse.ok) {
       const errorText = await dappierResponse.text();
       console.error('Dappier API error response:', errorText);
+      
+      // Handle specific error cases
+      if (dappierResponse.status === 422) {
+        return new Response(
+          JSON.stringify({
+            error: "VALIDATION_ERROR",
+            message: "Invalid request format. Please try again.",
+            details: `Dappier API validation error: ${errorText}`,
+          }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders,
+              'Content-Type': 'application/json',
+            },
+          },
+        );
+      }
+      
       return new Response(
         JSON.stringify({
           error: "SERVICE_ERROR",
@@ -122,6 +159,7 @@ Deno.serve(async (req) => {
     const dappierData = await dappierResponse.json();
     console.log('Dappier API response:', dappierData);
 
+    // Extract response content from various possible response formats
     let responseContent =
       dappierData.response ||
       dappierData.answer ||
@@ -130,6 +168,11 @@ Deno.serve(async (req) => {
       dappierData.text ||
       dappierData.output ||
       dappierData.content;
+
+    // Check if the response is in choices format (like OpenAI)
+    if (!responseContent && dappierData.choices && dappierData.choices[0]) {
+      responseContent = dappierData.choices[0].message?.content || dappierData.choices[0].text;
+    }
 
     if (!responseContent && typeof dappierData === 'string') {
       responseContent = dappierData;
@@ -146,7 +189,8 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           error: "EMPTY_RESPONSE",
-          message: "Dappier returned an empty response.",
+          message: "AI Agent returned an empty response. Please try again.",
+          details: "Dappier API returned empty content",
         }),
         {
           status: 500,
@@ -161,7 +205,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         response: responseContent,
-        service: 'dappier-datamodel',
+        service: 'dappier-conversation',
         dataModelId: dataModelId,
       }),
       {
