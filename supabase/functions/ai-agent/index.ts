@@ -15,6 +15,25 @@ Deno.serve(async (req) => {
     console.log('AI Agent function invoked');
     console.log('Received query:', query);
 
+    // Validate that query is not empty
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      console.error('Empty or invalid query received:', query);
+      return new Response(
+        JSON.stringify({
+          error: "INVALID_QUERY",
+          message: "Query cannot be empty. Please provide a valid message.",
+          details: "The query parameter is required and must be a non-empty string.",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
+
     const dappierApiKey = Deno.env.get('DAPPIER_API_KEY') || 'ak_01jx00ns9jfjkvkybhzamc2vyk';
     const dataModelId = Deno.env.get('DAPPIER_DATAMODEL_ID') || 'dm_01jx62jyczecdv0gkh2gbp7pge';
 
@@ -44,6 +63,25 @@ Deno.serve(async (req) => {
     const fullPrompt = (context && context.length > 0)
       ? context.map(msg => `${msg.role}: ${msg.content}`).join('\n') + `\n\nUser: ${query}`
       : query;
+
+    // Add defensive check for fullPrompt
+    if (!fullPrompt || fullPrompt.trim().length === 0) {
+      console.error('Empty fullPrompt constructed:', fullPrompt);
+      return new Response(
+        JSON.stringify({
+          error: "EMPTY_PROMPT",
+          message: "Unable to construct a valid prompt from the provided input.",
+          details: "The constructed prompt is empty after processing query and context.",
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+    }
 
     const requestBody = {
       query: fullPrompt,
