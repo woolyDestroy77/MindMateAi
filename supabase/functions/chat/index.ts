@@ -112,35 +112,24 @@ If someone expresses thoughts of self-harm or severe distress:
       { role: 'user', content: message }
     ];
 
-    // Compose conversation into a single string
-    const prompt = messages.map(m => `${m.role}: ${m.content}`).join('\n');
-
-    const graphQLQuery = {
-      query: `
-        query RunChat($input: ChatInput!) {
-          run(input: $input)
-        }
-      `,
-      variables: {
-        input: {
-          prompt: prompt,
-          temperature: 0.7,
-          maxTokens: 500
-        }
-      }
-    };
+    // Compose conversation into a single string for Dappier
+    const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n\n');
 
     console.log('Making request to Dappier API...');
     console.log('Datamodel ID:', datamodelId);
     console.log('API Key length:', dappierApiKey.length);
+    console.log('Conversation text length:', conversationText.length);
 
+    // Use the correct Dappier API format based on your curl example
     const response = await fetch(`https://api.dappier.com/app/datamodel/${datamodelId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${dappierApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(graphQLQuery)
+      body: JSON.stringify({
+        query: conversationText
+      })
     });
 
     console.log('Dappier API response status:', response.status);
@@ -182,7 +171,7 @@ If someone expresses thoughts of self-harm or severe distress:
       });
     }
 
-    if (!response.ok || responseBody.errors) {
+    if (!response.ok) {
       console.error('Dappier API error:', responseBody);
       
       let errorMessage = "Dappier API returned an error.";
@@ -202,7 +191,7 @@ If someone expresses thoughts of self-harm or severe distress:
       return new Response(JSON.stringify({
         error: errorCode,
         message: errorMessage,
-        details: responseBody.errors || response.statusText,
+        details: responseBody || response.statusText,
         status: response.status
       }), {
         status: response.status,
@@ -210,16 +199,43 @@ If someone expresses thoughts of self-harm or severe distress:
       });
     }
 
-    const aiResponse = responseBody.data?.run;
-
-    if (!aiResponse) {
-      console.error('No response data from Dappier:', responseBody);
+    // Extract AI response from Dappier's response format
+    let aiResponse;
+    
+    // Try different possible response formats from Dappier
+    if (responseBody.response) {
+      aiResponse = responseBody.response;
+    } else if (responseBody.message) {
+      aiResponse = responseBody.message;
+    } else if (responseBody.text) {
+      aiResponse = responseBody.text;
+    } else if (responseBody.answer) {
+      aiResponse = responseBody.answer;
+    } else if (responseBody.result) {
+      aiResponse = responseBody.result;
+    } else if (typeof responseBody === 'string') {
+      aiResponse = responseBody;
+    } else {
+      console.error('Unexpected Dappier response format:', responseBody);
       return new Response(JSON.stringify({
-        error: "EMPTY_RESPONSE",
-        message: "No valid response from Dappier API.",
-        details: "Response data structure is unexpected"
+        error: "UNEXPECTED_RESPONSE_FORMAT",
+        message: "Dappier API returned an unexpected response format.",
+        details: "Unable to extract AI response from the response body",
+        responseKeys: Object.keys(responseBody)
       }), {
-        status: 500,
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.trim() === '') {
+      console.error('Empty or invalid AI response from Dappier:', aiResponse);
+      return new Response(JSON.stringify({
+        error: "EMPTY_AI_RESPONSE",
+        message: "Dappier API returned an empty or invalid AI response.",
+        details: "The AI response was empty, null, or not a string"
+      }), {
+        status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
@@ -236,6 +252,7 @@ If someone expresses thoughts of self-harm or severe distress:
 
     console.log('Successfully processed request');
     console.log('AI Response length:', aiResponse.length);
+    console.log('AI Response preview:', aiResponse.substring(0, 100) + '...');
     console.log('Detected sentiment:', sentiment);
 
     return new Response(JSON.stringify({
