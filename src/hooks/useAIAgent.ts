@@ -53,7 +53,7 @@ Guidelines:
 
 User's message: ${content}`;
 
-      // Call the working dappier-query function instead of ai-agent
+      // Call the dappier-query function
       const { data, error } = await supabase.functions.invoke('dappier-query', {
         body: { 
           query: wellnessPrompt,
@@ -68,10 +68,10 @@ User's message: ${content}`;
         // Handle different types of errors with user-friendly messages
         let userMessage = 'Unable to get a response from AI Agent. Please try again.';
         
-        if (error.message?.includes('429') || error.message?.includes('Too Many Requests')) {
+        if (error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('QUOTA_EXCEEDED')) {
           userMessage = 'AI Agent is temporarily busy due to high demand. Please wait a moment and try again.';
-        } else if (error.message?.includes('configuration') || error.message?.includes('API')) {
-          userMessage = 'AI Agent service needs to be configured. Please check your API settings.';
+        } else if (error.message?.includes('configuration') || error.message?.includes('API') || error.message?.includes('API_CONFIGURATION_ERROR') || error.message?.includes('AUTHENTICATION_ERROR')) {
+          userMessage = 'AI Agent service needs to be configured. Please check your API settings in Supabase Edge Functions.';
         } else if (error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
           userMessage = 'Network error. Please check your connection and try again.';
         }
@@ -80,17 +80,55 @@ User's message: ${content}`;
         throw new Error(`AI Agent error: ${error.message}`);
       }
 
-      if (!data?.response) {
-        console.error('Invalid response data:', data);
+      // Handle the Dappier API response format
+      let aiResponseContent = '';
+      
+      if (data?.error) {
+        // Handle error responses from the Edge Function
+        console.error('Edge Function returned error:', data);
+        
+        let errorMessage = 'AI service encountered an error. Please try again.';
+        
+        if (data.error === 'API_CONFIGURATION_ERROR') {
+          errorMessage = 'AI Agent service needs to be configured. Please set up your DAPPIER_API_KEY in Supabase Edge Functions settings.';
+        } else if (data.error === 'AUTHENTICATION_ERROR') {
+          errorMessage = 'AI Agent authentication failed. Please check your API key configuration.';
+        } else if (data.error === 'QUOTA_EXCEEDED') {
+          errorMessage = 'AI service is temporarily unavailable due to usage limits. Please try again later.';
+        } else if (data.error === 'INVALID_QUERY') {
+          errorMessage = 'Invalid message format. Please try again.';
+        }
+        
+        toast.error(errorMessage);
+        throw new Error(`AI Agent error: ${data.message || data.error}`);
+      }
+
+      // Extract response from Dappier API format
+      if (data?.choices && data.choices.length > 0 && data.choices[0].message?.content) {
+        aiResponseContent = data.choices[0].message.content;
+      } else if (data?.response) {
+        // Fallback for different response format
+        aiResponseContent = data.response;
+      } else if (data?.message) {
+        // Another possible format
+        aiResponseContent = data.message;
+      } else {
+        console.error('Invalid response data format:', data);
         toast.error('Invalid response from AI Agent. Please try again.');
-        throw new Error('Invalid response from AI Agent');
+        throw new Error('Invalid response format from AI Agent');
+      }
+
+      if (!aiResponseContent || aiResponseContent.trim().length === 0) {
+        console.error('Empty response content:', data);
+        toast.error('Received empty response from AI Agent. Please try again.');
+        throw new Error('Empty response from AI Agent');
       }
 
       // Add AI response to chat
       const aiMessage: AgentMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: data.response,
+        content: aiResponseContent,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, aiMessage]);
