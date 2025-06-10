@@ -34,29 +34,11 @@ export const useAIAgent = () => {
 
       console.log('Sending message to AI Agent:', { message: content, context });
 
-      // Create a wellness-focused prompt for the AI
-      const wellnessPrompt = `You are MindMate AI, a compassionate and knowledgeable mental wellness companion. Your purpose is to:
-
-1. Provide empathetic emotional support and practical wellness guidance
-2. Help users understand and manage their mental health
-3. Suggest evidence-based coping strategies and techniques
-4. Encourage healthy habits and positive behavioral changes
-5. Maintain a warm, supportive, and professional tone
-
-Guidelines:
-- Always validate the user's feelings and experiences
-- Provide specific, actionable advice when appropriate
-- Include examples and step-by-step guidance for techniques
-- Ask thoughtful follow-up questions to better understand their needs
-- Encourage professional help when appropriate
-- Keep responses conversational and supportive
-
-User's message: ${content}`;
-
-      // Call the dappier-query function
-      const { data, error } = await supabase.functions.invoke('dappier-query', {
+      // Call the ai-agent function with proper parameters
+      const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: { 
-          query: wellnessPrompt,
+          query: content,
+          context: context,
         },
       });
 
