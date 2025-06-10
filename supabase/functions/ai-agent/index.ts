@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       : query;
 
     const requestBody = {
-      message: fullPrompt,
+      query: fullPrompt,
     };
 
     console.log('Sending to Dappier:', JSON.stringify(requestBody, null, 2));
