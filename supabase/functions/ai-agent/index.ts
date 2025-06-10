@@ -15,15 +15,17 @@ Deno.serve(async (req) => {
     console.log('AI Agent function invoked');
     console.log('Received query:', query);
 
-    // Get Dappier API key from environment variables
-    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY');
-    const dataModelId = Deno.env.get('DAPPIER_DATAMODEL_ID');
+    // Get Dappier API key and data model ID from environment variables
+    // Fallback to hardcoded values for development
+    const dappierApiKey = Deno.env.get('DAPPIER_API_KEY') || 'ak_01jx00ns9jfjkvkybhzamc2vyk';
+    const dataModelId = Deno.env.get('DAPPIER_DATAMODEL_ID') || 'dm_01jx62jyczecdv0gkh2gbp7pge';
 
     console.log('DAPPIER_API_KEY exists:', !!dappierApiKey);
     console.log('DAPPIER_DATAMODEL_ID exists:', !!dataModelId);
+    console.log('Using data model ID:', dataModelId);
 
     if (!dappierApiKey) {
-      console.log('DAPPIER_API_KEY not found in environment variables');
+      console.log('DAPPIER_API_KEY not found');
       return new Response(
         JSON.stringify({ 
           error: "API_CONFIGURATION_ERROR",
@@ -34,8 +36,8 @@ Deno.serve(async (req) => {
             "2. Navigate to Edge Functions",
             "3. Select the 'ai-agent' function",
             "4. Go to the Configuration tab",
-            "5. Add DAPPIER_API_KEY with your Dappier API key value",
-            "6. Add DAPPIER_DATAMODEL_ID with your data model ID"
+            "5. Add DAPPIER_API_KEY with value: ak_01jx00ns9jfjkvkybhzamc2vyk",
+            "6. Add DAPPIER_DATAMODEL_ID with value: dm_01jx62jyczecdv0gkh2gbp7pge"
           ]
         }),
         {
@@ -49,7 +51,7 @@ Deno.serve(async (req) => {
     }
 
     if (!dataModelId) {
-      console.log('DAPPIER_DATAMODEL_ID not found in environment variables');
+      console.log('DAPPIER_DATAMODEL_ID not found');
       return new Response(
         JSON.stringify({ 
           error: "API_CONFIGURATION_ERROR",
@@ -69,9 +71,24 @@ Deno.serve(async (req) => {
     console.log('Using Dappier API with data model:', dataModelId);
     
     try {
-      // Use Dappier's datamodel endpoint
+      // Use Dappier's datamodel endpoint with your specific data model
       const dappierUrl = `https://api.dappier.com/app/datamodel/${dataModelId}`;
       console.log('Making request to Dappier datamodel API:', dappierUrl);
+      
+      // Prepare the request body with context if available
+      const requestBody = {
+        query: query,
+      };
+
+      // Add context to the query if available
+      if (context && context.length > 0) {
+        const contextString = context
+          .map(msg => `${msg.role}: ${msg.content}`)
+          .join('\n');
+        requestBody.query = `Context:\n${contextString}\n\nCurrent question: ${query}`;
+      }
+
+      console.log('Request body:', requestBody);
       
       const dappierResponse = await fetch(dappierUrl, {
         method: 'POST',
@@ -79,9 +96,7 @@ Deno.serve(async (req) => {
           'Authorization': `Bearer ${dappierApiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query: query,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       console.log('Dappier response status:', dappierResponse.status);
@@ -131,7 +146,7 @@ Deno.serve(async (req) => {
             JSON.stringify({ 
               error: "DATAMODEL_NOT_FOUND",
               message: "AI Agent data model not found. Please check your data model ID configuration.",
-              details: "Dappier API data model not found - invalid data model ID"
+              details: `Dappier API data model not found - invalid data model ID: ${dataModelId}`
             }),
             {
               status: 500,
@@ -162,10 +177,12 @@ Deno.serve(async (req) => {
       const dappierData = await dappierResponse.json();
       console.log('Success with Dappier API');
       console.log('Dappier response structure:', Object.keys(dappierData));
+      console.log('Full Dappier response:', dappierData);
       
       let responseContent;
       
       // Extract response content from Dappier's datamodel response format
+      // Try different possible response fields
       if (dappierData.response) {
         responseContent = dappierData.response;
       } else if (dappierData.answer) {
@@ -176,27 +193,42 @@ Deno.serve(async (req) => {
         responseContent = dappierData.message;
       } else if (dappierData.text) {
         responseContent = dappierData.text;
+      } else if (dappierData.content) {
+        responseContent = dappierData.content;
+      } else if (dappierData.output) {
+        responseContent = dappierData.output;
       } else if (typeof dappierData === 'string') {
         responseContent = dappierData;
       } else {
-        console.log('Unexpected Dappier response format:', dappierData);
-        return new Response(
-          JSON.stringify({ 
-            error: "RESPONSE_FORMAT_ERROR",
-            message: "AI Agent returned an unexpected response format. Please try again.",
-            details: "Unable to parse Dappier API response"
-          }),
-          {
-            status: 500,
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json',
-            },
-          },
+        console.log('Unexpected Dappier response format, trying to extract any text field:', dappierData);
+        
+        // Try to find any text-like field in the response
+        const textFields = Object.keys(dappierData).filter(key => 
+          typeof dappierData[key] === 'string' && dappierData[key].length > 10
         );
+        
+        if (textFields.length > 0) {
+          responseContent = dappierData[textFields[0]];
+          console.log(`Using field '${textFields[0]}' as response content`);
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              error: "RESPONSE_FORMAT_ERROR",
+              message: "AI Agent returned an unexpected response format. Please try again.",
+              details: `Unable to parse Dappier API response. Available fields: ${Object.keys(dappierData).join(', ')}`
+            }),
+            {
+              status: 500,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+        }
       }
       
-      if (!responseContent) {
+      if (!responseContent || responseContent.trim().length === 0) {
         console.error('No response content found in Dappier response');
         return new Response(
           JSON.stringify({ 
@@ -215,11 +247,13 @@ Deno.serve(async (req) => {
       }
 
       console.log('Successfully generated response using Dappier AI Agent');
+      console.log('Response content length:', responseContent.length);
 
       return new Response(
         JSON.stringify({ 
           response: responseContent,
-          service: 'dappier-datamodel'
+          service: 'dappier-datamodel',
+          dataModelId: dataModelId
         }),
         {
           headers: {
