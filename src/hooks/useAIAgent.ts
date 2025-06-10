@@ -47,19 +47,34 @@ export const useAIAgent = () => {
       if (error) {
         console.error('Supabase function error:', error);
         
-        // Handle different types of errors with user-friendly messages
+        // Extract detailed error information from error.context if available
         let userMessage = 'Unable to get a response from AI Agent. Please try again.';
+        let specificError = null;
         
-        if (error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('QUOTA_EXCEEDED')) {
-          userMessage = 'AI Agent is temporarily busy due to high demand. Please wait a moment and try again.';
-        } else if (error.message?.includes('configuration') || error.message?.includes('API') || error.message?.includes('API_CONFIGURATION_ERROR') || error.message?.includes('AUTHENTICATION_ERROR')) {
-          userMessage = 'AI Agent service needs to be configured. Please check your API settings in Supabase Edge Functions.';
+        // Check if error.context contains the detailed error response from Edge Function
+        if (error.context && typeof error.context === 'object') {
+          specificError = error.context.error || error.context.message;
+          console.log('Detailed error from Edge Function:', error.context);
+        }
+        
+        // Handle different types of errors with user-friendly messages
+        if (specificError === 'API_CONFIGURATION_ERROR' || error.message?.includes('configuration') || error.message?.includes('API')) {
+          userMessage = 'AI Agent service needs to be configured. Please set up your DAPPIER_API_KEY in Supabase Edge Functions settings.';
+        } else if (specificError === 'AUTHENTICATION_ERROR' || error.message?.includes('AUTHENTICATION_ERROR')) {
+          userMessage = 'AI Agent authentication failed. Please check your API key configuration.';
+        } else if (specificError === 'QUOTA_EXCEEDED' || error.message?.includes('429') || error.message?.includes('Too Many Requests') || error.message?.includes('QUOTA_EXCEEDED')) {
+          userMessage = 'AI service is temporarily unavailable due to usage limits. Please try again later.';
+        } else if (specificError === 'INVALID_QUERY' || error.message?.includes('INVALID_QUERY')) {
+          userMessage = 'Invalid message format. Please try again.';
         } else if (error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
           userMessage = 'Network error. Please check your connection and try again.';
+        } else if (error.context && error.context.message) {
+          // Use the specific message from the Edge Function if available
+          userMessage = error.context.message;
         }
         
         toast.error(userMessage);
-        throw new Error(`AI Agent error: ${error.message}`);
+        throw new Error(`AI Agent error: ${specificError || error.message}`);
       }
 
       // Handle the Dappier API response format
