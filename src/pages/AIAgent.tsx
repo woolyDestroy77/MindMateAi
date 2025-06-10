@@ -320,7 +320,7 @@ const AIAgent: React.FC = () => {
                   disabled={!input.trim() || isLoading}
                   className="absolute right-2 bottom-2 rounded-lg"
                 >
-                  {isLoading ? <Loader className="animate-spin" size={16} /> : <Send size={16} />}
+                  {isLoading ? <Loader className="animate-spin\" size={16} /> : <Send size={16} />}
                 </Button>
               </div>
             </div>
