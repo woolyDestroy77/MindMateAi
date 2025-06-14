@@ -124,6 +124,16 @@ export const useChatSessions = () => {
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
+      const sessionToDelete = sessions.find(s => s.id === sessionId);
+      if (!sessionToDelete) {
+        toast.error('Session not found');
+        return;
+      }
+
+      const isActiveSessionBeingDeleted = activeSession?.id === sessionId;
+      const remainingSessions = sessions.filter(s => s.id !== sessionId);
+
+      // Delete the session from database
       const { error } = await supabase
         .from('chat_sessions')
         .delete()
@@ -131,21 +141,30 @@ export const useChatSessions = () => {
 
       if (error) throw error;
 
-      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      // Update local state immediately
+      setSessions(remainingSessions);
       
-      // If deleted session was active, create a new one or set to null
-      if (activeSession?.id === sessionId) {
-        const remainingSessions = sessions.filter(s => s.id !== sessionId);
+      // Handle active session logic
+      if (isActiveSessionBeingDeleted) {
         if (remainingSessions.length > 0) {
-          // Switch to the most recent session
-          await switchToSession(remainingSessions[0].id);
+          // Switch to the most recent remaining session
+          const mostRecentSession = remainingSessions[0];
+          await switchToSession(mostRecentSession.id);
+          toast.success(`Switched to "${mostRecentSession.name}"`);
         } else {
-          // Create a new session if no sessions remain
-          await createNewSession();
+          // No sessions left, clear active session and create a new one
+          setActiveSession(null);
+          toast.success('Chat session deleted');
+          
+          // Create a new session after a brief delay
+          setTimeout(async () => {
+            await createNewSession();
+          }, 100);
         }
+      } else {
+        toast.success('Chat session deleted');
       }
 
-      toast.success('Chat session deleted');
     } catch (error) {
       console.error('Error deleting session:', error);
       toast.error('Failed to delete chat session');

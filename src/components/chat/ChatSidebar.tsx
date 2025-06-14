@@ -8,7 +8,8 @@ import {
   Trash2, 
   Check, 
   X,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import Button from '../ui/Button';
@@ -36,6 +37,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const handleStartEdit = (session: ChatSession) => {
     setEditingSessionId(session.id);
@@ -56,11 +58,18 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     setEditingName('');
   };
 
-  const handleDelete = (sessionId: string) => {
-    if (window.confirm('Are you sure you want to delete this chat session? This action cannot be undone.')) {
-      onDeleteSession(sessionId);
-    }
+  const handleDeleteClick = (sessionId: string) => {
+    setShowDeleteConfirm(sessionId);
     setShowDropdown(null);
+  };
+
+  const handleConfirmDelete = (sessionId: string) => {
+    onDeleteSession(sessionId);
+    setShowDeleteConfirm(null);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(null);
   };
 
   return (
@@ -109,7 +118,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       ? 'bg-lavender-50 border border-lavender-200'
                       : 'hover:bg-gray-50'
                   }`}
-                  onClick={() => !editingSessionId && onSwitchSession(session.id)}
+                  onClick={() => !editingSessionId && !showDeleteConfirm && onSwitchSession(session.id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -145,6 +154,11 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             session.is_active ? 'text-lavender-900' : 'text-gray-900'
                           }`}>
                             {session.name}
+                            {session.is_active && (
+                              <span className="ml-2 text-xs bg-lavender-100 text-lavender-700 px-2 py-0.5 rounded-full">
+                                Active
+                              </span>
+                            )}
                           </h3>
                           <p className={`text-xs mt-1 ${
                             session.is_active ? 'text-lavender-600' : 'text-gray-500'
@@ -155,7 +169,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       )}
                     </div>
 
-                    {!editingSessionId && (
+                    {!editingSessionId && !showDeleteConfirm && (
                       <div className="relative">
                         <button
                           onClick={(e) => {
@@ -188,7 +202,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDelete(session.id);
+                                  handleDeleteClick(session.id);
                                 }}
                                 className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center"
                               >
@@ -202,7 +216,45 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     )}
                   </div>
 
-                  {session.is_active && (
+                  {/* Delete Confirmation Overlay */}
+                  <AnimatePresence>
+                    {showDeleteConfirm === session.id && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-white rounded-lg border-2 border-red-200 p-3 flex flex-col justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center mb-2">
+                          <AlertTriangle size={16} className="text-red-500 mr-2" />
+                          <span className="text-sm font-medium text-red-900">Delete Chat?</span>
+                        </div>
+                        <p className="text-xs text-red-700 mb-3">
+                          {session.is_active 
+                            ? "This will delete your active chat session. You'll be switched to another chat or a new one will be created."
+                            : "This action cannot be undone."
+                          }
+                        </p>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleConfirmDelete(session.id)}
+                            className="flex-1 bg-red-600 text-white text-xs py-1.5 px-2 rounded hover:bg-red-700 transition-colors"
+                          >
+                            Delete
+                          </button>
+                          <button
+                            onClick={handleCancelDelete}
+                            className="flex-1 bg-gray-200 text-gray-800 text-xs py-1.5 px-2 rounded hover:bg-gray-300 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {session.is_active && !showDeleteConfirm && (
                     <div className="absolute left-0 top-1/2 transform -translate-y-1/2 w-1 h-8 bg-lavender-500 rounded-r"></div>
                   )}
                 </motion.div>
