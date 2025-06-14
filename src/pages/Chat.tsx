@@ -10,6 +10,8 @@ import {
   User,
   MessageSquare,
   Sidebar,
+  Volume2,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "../components/layout/Navbar";
@@ -32,12 +34,20 @@ const Chat = () => {
   } = useChatSessions();
 
   const { messages, isLoading, sendMessage } = useAIChat(activeSession?.id);
-  const { isRecording, transcript, startRecording, stopRecording } =
-    useVoiceInput();
+  const { 
+    isRecording, 
+    transcript, 
+    error: voiceError,
+    isProcessing,
+    startRecording, 
+    stopRecording,
+    clearTranscript 
+  } = useVoiceInput();
 
   const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,6 +59,7 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Update input with transcript
   useEffect(() => {
     if (transcript) {
       setInputMessage(transcript);
@@ -68,6 +79,7 @@ const Chat = () => {
 
     const messageToSend = inputMessage.trim();
     setInputMessage("");
+    clearTranscript(); // Clear the transcript after sending
 
     try {
       await sendMessage(messageToSend);
@@ -80,9 +92,38 @@ const Chat = () => {
     if (isRecording) {
       stopRecording(recognition);
       setRecognition(null);
+      setShowVoiceModal(false);
     } else {
+      setShowVoiceModal(true);
       const newRecognition = await startRecording();
       setRecognition(newRecognition);
+    }
+  };
+
+  const handleVoiceModalClose = () => {
+    if (isRecording) {
+      stopRecording(recognition);
+      setRecognition(null);
+    }
+    setShowVoiceModal(false);
+  };
+
+  const handleSendVoiceMessage = () => {
+    if (transcript.trim()) {
+      setInputMessage(transcript);
+      setShowVoiceModal(false);
+      stopRecording(recognition);
+      setRecognition(null);
+      
+      // Auto-send the voice message
+      setTimeout(() => {
+        if (inputRef.current) {
+          const form = inputRef.current.closest('form');
+          if (form) {
+            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          }
+        }
+      }, 100);
     }
   };
 
@@ -294,11 +335,11 @@ const Chat = () => {
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Type your message here..."
+                    placeholder="Type your message here or use voice input..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
                     disabled={isLoading || !activeSession}
                   />
-                  {isRecording && (
+                  {(isRecording || isProcessing) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
                     </div>
@@ -310,10 +351,16 @@ const Chat = () => {
                   variant={isRecording ? "primary" : "outline"}
                   size="md"
                   onClick={handleVoiceToggle}
-                  className="px-3"
-                  disabled={isLoading || !activeSession}
+                  className={`px-3 ${isRecording ? 'animate-pulse' : ''}`}
+                  disabled={isLoading || !activeSession || isProcessing}
                 >
-                  {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" size={20} />
+                  ) : isRecording ? (
+                    <MicOff size={20} />
+                  ) : (
+                    <Mic size={20} />
+                  )}
                 </Button>
 
                 <Button
@@ -333,14 +380,33 @@ const Chat = () => {
                 </Button>
               </form>
 
-              {isRecording && (
+              {/* Voice Recording Status */}
+              {(isRecording || isProcessing) && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-sm text-gray-600 flex items-center"
+                  className="mt-2 text-sm text-gray-600 flex items-center justify-between"
                 >
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                  Recording... Speak now
+                  <div className="flex items-center">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
+                    {isProcessing ? "Initializing microphone..." : "Recording... Speak now"}
+                  </div>
+                  {transcript && (
+                    <span className="text-lavender-600 italic">
+                      "{transcript.substring(0, 50)}{transcript.length > 50 ? '...' : ''}"
+                    </span>
+                  )}
+                </motion.div>
+              )}
+
+              {voiceError && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-2 text-sm text-red-600 flex items-center"
+                >
+                  <X size={16} className="mr-1" />
+                  {voiceError}
                 </motion.div>
               )}
 
@@ -353,6 +419,111 @@ const Chat = () => {
           </div>
         </div>
       </main>
+
+      {/* Voice Recording Modal */}
+      <AnimatePresence>
+        {showVoiceModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={handleVoiceModalClose}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Voice Input</h3>
+                  <button
+                    onClick={handleVoiceModalClose}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="mb-6">
+                  <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
+                    isRecording ? 'bg-red-100 animate-pulse' : 'bg-gray-100'
+                  }`}>
+                    {isProcessing ? (
+                      <Loader2 className="animate-spin text-gray-600" size={32} />
+                    ) : isRecording ? (
+                      <Volume2 className="text-red-600" size={32} />
+                    ) : (
+                      <Mic className="text-gray-600" size={32} />
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-600 mb-2">
+                    {isProcessing 
+                      ? "Initializing microphone..." 
+                      : isRecording 
+                        ? "Listening... Speak clearly into your microphone" 
+                        : "Click the microphone to start recording"
+                    }
+                  </p>
+
+                  {transcript && (
+                    <div className="bg-gray-50 rounded-lg p-3 mt-4">
+                      <p className="text-sm text-gray-700 italic">"{transcript}"</p>
+                    </div>
+                  )}
+
+                  {voiceError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-4">
+                      <p className="text-sm text-red-600">{voiceError}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex space-x-3">
+                  {isRecording ? (
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      onClick={() => {
+                        stopRecording(recognition);
+                        setRecognition(null);
+                      }}
+                      leftIcon={<MicOff size={18} />}
+                    >
+                      Stop Recording
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      fullWidth
+                      onClick={handleVoiceToggle}
+                      leftIcon={<Mic size={18} />}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? "Starting..." : "Start Recording"}
+                    </Button>
+                  )}
+
+                  {transcript && (
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      onClick={handleSendVoiceMessage}
+                      leftIcon={<Send size={18} />}
+                    >
+                      Send Message
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
