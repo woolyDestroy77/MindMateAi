@@ -273,7 +273,7 @@ const Chat = () => {
                       <div
                         className={`rounded-lg px-4 py-3 ${
                           message.role === "user"
-                            ? "bg-lavender-600 text-white"
+                            ? "bg-lavender-600"
                             : "bg-white border border-gray-200"
                         }`}
                       >
@@ -295,13 +295,13 @@ const Chat = () => {
                               )}
                             </button>
                             <div className="flex items-center space-x-2">
-                              <Volume2 size={16} className={message.role === "user" ? "text-lavender-100" : "text-gray-500"} />
+                              <Volume2 size={16} className={message.role === "user" ? "text-white" : "text-gray-500"} />
                               <div className="flex space-x-1">
                                 {[...Array(12)].map((_, i) => (
                                   <div
                                     key={i}
                                     className={`w-1 rounded-full ${
-                                      message.role === "user" ? "bg-lavender-200" : "bg-gray-300"
+                                      message.role === "user" ? "bg-white" : "bg-gray-300"
                                     }`}
                                     style={{
                                       height: `${Math.random() * 20 + 8}px`,
@@ -311,7 +311,7 @@ const Chat = () => {
                                 ))}
                               </div>
                               <span className={`text-sm ${
-                                message.role === "user" ? "text-lavender-100" : "text-gray-500"
+                                message.role === "user" ? "text-white" : "text-gray-500"
                               }`}>
                                 {formatDuration(message.audioDuration || 0)}
                               </span>
@@ -333,7 +333,7 @@ const Chat = () => {
                         <div
                           className={`flex items-center justify-between mt-2 text-xs ${
                             message.role === "user"
-                              ? "text-lavender-100"
+                              ? "text-white opacity-80"
                               : "text-gray-500"
                           }`}
                         >
@@ -342,7 +342,7 @@ const Chat = () => {
                             <span
                               className={`capitalize ${
                                 message.role === "user"
-                                  ? "text-lavender-100"
+                                  ? "text-white opacity-80"
                                   : getSentimentColor(message.sentiment)
                               }`}
                             >
