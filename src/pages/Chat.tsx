@@ -9,24 +9,35 @@ import {
   Bot,
   User,
   MessageSquare,
-  // History,
+  Sidebar,
 } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import ChatSidebar from "../components/chat/ChatSidebar";
 import { useAIChat } from "../hooks/useAIChat";
 import { useVoiceInput } from "../hooks/useVoiceInput";
-// import { useDappierChat } from "../hooks/useDappierChat";
+import { useChatSessions } from "../hooks/useChatSessions";
 
 const Chat = () => {
-  const { messages, isLoading, sendMessage } = useAIChat();
+  const {
+    sessions,
+    activeSession,
+    isLoading: sessionsLoading,
+    createNewSession,
+    switchToSession,
+    deleteSession,
+    renameSession,
+  } = useChatSessions();
+
+  const { messages, isLoading, sendMessage } = useAIChat(activeSession?.id);
   const { isRecording, transcript, startRecording, stopRecording } =
     useVoiceInput();
-  // const { saveChatMessage } = useDappierChat();
+
   const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"custom" | "widget">("custom");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -44,9 +55,16 @@ const Chat = () => {
     }
   }, [transcript]);
 
+  // Create initial session if none exists
+  useEffect(() => {
+    if (!sessionsLoading && sessions.length === 0 && !activeSession) {
+      createNewSession();
+    }
+  }, [sessionsLoading, sessions.length, activeSession, createNewSession]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMessage.trim() || isLoading) return;
+    if (!inputMessage.trim() || isLoading || !activeSession) return;
 
     const messageToSend = inputMessage.trim();
     setInputMessage("");
@@ -66,6 +84,10 @@ const Chat = () => {
       const newRecognition = await startRecording();
       setRecognition(newRecognition);
     }
+  };
+
+  const handleCreateNewChat = async () => {
+    await createNewSession();
   };
 
   const getSentimentColor = (sentiment?: string) => {
@@ -94,57 +116,72 @@ const Chat = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Chat</h1>
-          <p className="text-gray-600">
-            Chat with MindMate AI about your thoughts, feelings, and mental
-            wellness journey.
-          </p>
-        </div>
+      <main className="flex h-screen pt-16">
+        {/* Sidebar */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 20 }}
+              className="fixed left-0 top-16 bottom-0 z-40"
+            >
+              <ChatSidebar
+                sessions={sessions}
+                activeSession={activeSession}
+                isLoading={sessionsLoading}
+                onCreateNew={handleCreateNewChat}
+                onSwitchSession={switchToSession}
+                onDeleteSession={deleteSession}
+                onRenameSession={renameSession}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab("custom")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "custom"
-                    ? "border-lavender-500 text-lavender-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
+        {/* Main Chat Area */}
+        <div
+          className={`flex-1 flex flex-col transition-all duration-300 ${
+            sidebarOpen ? "ml-80" : "ml-0"
+          }`}
+        >
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                leftIcon={<Sidebar size={18} />}
+                className="mr-3"
               >
-                <div className="flex items-center">
-                  <MessageSquare size={16} className="mr-2" />
-                  Custom Chat
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("widget")}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === "widget"
-                    ? "border-lavender-500 text-lavender-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {/* <div className="flex items-center">
-                  <Bot size={16} className="mr-2" />
-                  AI Widget
-                  <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
-                    Auto-Save
-                  </span>
-                </div> */}
-              </button>
-            </nav>
+                {sidebarOpen ? "Hide" : "Show"} Sidebar
+              </Button>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">
+                  {activeSession?.name || "MindMate AI Chat"}
+                </h1>
+                {activeSession && (
+                  <p className="text-sm text-gray-500">
+                    Created {format(new Date(activeSession.created_at), "MMM d, yyyy 'at' h:mm a")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCreateNewChat}
+              leftIcon={<MessageSquare size={16} />}
+            >
+              New Chat
+            </Button>
           </div>
-        </div>
 
-        {/* Tab Content */}
-        {activeTab === "custom" && (
-          <Card variant="elevated" className="h-[600px] flex flex-col">
-            {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {/* Messages Area */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="max-w-4xl mx-auto space-y-4">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -185,15 +222,17 @@ const Chat = () => {
                       </div>
 
                       {/* Message Content */}
-                      <div
-                        className={`rounded-lg px-4 py-3 ${
+                      <Card
+                        variant="elevated"
+                        padding="sm"
+                        className={`${
                           message.role === "user"
                             ? `bg-lavender-600 text-white ${
                                 message.sentiment
                                   ? getSentimentBg(message.sentiment)
                                   : ""
                               }`
-                            : "bg-white border border-gray-200"
+                            : "bg-white"
                         }`}
                       >
                         <p
@@ -225,7 +264,7 @@ const Chat = () => {
                             </span>
                           )}
                         </div>
-                      </div>
+                      </Card>
                     </div>
                   </motion.div>
                 ))}
@@ -243,23 +282,25 @@ const Chat = () => {
                         <Bot size={16} />
                       </div>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+                    <Card variant="elevated" padding="sm">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                         <span className="text-sm text-gray-600">
                           MindMate AI is thinking...
                         </span>
                       </div>
-                    </div>
+                    </Card>
                   </div>
                 </motion.div>
               )}
 
               <div ref={messagesEndRef} />
             </div>
+          </div>
 
-            {/* Input Area */}
-            <div className="border-t border-gray-200 p-4">
+          {/* Input Area */}
+          <div className="bg-white border-t border-gray-200 p-4">
+            <div className="max-w-4xl mx-auto">
               <form
                 onSubmit={handleSendMessage}
                 className="flex items-center space-x-3"
@@ -272,7 +313,7 @@ const Chat = () => {
                     onChange={(e) => setInputMessage(e.target.value)}
                     placeholder="Type your message here..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
-                    disabled={isLoading}
+                    disabled={isLoading || !activeSession}
                   />
                   {isRecording && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -287,7 +328,7 @@ const Chat = () => {
                   size="md"
                   onClick={handleVoiceToggle}
                   className="px-3"
-                  disabled={isLoading}
+                  disabled={isLoading || !activeSession}
                 >
                   {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
                 </Button>
@@ -296,7 +337,7 @@ const Chat = () => {
                   type="submit"
                   variant="primary"
                   size="md"
-                  disabled={!inputMessage.trim() || isLoading}
+                  disabled={!inputMessage.trim() || isLoading || !activeSession}
                   leftIcon={
                     isLoading ? (
                       <Loader2 className="animate-spin" size={20} />
@@ -319,37 +360,18 @@ const Chat = () => {
                   Recording... Speak now
                 </motion.div>
               )}
+
+              {!activeSession && (
+                <div className="mt-2 text-sm text-gray-500 text-center">
+                  Create a new chat session to start messaging
+                </div>
+              )}
             </div>
-          </Card>
-        )}
+          </div>
+        </div>
       </main>
     </div>
   );
 };
 
 export default Chat;
-
-// : (
-//   <Card variant="elevated" className="min-h-[600px] p-6">
-//     <div className="mb-4 flex items-center justify-between">
-//       <div>
-//         <h2 className="text-xl font-semibold text-gray-900 mb-2">
-//           Dappier AI Widget
-//         </h2>
-//         <p className="text-gray-600">
-//           Experience our enhanced AI chat powered by Dappier's advanced
-//           AI technology.
-//         </p>
-//       </div>
-//       <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-//         <History size={14} className="mr-1" />
-//         Auto-saving conversations
-//       </div>
-//     </div>
-
-//     {/* Dappier Widget Container */}
-//     <div id="dappier-ask-ai-widget" className="w-full">
-//       <dappier-ask-ai-widget widgetId="wd_01jxpzftx6e3ntsgzwtgbze71c" />
-//     </div>
-//   </Card>
-// )}

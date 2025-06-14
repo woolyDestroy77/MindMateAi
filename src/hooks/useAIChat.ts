@@ -11,15 +11,24 @@ export interface ChatMessage {
   context?: unknown;
 }
 
-export const useAIChat = () => {
+export const useAIChat = (sessionId?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const isInitialized = useRef(false);
 
-  // Fetch or create a chat session for the user
+  // Reset messages when session changes
+  useEffect(() => {
+    if (sessionId) {
+      setMessages([]);
+      isInitialized.current = false;
+    }
+  }, [sessionId]);
+
+  // Fetch messages for current session
   useEffect(() => {
     const initChat = async () => {
+      if (!sessionId || isInitialized.current) return;
+
       try {
         setIsLoading(true);
         const { data: { user }, error: userError } = await supabase.auth
@@ -27,44 +36,14 @@ export const useAIChat = () => {
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        // Try to get the latest session for this user
-        const { data: sessions, error: sessionError } = await supabase
-          .from("dappier_chat_history")
-          .select("id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1);
-
-        if (sessionError) {
-          throw sessionError;
-        }
-
-        let session_id = sessions?.[0]?.id;
-        // If no session, create one with initial welcome message
-        if (!session_id) {
-          const welcomeMessage =
-            "Hi! I'm MindMate AI, your mental wellness companion. I'm here to listen, support, and help you explore ways to improve your emotional well-being. How are you feeling today?";
-          const { data: newSession, error: createError } = await supabase
-            .from("dappier_chat_history")
-            .insert([{
-              user_id: user.id,
-              user_message: "Hello", // Initial user message to satisfy not-null constraint
-              ai_response: welcomeMessage,
-              widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
-            }])
-            .select()
-            .single();
-          if (createError) throw createError;
-          session_id = newSession.id;
-        }
-        setSessionId(session_id);
-
-        // Fetch all messages for this session
+        // Fetch messages for this session
         const { data: dbMessages, error: fetchError } = await supabase
           .from("dappier_chat_history")
           .select("id, user_message, ai_response, created_at")
           .eq("user_id", user.id)
+          .eq("session_id", sessionId)
           .order("created_at", { ascending: true });
+
         if (fetchError) throw fetchError;
 
         if (dbMessages && dbMessages.length > 0) {
@@ -75,13 +54,13 @@ export const useAIChat = () => {
             created_at: string;
           }) => [
             {
-              id: msg.id,
+              id: `${msg.id}-user`,
               role: "user" as const,
               content: msg.user_message,
               timestamp: new Date(msg.created_at),
             },
             {
-              id: crypto.randomUUID(),
+              id: `${msg.id}-assistant`,
               role: "assistant" as const,
               content: msg.ai_response,
               timestamp: new Date(msg.created_at),
@@ -89,7 +68,7 @@ export const useAIChat = () => {
           ]);
           setMessages(formattedMessages);
         } else {
-          // If no messages, show welcome message
+          // Show welcome message for new sessions
           setMessages([
             {
               id: crypto.randomUUID(),
@@ -110,18 +89,23 @@ export const useAIChat = () => {
         isInitialized.current = true;
       }
     };
-    if (!isInitialized.current) initChat();
-  }, []);
+
+    initChat();
+  }, [sessionId]);
 
   const sendMessage = useCallback(
     async (content: string) => {
+      if (!sessionId) {
+        toast.error("No active chat session");
+        return;
+      }
+
       try {
         setIsLoading(true);
         const { data: { user }, error: userError } = await supabase.auth
           .getUser();
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
-        if (!sessionId) throw new Error("No chat session");
 
         // Add user message to chat
         const userMessage: ChatMessage = {
@@ -161,19 +145,20 @@ export const useAIChat = () => {
         const aiMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: data.response.message,
+          content: data.response.message || data.response,
           sentiment: data.sentiment,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, aiMessage]);
 
-        // Save conversation to DB
+        // Save conversation to DB with session_id
         const { error: saveError } = await supabase
           .from("dappier_chat_history")
           .insert({
             user_id: user.id,
+            session_id: sessionId,
             user_message: content,
-            ai_response: data.response.message,
+            ai_response: data.response.message || data.response,
             widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
           });
         if (saveError) throw saveError;
