@@ -16,6 +16,7 @@ import {
   Pause,
 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "react-hot-toast";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
 import ChatSidebar from "../components/chat/ChatSidebar";
@@ -322,7 +323,7 @@ const Chat = () => {
                             className={`text-sm ${
                               message.role === "user"
                                 ? "text-white"
-                                : "text-gray-800"
+                                : "text-gray-900"
                             }`}
                           >
                             {message.content}
@@ -370,7 +371,7 @@ const Chat = () => {
                     <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-900">
                           MindMate AI is thinking...
                         </span>
                       </div>
