@@ -101,17 +101,6 @@ const Chat = () => {
     }
   };
 
-  const getSentimentBg = (sentiment?: string) => {
-    switch (sentiment?.toLowerCase()) {
-      case "positive":
-        return "bg-green-50 border-green-200";
-      case "negative":
-        return "bg-red-50 border-red-200";
-      default:
-        return "bg-gray-50 border-gray-200";
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -222,17 +211,11 @@ const Chat = () => {
                       </div>
 
                       {/* Message Content */}
-                      <Card
-                        variant="elevated"
-                        padding="sm"
-                        className={`${
+                      <div
+                        className={`rounded-lg px-4 py-3 ${
                           message.role === "user"
-                            ? `bg-lavender-600 text-white ${
-                                message.sentiment
-                                  ? getSentimentBg(message.sentiment)
-                                  : ""
-                              }`
-                            : "bg-white"
+                            ? "bg-lavender-600 text-white"
+                            : "bg-white border border-gray-200"
                         }`}
                       >
                         <p
@@ -264,7 +247,7 @@ const Chat = () => {
                             </span>
                           )}
                         </div>
-                      </Card>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -282,14 +265,14 @@ const Chat = () => {
                         <Bot size={16} />
                       </div>
                     </div>
-                    <Card variant="elevated" padding="sm">
+                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                         <span className="text-sm text-gray-600">
                           MindMate AI is thinking...
                         </span>
                       </div>
-                    </Card>
+                    </div>
                   </div>
                 </motion.div>
               )}
