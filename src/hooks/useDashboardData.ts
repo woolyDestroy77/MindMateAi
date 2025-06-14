@@ -111,7 +111,7 @@ export const useDashboardData = () => {
     aiResponse: string
   ) => {
     try {
-      console.log('=== KEYWORD MOOD DETECTION ANALYSIS ===');
+      console.log('=== MOOD UPDATE FROM AI ===');
       console.log('User message:', userMessage);
       console.log('AI sentiment:', sentiment);
       
@@ -125,10 +125,12 @@ export const useDashboardData = () => {
       // Enhanced keyword-based mood analysis
       const moodAnalysis = analyzeKeywordMood(userMessage, sentiment);
       
-      console.log('Keyword mood analysis result:', moodAnalysis);
+      console.log('Mood analysis result:', moodAnalysis);
       
       // Update if we detect any mood keywords or emotional indicators
       if (moodAnalysis.shouldUpdate || moodAnalysis.confidence > 0.1) {
+        const currentTime = new Date().toISOString();
+        
         const newMoodData = {
           current_mood: moodAnalysis.mood,
           mood_name: moodAnalysis.moodName,
@@ -137,7 +139,7 @@ export const useDashboardData = () => {
           sentiment: moodAnalysis.sentiment,
           last_message: userMessage,
           ai_response: aiResponse,
-          updated_at: new Date().toISOString(),
+          updated_at: currentTime,
         };
 
         console.log('Updating mood data in Supabase:', newMoodData);
@@ -161,7 +163,7 @@ export const useDashboardData = () => {
 
         console.log('Successfully updated mood data:', updatedData);
 
-        // Update local state immediately
+        // Update local state immediately with fresh timestamp
         const newDashboardData: DashboardData = {
           currentMood: updatedData.current_mood,
           moodName: updatedData.mood_name,
@@ -176,24 +178,72 @@ export const useDashboardData = () => {
         setDashboardData(newDashboardData);
         
         // Show notification about the mood update
-        toast.success(`Mood detected: ${moodAnalysis.mood} (${moodAnalysis.moodName}) - Dashboard updated!`, {
-          duration: 5000,
+        toast.success(`Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
+          duration: 4000,
           icon: moodAnalysis.mood,
         });
         
-        console.log('=== KEYWORD MOOD UPDATE COMPLETE ===');
-        console.log('Detection method:', moodAnalysis.detectionMethod);
-        console.log('Keywords found:', moodAnalysis.keywordsFound);
+        console.log('=== MOOD UPDATE COMPLETE ===');
+        console.log('New dashboard data:', newDashboardData);
       } else {
         console.log('Mood update skipped - no clear emotional keywords found');
         console.log('Confidence:', moodAnalysis.confidence);
-        console.log('Keywords checked:', moodAnalysis.keywordsChecked);
       }
     } catch (error) {
       console.error('Error updating mood from AI:', error);
       toast.error('Failed to update mood data');
     }
   }, [dashboardData.wellnessScore]);
+
+  // Set up real-time subscription for mood data changes
+  useEffect(() => {
+    const setupRealtimeSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('Setting up real-time subscription for user:', user.id);
+
+      const subscription = supabase
+        .channel('mood_data_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_mood_data',
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            console.log('Real-time mood data change detected:', payload);
+            
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+              const newData = payload.new as any;
+              const updatedDashboardData: DashboardData = {
+                currentMood: newData.current_mood,
+                moodName: newData.mood_name,
+                moodInterpretation: newData.mood_interpretation,
+                wellnessScore: newData.wellness_score,
+                sentiment: newData.sentiment,
+                lastUpdated: newData.updated_at,
+                lastMessage: newData.last_message,
+                aiResponse: newData.ai_response,
+              };
+              
+              console.log('Updating dashboard data from real-time:', updatedDashboardData);
+              setDashboardData(updatedDashboardData);
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        console.log('Cleaning up real-time subscription');
+        subscription.unsubscribe();
+      };
+    };
+
+    setupRealtimeSubscription();
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -24,7 +24,8 @@ import {
   Heart,
   MessageSquare,
   Zap,
-  Activity
+  Activity,
+  Clock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -129,6 +130,26 @@ const Dashboard = () => {
     { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
   ];
 
+  // Helper function to format the last updated time
+  const formatLastUpdated = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) {
+        return 'Just now';
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
+      } else {
+        return formatDistanceToNow(date, { addSuffix: true });
+      }
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Recently';
+    }
+  };
+
   if (dashboardLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -211,8 +232,9 @@ const Dashboard = () => {
                 <div className="text-center text-sm text-gray-600">
                   Updated based on your AI conversations
                 </div>
-                <div className="text-xs text-center text-gray-500">
-                  Last updated: {format(new Date(dashboardData.lastUpdated), 'h:mm a')}
+                <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
+                  <Clock size={12} />
+                  <span>Last updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
                 </div>
               </div>
             </Card>
@@ -236,7 +258,7 @@ const Dashboard = () => {
                 </div>
                 <motion.div 
                   className="text-6xl text-center py-4"
-                  key={`${dashboardData.currentMood}-${dashboardData.moodName}`} // Animate when mood changes
+                  key={`${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}`} // Animate when mood changes
                   initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                   animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
@@ -244,8 +266,8 @@ const Dashboard = () => {
                   {dashboardData.currentMood}
                 </motion.div>
                 <motion.p 
-                  className="text-gray-600 text-center"
-                  key={dashboardData.moodInterpretation}
+                  className="text-gray-600 text-center text-sm"
+                  key={`${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
@@ -255,9 +277,20 @@ const Dashboard = () => {
                 <div className="text-xs text-gray-500 text-center">
                   Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
                 </div>
-                <div className="text-xs text-gray-500 text-center">
-                  Last updated: {format(new Date(dashboardData.lastUpdated), 'h:mm a')}
+                <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
+                  <Clock size={12} />
+                  <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
                 </div>
+                {dashboardData.lastMessage && (
+                  <div className="bg-gray-50 rounded-lg p-3 mt-3">
+                    <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
+                    <div className="text-sm text-gray-700 italic">
+                      "{dashboardData.lastMessage.length > 100 
+                        ? dashboardData.lastMessage.substring(0, 100) + '...' 
+                        : dashboardData.lastMessage}"
+                    </div>
+                  </div>
+                )}
                 <Link to="/chat">
                   <Button
                     variant="outline"
