@@ -55,43 +55,126 @@ function extractResponseContent(
   return null;
 }
 
-function sentimentAnalysis(text: string): string {
-  const positiveWords = [
-    "happy",
-    "good",
-    "great",
-    "excellent",
-    "wonderful",
-    "amazing",
-    "fantastic",
-    "love",
-    "joy",
-    "excited",
-    "grateful",
-    "optimistic",
-  ];
-  const negativeWords = [
-    "sad",
-    "bad",
-    "terrible",
-    "awful",
-    "hate",
-    "angry",
-    "frustrated",
-    "depressed",
-    "anxious",
-    "worried",
-    "stressed",
-    "upset",
-  ];
+function enhancedSentimentAnalysis(text: string): string {
   const lowerText = text.toLowerCase();
-  const positiveCount =
-    positiveWords.filter((word) => lowerText.includes(word)).length;
-  const negativeCount =
-    negativeWords.filter((word) => lowerText.includes(word)).length;
-  if (positiveCount > negativeCount) return "POSITIVE";
-  if (negativeCount > positiveCount) return "NEGATIVE";
-  return "NEUTRAL";
+  
+  // Enhanced sentiment analysis with more comprehensive patterns
+  const sentimentIndicators = {
+    positive: {
+      keywords: [
+        'happy', 'good', 'great', 'excellent', 'wonderful', 'amazing', 'fantastic', 'love', 'joy', 'excited',
+        'grateful', 'optimistic', 'pleased', 'satisfied', 'content', 'delighted', 'thrilled', 'cheerful',
+        'glad', 'blessed', 'lucky', 'awesome', 'brilliant', 'perfect', 'beautiful', 'smile', 'laugh',
+        'fun', 'enjoy', 'celebration', 'success', 'achievement', 'proud', 'confident', 'hopeful'
+      ],
+      phrases: [
+        'feeling good', 'feeling great', 'feeling happy', 'feeling amazing', 'feeling wonderful',
+        'in a good mood', 'having a great day', 'things are good', 'life is good', 'doing well',
+        'feeling positive', 'feeling blessed', 'feeling grateful', 'feeling lucky', 'love it',
+        'really enjoy', 'makes me happy', 'so excited', 'cant wait'
+      ],
+      weight: 1
+    },
+    negative: {
+      keywords: [
+        'sad', 'bad', 'terrible', 'awful', 'hate', 'angry', 'frustrated', 'depressed', 'anxious', 'worried',
+        'stressed', 'upset', 'disappointed', 'hurt', 'pain', 'crying', 'lonely', 'empty', 'miserable',
+        'devastated', 'heartbroken', 'furious', 'mad', 'annoyed', 'irritated', 'scared', 'afraid',
+        'nervous', 'overwhelmed', 'exhausted', 'tired', 'drained', 'hopeless', 'lost', 'broken'
+      ],
+      phrases: [
+        'feeling sad', 'feeling bad', 'feeling down', 'feeling depressed', 'feeling angry', 'feeling frustrated',
+        'feeling anxious', 'feeling worried', 'feeling stressed', 'feeling upset', 'feeling hurt',
+        'not doing well', 'having a bad day', 'things are bad', 'life is hard', 'struggling with',
+        'cant stand', 'hate it when', 'makes me sad', 'makes me angry', 'really upset'
+      ],
+      weight: 1
+    }
+  };
+
+  let positiveScore = 0;
+  let negativeScore = 0;
+
+  // Check for direct emotional statements with higher weight
+  const emotionalPatterns = [
+    /i feel (.*)/,
+    /i am (.*)/,
+    /i'm (.*)/,
+    /feeling (.*)/,
+    /makes me (.*)/,
+    /i'm so (.*)/,
+    /really (.*)/
+  ];
+
+  for (const pattern of emotionalPatterns) {
+    const match = lowerText.match(pattern);
+    if (match) {
+      const emotionText = match[1];
+      
+      // Check positive indicators in emotional statements
+      sentimentIndicators.positive.keywords.forEach(keyword => {
+        if (emotionText.includes(keyword)) {
+          positiveScore += 2; // Higher weight for direct emotional statements
+        }
+      });
+      
+      sentimentIndicators.positive.phrases.forEach(phrase => {
+        if (emotionText.includes(phrase.replace('feeling ', ''))) {
+          positiveScore += 2;
+        }
+      });
+      
+      // Check negative indicators in emotional statements
+      sentimentIndicators.negative.keywords.forEach(keyword => {
+        if (emotionText.includes(keyword)) {
+          negativeScore += 2;
+        }
+      });
+      
+      sentimentIndicators.negative.phrases.forEach(phrase => {
+        if (emotionText.includes(phrase.replace('feeling ', ''))) {
+          negativeScore += 2;
+        }
+      });
+    }
+  }
+
+  // Check for phrase patterns
+  sentimentIndicators.positive.phrases.forEach(phrase => {
+    if (lowerText.includes(phrase)) {
+      positiveScore += 1.5;
+    }
+  });
+  
+  sentimentIndicators.negative.phrases.forEach(phrase => {
+    if (lowerText.includes(phrase)) {
+      negativeScore += 1.5;
+    }
+  });
+
+  // Check for individual keywords
+  sentimentIndicators.positive.keywords.forEach(keyword => {
+    if (lowerText.includes(keyword)) {
+      positiveScore += 1;
+    }
+  });
+  
+  sentimentIndicators.negative.keywords.forEach(keyword => {
+    if (lowerText.includes(keyword)) {
+      negativeScore += 1;
+    }
+  });
+
+  console.log('Sentiment analysis scores:', { positiveScore, negativeScore, text: lowerText });
+
+  // Determine sentiment with threshold
+  if (positiveScore > negativeScore && positiveScore > 0.5) {
+    return "POSITIVE";
+  } else if (negativeScore > positiveScore && negativeScore > 0.5) {
+    return "NEGATIVE";
+  } else {
+    return "NEUTRAL";
+  }
 }
 
 function errorResponse(
@@ -118,6 +201,9 @@ Deno.serve(async (req) => {
 
   try {
     const { message, context } = await req.json();
+
+    console.log('=== CHAT FUNCTION CALLED ===');
+    console.log('User message:', message);
 
     // Prepare enhanced query with context
     const enhancedQuery = buildEnhancedQuery(message, context);
@@ -210,16 +296,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    const sentiment = sentimentAnalysis(message);
+    // Enhanced sentiment analysis
+    const sentiment = enhancedSentimentAnalysis(message);
+    
+    console.log('Enhanced sentiment analysis result:', sentiment);
+
+    const finalResponse = {
+      response: responseContent,
+      sentiment,
+      service: "dappier",
+      model_id: AI_MODEL_ID,
+      data_model_id: DATA_MODEL_ID,
+    };
+
+    console.log('=== CHAT FUNCTION RESPONSE ===');
+    console.log('Final response:', finalResponse);
 
     return new Response(
-      JSON.stringify({
-        response: responseContent,
-        sentiment,
-        service: "dappier",
-        model_id: AI_MODEL_ID,
-        data_model_id: DATA_MODEL_ID,
-      }),
+      JSON.stringify(finalResponse),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
