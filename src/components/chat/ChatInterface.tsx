@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Mic, X, Loader } from "lucide-react";
 import Button from "../ui/Button";
-import { useAIChat, ChatMessage } from "../../hooks/useAIChat";
+import { useAIChat } from "../../hooks/useAIChat";
 import { useVoiceInput } from "../../hooks/useVoiceInput";
 
 interface ChatInterfaceProps {
