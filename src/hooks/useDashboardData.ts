@@ -111,7 +111,7 @@ export const useDashboardData = () => {
     aiResponse: string
   ) => {
     try {
-      console.log('=== MOOD UPDATE ANALYSIS ===');
+      console.log('=== KEYWORD MOOD DETECTION ANALYSIS ===');
       console.log('User message:', userMessage);
       console.log('AI sentiment:', sentiment);
       
@@ -122,17 +122,17 @@ export const useDashboardData = () => {
         return;
       }
 
-      // Enhanced mood analysis with more aggressive detection
-      const moodAnalysis = analyzeMoodFromMessage(userMessage, sentiment);
+      // Enhanced keyword-based mood analysis
+      const moodAnalysis = analyzeKeywordMood(userMessage, sentiment);
       
-      console.log('Mood analysis result:', moodAnalysis);
+      console.log('Keyword mood analysis result:', moodAnalysis);
       
-      // Always update if we detect any mood, even with low confidence
+      // Update if we detect any mood keywords or emotional indicators
       if (moodAnalysis.shouldUpdate || moodAnalysis.confidence > 0.1) {
         const newMoodData = {
           current_mood: moodAnalysis.mood,
           mood_name: moodAnalysis.moodName,
-          mood_interpretation: generateMoodInterpretation(moodAnalysis, aiResponse),
+          mood_interpretation: generateMoodInterpretation(moodAnalysis, userMessage),
           wellness_score: calculateWellnessScore(moodAnalysis.sentiment, dashboardData.wellnessScore),
           sentiment: moodAnalysis.sentiment,
           last_message: userMessage,
@@ -176,15 +176,18 @@ export const useDashboardData = () => {
         setDashboardData(newDashboardData);
         
         // Show notification about the mood update
-        toast.success(`Mood updated to ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
-          duration: 4000,
+        toast.success(`Mood detected: ${moodAnalysis.mood} (${moodAnalysis.moodName}) - Dashboard updated!`, {
+          duration: 5000,
           icon: moodAnalysis.mood,
         });
         
-        console.log('=== MOOD UPDATE COMPLETE ===');
+        console.log('=== KEYWORD MOOD UPDATE COMPLETE ===');
+        console.log('Detection method:', moodAnalysis.detectionMethod);
+        console.log('Keywords found:', moodAnalysis.keywordsFound);
       } else {
-        console.log('Mood update skipped - no clear emotional indicators found');
+        console.log('Mood update skipped - no clear emotional keywords found');
         console.log('Confidence:', moodAnalysis.confidence);
+        console.log('Keywords checked:', moodAnalysis.keywordsChecked);
       }
     } catch (error) {
       console.error('Error updating mood from AI:', error);
@@ -204,122 +207,104 @@ export const useDashboardData = () => {
   };
 };
 
-// Enhanced mood analysis function with better detection
-function analyzeMoodFromMessage(message: string, sentiment: string) {
+// Enhanced keyword-based mood analysis function
+function analyzeKeywordMood(message: string, sentiment: string) {
   const lowerMessage = message.toLowerCase();
   
-  console.log('Analyzing message:', lowerMessage);
+  console.log('🔍 KEYWORD ANALYSIS - Analyzing message:', lowerMessage);
   
-  // Enhanced mood indicators with more keywords and patterns
-  const moodIndicators = {
+  // Comprehensive keyword database for mood detection
+  const moodKeywords = {
+    // HAPPY/POSITIVE MOODS
     happy: {
-      keywords: [
-        'happy', 'great', 'amazing', 'wonderful', 'excited', 'joy', 'fantastic', 'awesome', 'love', 'perfect', 
-        'good', 'excellent', 'brilliant', 'cheerful', 'delighted', 'thrilled', 'elated', 'overjoyed',
-        'glad', 'pleased', 'content', 'satisfied', 'grateful', 'blessed', 'lucky', 'positive',
-        'smile', 'smiling', 'laugh', 'laughing', 'fun', 'enjoy', 'enjoying', 'celebration', 'celebrate'
-      ],
-      phrases: [
-        'feeling good', 'feeling great', 'feeling happy', 'feeling amazing', 'feeling wonderful',
-        'in a good mood', 'having a great day', 'things are good', 'life is good', 'doing well',
-        'feeling positive', 'feeling blessed', 'feeling grateful', 'feeling lucky'
-      ],
+      primary: ['happy', 'joy', 'joyful', 'cheerful', 'glad', 'pleased', 'delighted', 'elated', 'ecstatic', 'blissful'],
+      secondary: ['good', 'great', 'amazing', 'wonderful', 'fantastic', 'awesome', 'brilliant', 'excellent', 'perfect', 'beautiful'],
+      expressions: ['smile', 'smiling', 'laugh', 'laughing', 'grin', 'grinning', 'beam', 'beaming'],
+      phrases: ['feeling good', 'feeling great', 'feeling happy', 'in a good mood', 'having a great day', 'life is good', 'things are good'],
       emoji: '😊',
-      sentiment: 'positive'
+      sentiment: 'positive',
+      weight: 1.0
     },
-    sad: {
-      keywords: [
-        'sad', 'depressed', 'down', 'upset', 'crying', 'hurt', 'disappointed', 'lonely', 'empty', 
-        'miserable', 'heartbroken', 'devastated', 'gloomy', 'blue', 'melancholy', 'sorrowful',
-        'grief', 'mourning', 'despair', 'hopeless', 'broken', 'lost', 'defeated', 'discouraged',
-        'tears', 'weeping', 'sob', 'sobbing', 'pain', 'ache', 'aching'
-      ],
-      phrases: [
-        'feeling sad', 'feeling down', 'feeling depressed', 'feeling low', 'feeling blue',
-        'not doing well', 'having a bad day', 'things are bad', 'life is hard', 'struggling',
-        'feeling hopeless', 'feeling lost', 'feeling empty', 'feeling broken'
-      ],
-      emoji: '😢',
-      sentiment: 'negative'
-    },
-    angry: {
-      keywords: [
-        'angry', 'mad', 'furious', 'frustrated', 'annoyed', 'irritated', 'rage', 'hate', 'pissed', 
-        'livid', 'outraged', 'enraged', 'irate', 'fuming', 'incensed', 'bitter', 'resentful',
-        'aggravated', 'infuriated', 'steaming', 'boiling', 'seething', 'raging', 'hostile'
-      ],
-      phrases: [
-        'feeling angry', 'feeling mad', 'feeling frustrated', 'feeling annoyed', 'feeling irritated',
-        'pissed off', 'fed up', 'had enough', 'sick of', 'tired of', 'cant stand', 'hate it when'
-      ],
-      emoji: '😠',
-      sentiment: 'negative'
-    },
-    anxious: {
-      keywords: [
-        'anxious', 'worried', 'nervous', 'stressed', 'panic', 'overwhelmed', 'scared', 'afraid', 
-        'tense', 'uneasy', 'restless', 'troubled', 'concerned', 'apprehensive', 'fearful',
-        'paranoid', 'terrified', 'frightened', 'alarmed', 'distressed', 'agitated', 'jittery'
-      ],
-      phrases: [
-        'feeling anxious', 'feeling worried', 'feeling nervous', 'feeling stressed', 'feeling overwhelmed',
-        'freaking out', 'panicking', 'stressed out', 'worried about', 'scared of', 'afraid of'
-      ],
-      emoji: '😰',
-      sentiment: 'negative'
-    },
-    calm: {
-      keywords: [
-        'calm', 'peaceful', 'relaxed', 'serene', 'tranquil', 'centered', 'balanced', 'zen', 
-        'composed', 'content', 'mellow', 'placid', 'still', 'quiet', 'stable', 'steady'
-      ],
-      phrases: [
-        'feeling calm', 'feeling peaceful', 'feeling relaxed', 'feeling centered', 'feeling balanced',
-        'at peace', 'feeling zen', 'feeling stable', 'feeling composed'
-      ],
-      emoji: '😌',
-      sentiment: 'positive'
-    },
-    tired: {
-      keywords: [
-        'tired', 'exhausted', 'drained', 'weary', 'sleepy', 'fatigue', 'worn out', 'depleted', 
-        'spent', 'burned out', 'beat', 'wiped out', 'fatigued', 'drowsy'
-      ],
-      phrases: [
-        'feeling tired', 'feeling exhausted', 'feeling drained', 'feeling worn out', 'feeling sleepy',
-        'burned out', 'wiped out', 'need sleep', 'need rest'
-      ],
-      emoji: '😴',
-      sentiment: 'neutral'
-    },
-    confused: {
-      keywords: [
-        'confused', 'lost', 'uncertain', 'unclear', 'puzzled', 'mixed up', 'bewildered', 
-        'perplexed', 'baffled', 'stumped', 'clueless', 'unsure', 'doubtful'
-      ],
-      phrases: [
-        'feeling confused', 'feeling lost', 'feeling uncertain', 'feeling unclear', 'feeling puzzled',
-        'dont know', 'not sure', 'mixed up', 'cant figure out'
-      ],
-      emoji: '🤔',
-      sentiment: 'neutral'
-    },
+    
     excited: {
-      keywords: [
-        'excited', 'thrilled', 'pumped', 'energetic', 'enthusiastic', 'eager', 'hyped', 'stoked', 
-        'amped', 'psyched', 'fired up', 'charged up', 'buzzing', 'electric'
-      ],
-      phrases: [
-        'feeling excited', 'feeling thrilled', 'feeling pumped', 'feeling energetic', 'feeling enthusiastic',
-        'cant wait', 'so excited', 'really excited', 'super excited'
-      ],
+      primary: ['excited', 'thrilled', 'pumped', 'enthusiastic', 'eager', 'hyped', 'stoked', 'amped'],
+      secondary: ['energetic', 'buzzing', 'electric', 'charged', 'fired up', 'psyched'],
+      expressions: ['cant wait', 'so excited', 'really excited', 'super excited', 'absolutely thrilled'],
+      phrases: ['feeling excited', 'feeling pumped', 'feeling energetic', 'feeling enthusiastic'],
       emoji: '🤩',
-      sentiment: 'positive'
+      sentiment: 'positive',
+      weight: 1.0
+    },
+
+    // SAD/NEGATIVE MOODS
+    sad: {
+      primary: ['sad', 'depressed', 'down', 'blue', 'melancholy', 'gloomy', 'miserable', 'heartbroken', 'devastated'],
+      secondary: ['upset', 'disappointed', 'hurt', 'lonely', 'empty', 'broken', 'lost', 'defeated'],
+      expressions: ['crying', 'tears', 'weeping', 'sob', 'sobbing'],
+      phrases: ['feeling sad', 'feeling down', 'feeling depressed', 'feeling blue', 'feeling low', 'having a bad day', 'feeling broken'],
+      emoji: '😢',
+      sentiment: 'negative',
+      weight: 1.0
+    },
+
+    // ANGRY/FRUSTRATED MOODS
+    angry: {
+      primary: ['angry', 'mad', 'furious', 'rage', 'livid', 'outraged', 'enraged', 'irate', 'fuming'],
+      secondary: ['frustrated', 'annoyed', 'irritated', 'aggravated', 'infuriated', 'bitter', 'resentful'],
+      expressions: ['hate', 'pissed', 'fed up', 'sick of', 'tired of', 'cant stand'],
+      phrases: ['feeling angry', 'feeling mad', 'feeling frustrated', 'pissed off', 'fed up with', 'sick and tired'],
+      emoji: '😠',
+      sentiment: 'negative',
+      weight: 1.0
+    },
+
+    // ANXIOUS/WORRIED MOODS
+    anxious: {
+      primary: ['anxious', 'worried', 'nervous', 'stressed', 'panic', 'panicking', 'overwhelmed', 'scared', 'afraid'],
+      secondary: ['tense', 'uneasy', 'restless', 'troubled', 'concerned', 'apprehensive', 'fearful', 'terrified'],
+      expressions: ['freaking out', 'stressed out', 'worried sick', 'scared to death'],
+      phrases: ['feeling anxious', 'feeling worried', 'feeling nervous', 'feeling stressed', 'feeling overwhelmed'],
+      emoji: '😰',
+      sentiment: 'negative',
+      weight: 1.0
+    },
+
+    // CALM/PEACEFUL MOODS
+    calm: {
+      primary: ['calm', 'peaceful', 'relaxed', 'serene', 'tranquil', 'zen', 'centered', 'balanced'],
+      secondary: ['composed', 'content', 'mellow', 'stable', 'steady', 'still', 'quiet'],
+      expressions: ['at peace', 'feeling zen', 'chilled out', 'laid back'],
+      phrases: ['feeling calm', 'feeling peaceful', 'feeling relaxed', 'feeling centered', 'feeling balanced'],
+      emoji: '😌',
+      sentiment: 'positive',
+      weight: 0.8
+    },
+
+    // TIRED/EXHAUSTED MOODS
+    tired: {
+      primary: ['tired', 'exhausted', 'drained', 'weary', 'fatigued', 'worn out', 'burned out', 'depleted'],
+      secondary: ['sleepy', 'drowsy', 'beat', 'wiped out', 'spent'],
+      expressions: ['need sleep', 'need rest', 'cant keep my eyes open'],
+      phrases: ['feeling tired', 'feeling exhausted', 'feeling drained', 'feeling worn out'],
+      emoji: '😴',
+      sentiment: 'neutral',
+      weight: 0.7
+    },
+
+    // CONFUSED/UNCERTAIN MOODS
+    confused: {
+      primary: ['confused', 'lost', 'uncertain', 'unclear', 'puzzled', 'bewildered', 'perplexed', 'baffled'],
+      secondary: ['mixed up', 'stumped', 'clueless', 'unsure', 'doubtful'],
+      expressions: ['dont know', 'not sure', 'cant figure out', 'no idea'],
+      phrases: ['feeling confused', 'feeling lost', 'feeling uncertain', 'feeling unclear'],
+      emoji: '🤔',
+      sentiment: 'neutral',
+      weight: 0.6
     }
   };
 
-  // Enhanced direct mood statement patterns
-  const directMoodPatterns = [
+  // Enhanced direct emotional statement patterns
+  const emotionalPatterns = [
     /i feel (.*)/,
     /i am (.*)/,
     /i'm (.*)/,
@@ -340,14 +325,12 @@ function analyzeMoodFromMessage(message: string, sentiment: string) {
     /i feel kind of (.*)/,
     /i feel a bit (.*)/,
     /i'm a little (.*)/,
-    /i'm rather (.*)/,
-    /i seem to be (.*)/,
-    /i appear to be (.*)/,
-    /i tend to feel (.*)/,
     /lately i've been (.*)/,
     /recently i've been (.*)/,
     /these days i'm (.*)/,
     /i keep feeling (.*)/,
+    /makes me feel (.*)/,
+    /makes me (.*)/,
     /i always feel (.*)/,
     /i usually feel (.*)/,
     /i often feel (.*)/,
@@ -357,34 +340,51 @@ function analyzeMoodFromMessage(message: string, sentiment: string) {
   let detectedMood = null;
   let confidence = 0;
   let detectionMethod = '';
+  let keywordsFound: string[] = [];
+  let keywordsChecked = 0;
 
-  console.log('Checking direct mood patterns...');
+  console.log('🎯 STEP 1: Checking direct emotional patterns...');
 
-  // Check for direct mood statements first (highest confidence)
-  for (const pattern of directMoodPatterns) {
+  // STEP 1: Check for direct emotional statements (highest priority)
+  for (const pattern of emotionalPatterns) {
     const match = lowerMessage.match(pattern);
     if (match) {
-      const moodText = match[1];
-      console.log('Found direct mood pattern:', pattern.source, 'with text:', moodText);
+      const emotionText = match[1];
+      console.log(`📝 Found emotional pattern: "${match[0]}" with emotion text: "${emotionText}"`);
       
-      for (const [mood, indicators] of Object.entries(moodIndicators)) {
-        // Check keywords
-        const keywordMatch = indicators.keywords.find(keyword => moodText.includes(keyword));
-        if (keywordMatch) {
+      for (const [mood, data] of Object.entries(moodKeywords)) {
+        keywordsChecked++;
+        
+        // Check primary keywords (highest weight)
+        const primaryMatch = data.primary.find(keyword => emotionText.includes(keyword));
+        if (primaryMatch) {
           detectedMood = mood;
-          confidence = 0.9;
-          detectionMethod = `Direct statement: "${match[0]}" with keyword "${keywordMatch}"`;
-          console.log('Direct mood detected:', detectedMood, 'confidence:', confidence);
+          confidence = 0.95 * data.weight;
+          detectionMethod = `Direct emotional statement with primary keyword`;
+          keywordsFound.push(primaryMatch);
+          console.log(`✅ PRIMARY MATCH: "${primaryMatch}" in mood "${mood}" - confidence: ${confidence}`);
           break;
         }
         
-        // Check phrases
-        const phraseMatch = indicators.phrases.find(phrase => moodText.includes(phrase.replace('feeling ', '')));
-        if (phraseMatch) {
+        // Check secondary keywords
+        const secondaryMatch = data.secondary.find(keyword => emotionText.includes(keyword));
+        if (secondaryMatch) {
           detectedMood = mood;
-          confidence = 0.85;
-          detectionMethod = `Direct statement: "${match[0]}" with phrase "${phraseMatch}"`;
-          console.log('Direct mood detected via phrase:', detectedMood, 'confidence:', confidence);
+          confidence = 0.85 * data.weight;
+          detectionMethod = `Direct emotional statement with secondary keyword`;
+          keywordsFound.push(secondaryMatch);
+          console.log(`✅ SECONDARY MATCH: "${secondaryMatch}" in mood "${mood}" - confidence: ${confidence}`);
+          break;
+        }
+        
+        // Check expressions
+        const expressionMatch = data.expressions.find(expr => emotionText.includes(expr));
+        if (expressionMatch) {
+          detectedMood = mood;
+          confidence = 0.80 * data.weight;
+          detectionMethod = `Direct emotional statement with expression`;
+          keywordsFound.push(expressionMatch);
+          console.log(`✅ EXPRESSION MATCH: "${expressionMatch}" in mood "${mood}" - confidence: ${confidence}`);
           break;
         }
       }
@@ -392,157 +392,195 @@ function analyzeMoodFromMessage(message: string, sentiment: string) {
     }
   }
 
-  // Check for phrase patterns (medium-high confidence)
+  // STEP 2: Check for phrase patterns (medium-high priority)
   if (!detectedMood) {
-    console.log('Checking phrase patterns...');
-    for (const [mood, indicators] of Object.entries(moodIndicators)) {
-      const phraseMatch = indicators.phrases.find(phrase => lowerMessage.includes(phrase));
+    console.log('🎯 STEP 2: Checking phrase patterns...');
+    for (const [mood, data] of Object.entries(moodKeywords)) {
+      const phraseMatch = data.phrases.find(phrase => lowerMessage.includes(phrase));
       if (phraseMatch) {
         detectedMood = mood;
-        confidence = 0.8;
-        detectionMethod = `Phrase match: "${phraseMatch}"`;
-        console.log('Phrase mood detected:', detectedMood, 'confidence:', confidence);
+        confidence = 0.75 * data.weight;
+        detectionMethod = `Phrase pattern match`;
+        keywordsFound.push(phraseMatch);
+        console.log(`✅ PHRASE MATCH: "${phraseMatch}" in mood "${mood}" - confidence: ${confidence}`);
         break;
       }
     }
   }
 
-  // Check for keyword presence with weighted scoring (medium confidence)
+  // STEP 3: Check for individual keyword presence with scoring (medium priority)
   if (!detectedMood) {
-    console.log('Checking keyword patterns...');
+    console.log('🎯 STEP 3: Checking individual keywords...');
     let bestMood = null;
     let bestScore = 0;
     let bestKeywords: string[] = [];
+    let bestMethod = '';
     
-    for (const [mood, indicators] of Object.entries(moodIndicators)) {
-      const keywordMatches = indicators.keywords.filter(keyword => 
-        lowerMessage.includes(keyword)
-      );
+    for (const [mood, data] of Object.entries(moodKeywords)) {
+      let moodScore = 0;
+      let foundKeywords: string[] = [];
       
-      if (keywordMatches.length > 0) {
-        // Enhanced scoring: more matches = higher confidence
-        const score = keywordMatches.length * 0.3 + (keywordMatches.length / indicators.keywords.length) * 0.4;
-        console.log(`Mood ${mood}: found ${keywordMatches.length} keywords:`, keywordMatches, 'score:', score);
-        
-        if (score > bestScore) {
-          bestMood = mood;
-          bestScore = score;
-          bestKeywords = keywordMatches;
+      // Check primary keywords (high weight)
+      data.primary.forEach(keyword => {
+        keywordsChecked++;
+        if (lowerMessage.includes(keyword)) {
+          moodScore += 0.8 * data.weight;
+          foundKeywords.push(`${keyword}(primary)`);
+          console.log(`🔑 PRIMARY keyword found: "${keyword}" in mood "${mood}"`);
         }
+      });
+      
+      // Check secondary keywords (medium weight)
+      data.secondary.forEach(keyword => {
+        keywordsChecked++;
+        if (lowerMessage.includes(keyword)) {
+          moodScore += 0.6 * data.weight;
+          foundKeywords.push(`${keyword}(secondary)`);
+          console.log(`🔑 SECONDARY keyword found: "${keyword}" in mood "${mood}"`);
+        }
+      });
+      
+      // Check expressions (medium weight)
+      data.expressions.forEach(expr => {
+        keywordsChecked++;
+        if (lowerMessage.includes(expr)) {
+          moodScore += 0.7 * data.weight;
+          foundKeywords.push(`${expr}(expression)`);
+          console.log(`🔑 EXPRESSION found: "${expr}" in mood "${mood}"`);
+        }
+      });
+      
+      if (moodScore > bestScore) {
+        bestMood = mood;
+        bestScore = moodScore;
+        bestKeywords = foundKeywords;
+        bestMethod = `Individual keyword matching`;
+        console.log(`🏆 NEW BEST: mood "${mood}" with score ${moodScore}`);
       }
     }
     
-    if (bestMood && bestScore > 0.1) { // Lowered threshold
+    if (bestMood && bestScore > 0.2) { // Lowered threshold for better detection
       detectedMood = bestMood;
-      confidence = Math.min(bestScore + 0.3, 0.75); // Boost confidence
-      detectionMethod = `Keyword matches: ${bestKeywords.join(', ')}`;
-      console.log('Keyword mood detected:', detectedMood, 'confidence:', confidence);
+      confidence = Math.min(bestScore + 0.2, 0.85); // Boost confidence but cap it
+      detectionMethod = bestMethod;
+      keywordsFound = bestKeywords;
+      console.log(`✅ KEYWORD MATCH: mood "${detectedMood}" - confidence: ${confidence}`);
     }
   }
 
-  // Use sentiment as fallback (low-medium confidence)
+  // STEP 4: Sentiment fallback (low priority)
   if (!detectedMood && sentiment) {
-    console.log('Using sentiment fallback:', sentiment);
+    console.log('🎯 STEP 4: Using sentiment fallback...');
     switch (sentiment.toLowerCase()) {
       case 'positive':
         detectedMood = 'happy';
         confidence = 0.4;
-        detectionMethod = 'Sentiment analysis: positive';
+        detectionMethod = 'Sentiment analysis fallback: positive';
         break;
       case 'negative':
         detectedMood = 'sad';
         confidence = 0.4;
-        detectionMethod = 'Sentiment analysis: negative';
+        detectionMethod = 'Sentiment analysis fallback: negative';
         break;
       default:
         detectedMood = 'calm';
-        confidence = 0.2;
-        detectionMethod = 'Sentiment analysis: neutral';
+        confidence = 0.25;
+        detectionMethod = 'Sentiment analysis fallback: neutral';
     }
-    console.log('Sentiment mood detected:', detectedMood, 'confidence:', confidence);
+    console.log(`📊 SENTIMENT FALLBACK: mood "${detectedMood}" - confidence: ${confidence}`);
   }
 
-  // Very low threshold for updates - we want to be responsive
+  // Very responsive threshold - we want to catch emotional content
   const shouldUpdate = confidence > 0.15;
 
   const result = {
-    mood: detectedMood ? moodIndicators[detectedMood as keyof typeof moodIndicators].emoji : '😐',
+    mood: detectedMood ? moodKeywords[detectedMood as keyof typeof moodKeywords].emoji : '😐',
     moodName: detectedMood || 'neutral',
-    sentiment: detectedMood ? moodIndicators[detectedMood as keyof typeof moodIndicators].sentiment : 'neutral',
+    sentiment: detectedMood ? moodKeywords[detectedMood as keyof typeof moodKeywords].sentiment : 'neutral',
     confidence,
     shouldUpdate,
-    detectionMethod
+    detectionMethod,
+    keywordsFound,
+    keywordsChecked
   };
 
-  console.log('Final mood analysis result:', result);
+  console.log('🎯 FINAL KEYWORD ANALYSIS RESULT:', result);
+  console.log(`📊 Keywords checked: ${keywordsChecked}, Keywords found: ${keywordsFound.length}`);
+  console.log(`🎭 Detected mood: ${result.moodName} ${result.mood} (confidence: ${confidence.toFixed(2)})`);
+  console.log(`🔄 Should update: ${shouldUpdate}`);
 
   return result;
 }
 
-// Generate mood interpretation based on analysis and AI response
-function generateMoodInterpretation(moodAnalysis: any, aiResponse: string) {
+// Generate mood interpretation based on analysis
+function generateMoodInterpretation(moodAnalysis: any, userMessage: string) {
   const interpretations = {
     happy: [
-      "You're radiating positivity today! Your happiness is reflected in how you express yourself.",
-      "It's wonderful to see you in such a great mood. Keep embracing those positive feelings!",
-      "Your joyful energy is evident. This positive state can really boost your overall wellbeing.",
-      "Your positive outlook is shining through. This is a great foundation for mental wellness."
-    ],
-    sad: [
-      "I notice you're going through a difficult time. It's okay to feel sad - these emotions are valid.",
-      "You seem to be processing some challenging feelings. Remember that it's normal to have ups and downs.",
-      "Your emotional honesty shows strength. Acknowledging sadness is an important part of healing.",
-      "You're experiencing some tough emotions right now. This awareness is the first step toward feeling better."
-    ],
-    angry: [
-      "I can sense some frustration in your words. Anger often signals that something important to you needs attention.",
-      "You're experiencing some intense emotions. It's healthy to acknowledge anger rather than suppress it.",
-      "Your feelings of anger are valid. Let's work on understanding what's triggering these emotions.",
-      "There's some fire in your emotions today. Anger can be a powerful motivator when channeled constructively."
-    ],
-    anxious: [
-      "I notice some worry in your message. Anxiety can be overwhelming, but you're taking the right step by talking about it.",
-      "You seem to be feeling anxious about something. Remember that anxiety is treatable and you're not alone.",
-      "Your concerns are being heard. Anxiety often tries to protect us, even when it feels uncomfortable.",
-      "There's some tension in your thoughts today. Recognizing anxiety is an important step in managing it."
-    ],
-    calm: [
-      "You seem centered and peaceful right now. This balanced state is wonderful for your mental wellbeing.",
-      "There's a sense of tranquility in how you're expressing yourself today. Enjoy this peaceful moment.",
-      "Your calm energy is evident. This balanced emotional state is great for reflection and growth.",
-      "You're in a beautifully balanced state today. This inner peace is a valuable resource."
-    ],
-    tired: [
-      "You sound like you might be feeling drained. Rest and self-care are important for your wellbeing.",
-      "Fatigue can affect our emotional state. Make sure you're getting enough rest and taking care of yourself.",
-      "It seems like you might need some time to recharge. Listen to your body's signals.",
-      "Your energy levels seem low today. Remember that rest is productive and necessary."
-    ],
-    confused: [
-      "You seem to be working through some uncertainty. It's okay not to have all the answers right now.",
-      "Confusion often comes before clarity. You're in a process of figuring things out, and that's perfectly normal.",
-      "Mixed feelings are completely valid. Sometimes we need time to sort through complex emotions.",
-      "You're navigating some uncertainty today. This questioning mindset can lead to important insights."
+      "🌟 Your positive energy is shining through! The happiness in your words shows you're in a great emotional space.",
+      "😊 I can feel the joy in your message. This positive mood is wonderful for your overall wellbeing!",
+      "✨ Your cheerful spirit is evident. Keep embracing these positive feelings - they're great for your mental health.",
+      "🌈 The happiness you're expressing is contagious! This upbeat mood is a fantastic foundation for the day."
     ],
     excited: [
-      "Your enthusiasm is contagious! This excited energy can be a powerful force for positive change.",
-      "There's wonderful excitement in your words today. Channel this energy into something meaningful.",
-      "Your excitement is palpable! This high-energy state is great for taking on new challenges.",
-      "You're buzzing with positive energy today. This excitement can fuel great accomplishments."
+      "🚀 Your excitement is absolutely electric! This high-energy mood can fuel amazing accomplishments.",
+      "⚡ I can feel your enthusiasm radiating through your words. Channel this energy into something meaningful!",
+      "🎉 Your excitement is wonderful to see! This energetic state is perfect for taking on new challenges.",
+      "🔥 The passion in your message is inspiring. This excited energy is a powerful force for positive change."
+    ],
+    sad: [
+      "💙 I hear the sadness in your words, and I want you to know that these feelings are completely valid.",
+      "🤗 You're going through something difficult right now. It's okay to feel sad - healing takes time.",
+      "💝 Your emotional honesty shows real strength. Acknowledging sadness is an important step in processing it.",
+      "🌧️ I notice you're experiencing some heavy emotions. Remember that storms pass, and brighter days are ahead."
+    ],
+    angry: [
+      "🔥 I can sense the frustration in your message. Anger often signals that something important needs attention.",
+      "⚡ Your intense emotions are valid. It's healthy to acknowledge anger rather than suppress it.",
+      "🌋 There's some fire in your words today. Let's work on understanding what's triggering these feelings.",
+      "💪 Your anger shows you care deeply about something. Channel this energy constructively when you're ready."
+    ],
+    anxious: [
+      "🌊 I notice the worry in your message. Anxiety can feel overwhelming, but talking about it is a brave first step.",
+      "🤝 Your anxious feelings are being heard and validated. You're not alone in dealing with these emotions.",
+      "🧘 There's some tension in your thoughts today. Remember that anxiety is treatable and manageable.",
+      "💚 Your concerns matter. Anxiety often tries to protect us, even when it feels uncomfortable."
+    ],
+    calm: [
+      "🧘 Your peaceful energy is beautiful. This balanced state is wonderful for your mental wellbeing.",
+      "🌸 I sense tranquility in your words. Enjoy this centered, calm feeling - it's a gift to yourself.",
+      "⚖️ Your balanced emotional state is evident. This inner peace is a valuable resource for facing challenges.",
+      "🕊️ The serenity in your message is lovely. This calm energy is perfect for reflection and growth."
+    ],
+    tired: [
+      "😴 I can hear the fatigue in your words. Rest and self-care are essential for your wellbeing.",
+      "🛌 Your energy seems low today. Listen to your body's signals - rest is productive and necessary.",
+      "☕ Feeling drained is your body's way of asking for care. Make sure you're getting the rest you need.",
+      "🌙 Exhaustion affects our emotional state. Be gentle with yourself and prioritize recovery."
+    ],
+    confused: [
+      "🤔 I sense some uncertainty in your thoughts. It's perfectly okay not to have all the answers right now.",
+      "🧩 Confusion often comes before clarity. You're working through something complex, and that's normal.",
+      "🌫️ Mixed feelings are completely valid. Sometimes we need time to sort through complicated emotions.",
+      "🔍 You're navigating some uncertainty today. This questioning mindset can lead to important insights."
     ]
   };
 
   const moodName = moodAnalysis.moodName;
   const moodInterpretations = interpretations[moodName as keyof typeof interpretations] || [
-    "Your emotional state is being recognized and validated. Every feeling you have is important.",
-    "I'm tracking your emotional journey. Your feelings matter and are being acknowledged.",
-    "Your current emotional state has been noted. Remember that all emotions are temporary and valid."
+    "🎭 Your emotional state has been recognized and is being tracked for your wellbeing journey.",
+    "📊 I'm monitoring your emotional patterns to help support your mental wellness.",
+    "💝 Every feeling you express matters and contributes to understanding your emotional health."
   ];
 
   // Select a random interpretation
   const randomInterpretation = moodInterpretations[Math.floor(Math.random() * moodInterpretations.length)];
   
-  return randomInterpretation;
+  // Add context about the detection
+  const detectionNote = moodAnalysis.keywordsFound.length > 0 
+    ? ` (Detected from: ${moodAnalysis.keywordsFound.slice(0, 3).join(', ')})`
+    : '';
+  
+  return randomInterpretation + detectionNote;
 }
 
 // Calculate wellness score based on sentiment
@@ -551,15 +589,15 @@ function calculateWellnessScore(sentiment: string, currentScore: number): number
   
   switch (sentiment) {
     case 'positive':
-      adjustment = Math.floor(Math.random() * 8) + 5; // +5 to +12
+      adjustment = Math.floor(Math.random() * 10) + 5; // +5 to +14
       break;
     case 'negative':
-      adjustment = -(Math.floor(Math.random() * 8) + 5); // -5 to -12
+      adjustment = -(Math.floor(Math.random() * 10) + 5); // -5 to -14
       break;
     default:
       adjustment = Math.floor(Math.random() * 6) - 3; // -3 to +2
   }
   
   const newScore = currentScore + adjustment;
-  return Math.max(15, Math.min(95, newScore)); // Keep between 15-95
+  return Math.max(10, Math.min(100, newScore)); // Keep between 10-100
 }
