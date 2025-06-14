@@ -14,7 +14,7 @@ export interface ChatMessage {
   audioDuration?: number;
 }
 
-export const useAIChat = (sessionId?: string) => {
+export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string, userMessage: string, aiResponse: string) => void) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const isInitialized = useRef<string | null>(null);
@@ -170,6 +170,11 @@ export const useAIChat = (sessionId?: string) => {
           });
         if (saveError) throw saveError;
 
+        // Trigger mood update callback if provided
+        if (onMoodUpdate && data.sentiment) {
+          onMoodUpdate(data.sentiment, content, responseContent);
+        }
+
         return aiMessage;
       } catch (error: unknown) {
         // Remove the user message if sending failed
@@ -183,7 +188,7 @@ export const useAIChat = (sessionId?: string) => {
         setIsLoading(false);
       }
     },
-    [messages, sessionId],
+    [messages, sessionId, onMoodUpdate],
   );
 
   const sendVoiceMessage = useCallback(
@@ -264,6 +269,11 @@ export const useAIChat = (sessionId?: string) => {
           });
         if (saveError) throw saveError;
 
+        // Trigger mood update callback if provided
+        if (onMoodUpdate && data.sentiment) {
+          onMoodUpdate(data.sentiment, transcript, responseContent);
+        }
+
         return aiMessage;
       } catch (error: unknown) {
         // Remove the voice message if sending failed
@@ -277,7 +287,7 @@ export const useAIChat = (sessionId?: string) => {
         setIsLoading(false);
       }
     },
-    [messages, sessionId],
+    [messages, sessionId, onMoodUpdate],
   );
 
   return {

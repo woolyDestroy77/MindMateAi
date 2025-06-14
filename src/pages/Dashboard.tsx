@@ -22,12 +22,14 @@ import {
   TrendingUp,
   Brain,
   Heart,
-  MessageSquare
+  MessageSquare,
+  Zap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import { useDashboardData } from '../hooks/useDashboardData';
 
 ChartJS.register(
   CategoryScale,
@@ -91,8 +93,7 @@ const chartOptions = {
 };
 
 const Dashboard = () => {
-  const currentMood = '😌';
-  const moodInterpretation = "You seem calm and balanced today. Your emotional stability has been consistent over the past week.";
+  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData } = useDashboardData();
   
   const journalEntries = [
     {
@@ -122,8 +123,6 @@ const Dashboard = () => {
     { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
   ];
 
-  const wellnessScore = 85;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -140,7 +139,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Wellness Score</h2>
-                  <span className="text-sm text-gray-500">Updated daily</span>
+                  <span className="text-sm text-gray-500">AI-Updated</span>
                 </div>
                 <div className="flex items-center justify-center">
                   <div className="relative">
@@ -163,24 +162,24 @@ const Dashboard = () => {
                         r="58"
                         cx="64"
                         cy="64"
-                        strokeDasharray={`${(2 * Math.PI * 58) * (wellnessScore / 100)} ${2 * Math.PI * 58}`}
+                        strokeDasharray={`${(2 * Math.PI * 58) * (dashboardData.wellnessScore / 100)} ${2 * Math.PI * 58}`}
                         transform="rotate(-90 64 64)"
                       />
                     </svg>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                      <span className="text-3xl font-bold text-gray-900">{wellnessScore}</span>
+                      <span className="text-3xl font-bold text-gray-900">{dashboardData.wellnessScore}</span>
                       <span className="text-sm text-gray-500 block">/ 100</span>
                     </div>
                   </div>
                 </div>
                 <div className="text-center text-sm text-gray-600">
-                  Great progress! You're in the top 15% of users.
+                  Updated based on your AI conversations
                 </div>
               </div>
             </Card>
           </motion.div>
 
-          {/* Current Mood */}
+          {/* Current Mood - AI Updated */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -190,16 +189,26 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Current Mood</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leftIcon={<RefreshCcw size={16} />}
-                  >
-                    Update
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Zap size={16} className="text-lavender-500" />
+                    <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
+                  </div>
                 </div>
-                <div className="text-6xl text-center py-4">{currentMood}</div>
-                <p className="text-gray-600">{moodInterpretation}</p>
+                <div className="text-6xl text-center py-4">{dashboardData.currentMood}</div>
+                <p className="text-gray-600">{dashboardData.moodInterpretation}</p>
+                <div className="text-xs text-gray-500 text-center">
+                  Last updated: {format(new Date(dashboardData.lastUpdated), 'h:mm a')}
+                </div>
+                <Link to="/chat">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    fullWidth
+                    leftIcon={<MessageSquare size={16} />}
+                  >
+                    Chat to Update Mood
+                  </Button>
+                </Link>
               </div>
             </Card>
           </motion.div>
@@ -227,7 +236,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">Mood check-in</span>
+                    <span className="ml-3 text-gray-700">AI mood check-in</span>
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" />
@@ -253,14 +262,23 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Mood Trends</h2>
-                  <div className="flex space-x-2">
-                    <Button variant="ghost" size="sm">Week</Button>
-                    <Button variant="ghost" size="sm">Month</Button>
-                    <Button variant="ghost" size="sm">Year</Button>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-2">
+                      <Button variant="ghost" size="sm">Week</Button>
+                      <Button variant="ghost" size="sm">Month</Button>
+                      <Button variant="ghost" size="sm">Year</Button>
+                    </div>
+                    <div className="flex items-center text-xs text-lavender-600">
+                      <Zap size={12} className="mr-1" />
+                      AI-Enhanced
+                    </div>
                   </div>
                 </div>
                 <div className="h-64">
                   <Line data={moodData} options={chartOptions} />
+                </div>
+                <div className="text-xs text-gray-500 text-center">
+                  Mood data automatically collected from your AI conversations and manual entries
                 </div>
               </div>
             </Card>
@@ -338,12 +356,13 @@ const Dashboard = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <Link to="/chat">
                     <Button
-                      variant="outline"
+                      variant="primary"
                       size="lg"
-                      className="flex-col h-24 w-full"
+                      className="flex-col h-24 w-full relative"
                       leftIcon={<MessageSquare size={24} />}
                     >
-                      Start AI Chat
+                      AI Mood Chat
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
                     </Button>
                   </Link>
                   <Button
@@ -372,6 +391,9 @@ const Dashboard = () => {
                   >
                     Meditate
                   </Button>
+                </div>
+                <div className="text-xs text-center text-lavender-600 bg-lavender-50 p-2 rounded">
+                  💡 Your AI conversations automatically update your mood and wellness data!
                 </div>
               </div>
             </Card>

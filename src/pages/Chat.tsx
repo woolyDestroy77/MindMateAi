@@ -14,6 +14,7 @@ import {
   X,
   Play,
   Pause,
+  TrendingUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -23,8 +24,11 @@ import ChatSidebar from "../components/chat/ChatSidebar";
 import { useAIChat } from "../hooks/useAIChat";
 import { useVoiceInput } from "../hooks/useVoiceInput";
 import { useChatSessions } from "../hooks/useChatSessions";
+import { useDashboardData } from "../hooks/useDashboardData";
 
 const Chat = () => {
+  const { updateMoodFromAI } = useDashboardData();
+  
   const {
     sessions,
     activeSession,
@@ -35,7 +39,11 @@ const Chat = () => {
     renameSession,
   } = useChatSessions();
 
-  const { messages, isLoading, sendMessage, sendVoiceMessage } = useAIChat(activeSession?.id);
+  const { messages, isLoading, sendMessage, sendVoiceMessage } = useAIChat(
+    activeSession?.id,
+    updateMoodFromAI // Pass the mood update callback
+  );
+  
   const { 
     isRecording, 
     transcript, 
@@ -54,6 +62,7 @@ const Chat = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
+  const [showMoodUpdateNotice, setShowMoodUpdateNotice] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
@@ -72,6 +81,15 @@ const Chat = () => {
       createNewSession();
     }
   }, [sessionsLoading, sessions.length, activeSession, createNewSession]);
+
+  // Show mood update notice when dashboard integration is active
+  useEffect(() => {
+    if (messages.length > 2) { // Show after some conversation
+      setShowMoodUpdateNotice(true);
+      const timer = setTimeout(() => setShowMoodUpdateNotice(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [messages.length]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +182,27 @@ const Chat = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
+      {/* Mood Update Notice */}
+      <AnimatePresence>
+        {showMoodUpdateNotice && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <div className="bg-lavender-100 border border-lavender-300 rounded-lg px-4 py-2 shadow-lg">
+              <div className="flex items-center space-x-2 text-lavender-800">
+                <TrendingUp size={16} />
+                <span className="text-sm font-medium">
+                  💡 Your mood is being tracked based on our conversation and will update your dashboard!
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <main className="flex h-screen pt-16">
         {/* Sidebar */}
         <AnimatePresence>
@@ -213,6 +252,7 @@ const Chat = () => {
                 {activeSession && (
                   <p className="text-sm text-gray-500">
                     Created {format(new Date(activeSession.created_at), "MMM d, yyyy 'at' h:mm a")}
+                    <span className="ml-2 text-lavender-600">• Dashboard Integration Active</span>
                   </p>
                 )}
               </div>
@@ -347,6 +387,11 @@ const Chat = () => {
                               }`}
                             >
                               {message.sentiment}
+                              {message.role === "user" && (
+                                <span className="ml-1" title="This message may update your dashboard mood">
+                                  📊
+                                </span>
+                              )}
                             </span>
                           )}
                         </div>
@@ -372,7 +417,7 @@ const Chat = () => {
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                         <span className="text-sm text-gray-900">
-                          MindMate AI is thinking...
+                          MindMate AI is thinking and analyzing your mood...
                         </span>
                       </div>
                     </div>
@@ -397,7 +442,7 @@ const Chat = () => {
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Type your message here or use voice input..."
+                    placeholder="Share your thoughts and feelings... Your mood will be tracked automatically"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
                     disabled={isLoading || !activeSession}
                   />
@@ -433,7 +478,7 @@ const Chat = () => {
                     )
                   }
                 >
-                  {isLoading ? "Sending..." : "Send"}
+                  {isLoading ? "Analyzing..." : "Send"}
                 </Button>
               </form>
 
@@ -442,6 +487,10 @@ const Chat = () => {
                   Create a new chat session to start messaging
                 </div>
               )}
+              
+              <div className="mt-2 text-xs text-center text-lavender-600">
+                💡 Your conversations help track your emotional wellbeing and update your dashboard automatically
+              </div>
             </div>
           </div>
         </div>
@@ -498,10 +547,10 @@ const Chat = () => {
                     {isProcessing 
                       ? "Initializing microphone..." 
                       : isRecording 
-                        ? "Recording... Speak clearly into your microphone" 
+                        ? "Recording... Share your feelings and thoughts" 
                         : audioUrl
-                          ? "Voice message recorded! You can play it back or send it."
-                          : "Click the microphone to start recording"
+                          ? "Voice message recorded! This will help track your mood."
+                          : "Click the microphone to start recording your thoughts"
                     }
                   </p>
 
@@ -562,7 +611,7 @@ const Chat = () => {
                         onClick={handleSendVoiceMessage}
                         leftIcon={<Send size={18} />}
                       >
-                        Send Voice Message
+                        Send & Track Mood
                       </Button>
                     </>
                   ) : (
