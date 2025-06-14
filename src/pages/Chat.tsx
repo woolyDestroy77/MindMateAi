@@ -1,26 +1,37 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Loader2, Bot, User, MessageSquare, History } from 'lucide-react';
-import { format } from 'date-fns';
-import Navbar from '../components/layout/Navbar';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
-import { useAIChat } from '../hooks/useAIChat';
-import { useVoiceInput } from '../hooks/useVoiceInput';
-import { useDappierChat } from '../hooks/useDappierChat';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Send,
+  Mic,
+  MicOff,
+  Loader2,
+  Bot,
+  User,
+  MessageSquare,
+  // History,
+} from "lucide-react";
+import { format } from "date-fns";
+import Navbar from "../components/layout/Navbar";
+import Button from "../components/ui/Button";
+import Card from "../components/ui/Card";
+import { useAIChat } from "../hooks/useAIChat";
+import { useVoiceInput } from "../hooks/useVoiceInput";
+// import { useDappierChat } from "../hooks/useDappierChat";
 
 const Chat = () => {
   const { messages, isLoading, sendMessage } = useAIChat();
-  const { isRecording, transcript, startRecording, stopRecording } = useVoiceInput();
-  const { saveChatMessage } = useDappierChat();
-  const [inputMessage, setInputMessage] = useState('');
+  const { isRecording, transcript, startRecording, stopRecording } =
+    useVoiceInput();
+  // const { saveChatMessage } = useDappierChat();
+  const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'custom' | 'widget'>('custom');
+  const [activeTab, setActiveTab] = useState<"custom" | "widget">("custom");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -38,12 +49,12 @@ const Chat = () => {
     if (!inputMessage.trim() || isLoading) return;
 
     const messageToSend = inputMessage.trim();
-    setInputMessage('');
-    
+    setInputMessage("");
+
     try {
       await sendMessage(messageToSend);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error("Failed to send message:", error);
     }
   };
 
@@ -59,23 +70,23 @@ const Chat = () => {
 
   const getSentimentColor = (sentiment?: string) => {
     switch (sentiment?.toLowerCase()) {
-      case 'positive':
-        return 'text-green-600';
-      case 'negative':
-        return 'text-red-600';
+      case "positive":
+        return "text-green-600";
+      case "negative":
+        return "text-red-600";
       default:
-        return 'text-gray-600';
+        return "text-gray-600";
     }
   };
 
   const getSentimentBg = (sentiment?: string) => {
     switch (sentiment?.toLowerCase()) {
-      case 'positive':
-        return 'bg-green-50 border-green-200';
-      case 'negative':
-        return 'bg-red-50 border-red-200';
+      case "positive":
+        return "bg-green-50 border-green-200";
+      case "negative":
+        return "bg-red-50 border-red-200";
       default:
-        return 'bg-gray-50 border-gray-200';
+        return "bg-gray-50 border-gray-200";
     }
   };
 
@@ -87,7 +98,8 @@ const Chat = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Chat</h1>
           <p className="text-gray-600">
-            Chat with MindMate AI about your thoughts, feelings, and mental wellness journey.
+            Chat with MindMate AI about your thoughts, feelings, and mental
+            wellness journey.
           </p>
         </div>
 
@@ -96,11 +108,11 @@ const Chat = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
               <button
-                onClick={() => setActiveTab('custom')}
+                onClick={() => setActiveTab("custom")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'custom'
-                    ? 'border-lavender-500 text-lavender-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  activeTab === "custom"
+                    ? "border-lavender-500 text-lavender-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center">
@@ -109,27 +121,27 @@ const Chat = () => {
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab('widget')}
+                onClick={() => setActiveTab("widget")}
                 className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'widget'
-                    ? 'border-lavender-500 text-lavender-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  activeTab === "widget"
+                    ? "border-lavender-500 text-lavender-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <div className="flex items-center">
+                {/* <div className="flex items-center">
                   <Bot size={16} className="mr-2" />
                   AI Widget
                   <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
                     Auto-Save
                   </span>
-                </div>
+                </div> */}
               </button>
             </nav>
           </div>
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'custom' ? (
+        {activeTab === "custom" && (
           <Card variant="elevated" className="h-[600px] flex flex-col">
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -140,37 +152,75 @@ const Chat = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
-                    <div className={`flex max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <div
+                      className={`flex max-w-[80%] ${
+                        message.role === "user"
+                          ? "flex-row-reverse"
+                          : "flex-row"
+                      }`}
+                    >
                       {/* Avatar */}
-                      <div className={`flex-shrink-0 ${message.role === 'user' ? 'ml-3' : 'mr-3'}`}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          message.role === 'user' 
-                            ? 'bg-lavender-100 text-lavender-600' 
-                            : 'bg-sage-100 text-sage-600'
-                        }`}>
-                          {message.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                      <div
+                        className={`flex-shrink-0 ${
+                          message.role === "user" ? "ml-3" : "mr-3"
+                        }`}
+                      >
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            message.role === "user"
+                              ? "bg-lavender-100 text-lavender-600"
+                              : "bg-sage-100 text-sage-600"
+                          }`}
+                        >
+                          {message.role === "user" ? (
+                            <User size={16} />
+                          ) : (
+                            <Bot size={16} />
+                          )}
                         </div>
                       </div>
 
                       {/* Message Content */}
-                      <div className={`rounded-lg px-4 py-3 ${
-                        message.role === 'user'
-                          ? `bg-lavender-600 text-white ${message.sentiment ? getSentimentBg(message.sentiment) : ''}`
-                          : 'bg-white border border-gray-200'
-                      }`}>
-                        <p className={`text-sm ${message.role === 'user' ? 'text-white' : 'text-gray-800'}`}>
+                      <div
+                        className={`rounded-lg px-4 py-3 ${
+                          message.role === "user"
+                            ? `bg-lavender-600 text-white ${
+                                message.sentiment
+                                  ? getSentimentBg(message.sentiment)
+                                  : ""
+                              }`
+                            : "bg-white border border-gray-200"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm ${
+                            message.role === "user"
+                              ? "text-white"
+                              : "text-gray-800"
+                          }`}
+                        >
                           {message.content}
                         </p>
-                        <div className={`flex items-center justify-between mt-2 text-xs ${
-                          message.role === 'user' ? 'text-lavender-100' : 'text-gray-500'
-                        }`}>
-                          <span>{format(message.timestamp, 'h:mm a')}</span>
+                        <div
+                          className={`flex items-center justify-between mt-2 text-xs ${
+                            message.role === "user"
+                              ? "text-lavender-100"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          <span>{format(message.timestamp, "h:mm a")}</span>
                           {message.sentiment && (
-                            <span className={`capitalize ${
-                              message.role === 'user' ? 'text-lavender-100' : getSentimentColor(message.sentiment)
-                            }`}>
+                            <span
+                              className={`capitalize ${
+                                message.role === "user"
+                                  ? "text-lavender-100"
+                                  : getSentimentColor(message.sentiment)
+                              }`}
+                            >
                               {message.sentiment}
                             </span>
                           )}
@@ -196,7 +246,9 @@ const Chat = () => {
                     <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
-                        <span className="text-sm text-gray-600">MindMate AI is thinking...</span>
+                        <span className="text-sm text-gray-600">
+                          MindMate AI is thinking...
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -208,7 +260,10 @@ const Chat = () => {
 
             {/* Input Area */}
             <div className="border-t border-gray-200 p-4">
-              <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center space-x-3"
+              >
                 <div className="flex-1 relative">
                   <input
                     ref={inputRef}
@@ -242,9 +297,15 @@ const Chat = () => {
                   variant="primary"
                   size="md"
                   disabled={!inputMessage.trim() || isLoading}
-                  leftIcon={isLoading ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
+                  leftIcon={
+                    isLoading ? (
+                      <Loader2 className="animate-spin" size={20} />
+                    ) : (
+                      <Send size={20} />
+                    )
+                  }
                 >
-                  {isLoading ? 'Sending...' : 'Send'}
+                  {isLoading ? "Sending..." : "Send"}
                 </Button>
               </form>
 
@@ -260,26 +321,6 @@ const Chat = () => {
               )}
             </div>
           </Card>
-        ) : (
-          <Card variant="elevated" className="min-h-[600px] p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">Dappier AI Widget</h2>
-                <p className="text-gray-600">
-                  Experience our enhanced AI chat powered by Dappier's advanced AI technology.
-                </p>
-              </div>
-              <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
-                <History size={14} className="mr-1" />
-                Auto-saving conversations
-              </div>
-            </div>
-            
-            {/* Dappier Widget Container */}
-            <div id="dappier-ask-ai-widget" className="w-full">
-              <dappier-ask-ai-widget widgetId="wd_01jxpzftx6e3ntsgzwtgbze71c" />
-            </div>
-          </Card>
         )}
       </main>
     </div>
@@ -287,3 +328,28 @@ const Chat = () => {
 };
 
 export default Chat;
+
+// : (
+//   <Card variant="elevated" className="min-h-[600px] p-6">
+//     <div className="mb-4 flex items-center justify-between">
+//       <div>
+//         <h2 className="text-xl font-semibold text-gray-900 mb-2">
+//           Dappier AI Widget
+//         </h2>
+//         <p className="text-gray-600">
+//           Experience our enhanced AI chat powered by Dappier's advanced
+//           AI technology.
+//         </p>
+//       </div>
+//       <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+//         <History size={14} className="mr-1" />
+//         Auto-saving conversations
+//       </div>
+//     </div>
+
+//     {/* Dappier Widget Container */}
+//     <div id="dappier-ask-ai-widget" className="w-full">
+//       <dappier-ask-ai-widget widgetId="wd_01jxpzftx6e3ntsgzwtgbze71c" />
+//     </div>
+//   </Card>
+// )}
