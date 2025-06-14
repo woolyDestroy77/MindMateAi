@@ -34,6 +34,7 @@ import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import ChatInterface from '../components/chat/ChatInterface';
+import DappierWidget from '../components/ui/DappierWidget';
 
 ChartJS.register(
   CategoryScale,
@@ -377,6 +378,24 @@ const Dashboard = () => {
                     Meditate
                   </Button>
                 </div>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Dappier Ask AI Widget */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <Card variant="elevated" className="h-full">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">Ask AI Assistant</h2>
+                  <Sparkles className="text-lavender-500" size={20} />
+                </div>
+                <DappierWidget className="min-h-[400px]" />
               </div>
             </Card>
           </motion.div>
