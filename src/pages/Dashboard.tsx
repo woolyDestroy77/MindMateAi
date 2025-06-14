@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
@@ -23,7 +23,8 @@ import {
   Brain,
   Heart,
   MessageSquare,
-  Zap
+  Zap,
+  Activity
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -95,6 +96,11 @@ const chartOptions = {
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData } = useDashboardData();
   
+  // Force re-render when dashboard data changes
+  useEffect(() => {
+    console.log('Dashboard data updated:', dashboardData);
+  }, [dashboardData]);
+  
   const journalEntries = [
     {
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -123,6 +129,20 @@ const Dashboard = () => {
     { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
   ];
 
+  if (dashboardLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavender-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -134,12 +154,16 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
+            key={`wellness-${dashboardData.wellnessScore}-${dashboardData.lastUpdated}`} // Force re-render on score change
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Wellness Score</h2>
-                  <span className="text-sm text-gray-500">AI-Updated</span>
+                  <div className="flex items-center space-x-1">
+                    <Activity size={14} className="text-lavender-500" />
+                    <span className="text-xs text-lavender-600 font-medium">AI-Updated</span>
+                  </div>
                 </div>
                 <div className="flex items-center justify-center">
                   <div className="relative">
@@ -153,7 +177,7 @@ const Dashboard = () => {
                         cx="64"
                         cy="64"
                       />
-                      <circle
+                      <motion.circle
                         className="text-lavender-500"
                         strokeWidth="8"
                         strokeLinecap="round"
@@ -162,18 +186,33 @@ const Dashboard = () => {
                         r="58"
                         cx="64"
                         cy="64"
-                        strokeDasharray={`${(2 * Math.PI * 58) * (dashboardData.wellnessScore / 100)} ${2 * Math.PI * 58}`}
+                        initial={{ strokeDasharray: "0 364" }}
+                        animate={{ 
+                          strokeDasharray: `${(2 * Math.PI * 58) * (dashboardData.wellnessScore / 100)} ${2 * Math.PI * 58}` 
+                        }}
+                        transition={{ duration: 1, ease: "easeOut" }}
                         transform="rotate(-90 64 64)"
                       />
                     </svg>
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                      <span className="text-3xl font-bold text-gray-900">{dashboardData.wellnessScore}</span>
+                      <motion.span 
+                        className="text-3xl font-bold text-gray-900"
+                        key={dashboardData.wellnessScore}
+                        initial={{ scale: 0.8 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {dashboardData.wellnessScore}
+                      </motion.span>
                       <span className="text-sm text-gray-500 block">/ 100</span>
                     </div>
                   </div>
                 </div>
                 <div className="text-center text-sm text-gray-600">
                   Updated based on your AI conversations
+                </div>
+                <div className="text-xs text-center text-gray-500">
+                  Last updated: {format(new Date(dashboardData.lastUpdated), 'h:mm a')}
                 </div>
               </div>
             </Card>
@@ -184,6 +223,7 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
+            key={`mood-${dashboardData.currentMood}-${dashboardData.lastUpdated}`} // Force re-render on mood change
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -194,8 +234,27 @@ const Dashboard = () => {
                     <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
                   </div>
                 </div>
-                <div className="text-6xl text-center py-4">{dashboardData.currentMood}</div>
-                <p className="text-gray-600">{dashboardData.moodInterpretation}</p>
+                <motion.div 
+                  className="text-6xl text-center py-4"
+                  key={`${dashboardData.currentMood}-${dashboardData.moodName}`} // Animate when mood changes
+                  initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                >
+                  {dashboardData.currentMood}
+                </motion.div>
+                <motion.p 
+                  className="text-gray-600 text-center"
+                  key={dashboardData.moodInterpretation}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  {dashboardData.moodInterpretation}
+                </motion.p>
+                <div className="text-xs text-gray-500 text-center">
+                  Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
+                </div>
                 <div className="text-xs text-gray-500 text-center">
                   Last updated: {format(new Date(dashboardData.lastUpdated), 'h:mm a')}
                 </div>
@@ -209,6 +268,15 @@ const Dashboard = () => {
                     Chat to Update Mood
                   </Button>
                 </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  fullWidth
+                  onClick={refreshDashboardData}
+                  leftIcon={<RefreshCcw size={16} />}
+                >
+                  Refresh Data
+                </Button>
               </div>
             </Card>
           </motion.div>
@@ -362,7 +430,7 @@ const Dashboard = () => {
                       leftIcon={<MessageSquare size={24} />}
                     >
                       AI Mood Chat
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></span>
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                     </Button>
                   </Link>
                   <Button
