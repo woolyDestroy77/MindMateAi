@@ -6,36 +6,73 @@ export const useVoiceInput = () => {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const finalTranscriptRef = useRef('');
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const startRecording = useCallback(async () => {
     try {
       setError(null);
       setIsProcessing(true);
+      setRecordingDuration(0);
       
       // Check if speech recognition is supported
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         throw new Error('Speech recognition is not supported in this browser. Please try Chrome, Edge, or Safari.');
       }
 
+      // Request microphone permission and get audio stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Set up audio recording
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioBlob(audioBlob);
+        setAudioUrl(audioUrl);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      // Set up speech recognition for text conversion
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       
-      // Configure recognition settings
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.lang = 'en-US';
       recognition.maxAlternatives = 1;
 
-      // Reset transcript
       finalTranscriptRef.current = '';
       setTranscript('');
 
       recognition.onstart = () => {
         setIsRecording(true);
         setIsProcessing(false);
-        toast.success('Voice recording started. Speak now!');
+        
+        // Start duration timer
+        durationIntervalRef.current = setInterval(() => {
+          setRecordingDuration(prev => prev + 1);
+        }, 1000);
+        
+        toast.success('Recording voice message...');
       };
 
       recognition.onresult = (event) => {
@@ -61,6 +98,11 @@ export const useVoiceInput = () => {
         console.error('Speech recognition error:', event.error);
         setIsRecording(false);
         setIsProcessing(false);
+        
+        if (durationIntervalRef.current) {
+          clearInterval(durationIntervalRef.current);
+          durationIntervalRef.current = null;
+        }
         
         let errorMessage = 'Voice recognition failed. ';
         switch (event.error) {
@@ -91,24 +133,29 @@ export const useVoiceInput = () => {
         setIsRecording(false);
         setIsProcessing(false);
         
+        if (durationIntervalRef.current) {
+          clearInterval(durationIntervalRef.current);
+          durationIntervalRef.current = null;
+        }
+        
         if (finalTranscriptRef.current.trim()) {
-          toast.success('Voice recording completed!');
+          toast.success('Voice message recorded!');
         }
       };
 
-      // Request microphone permission first
-      try {
-        await navigator.mediaDevices.getUserMedia({ audio: true });
-        recognition.start();
-        recognitionRef.current = recognition;
-        return recognition;
-      } catch (permissionError) {
-        setIsProcessing(false);
-        throw new Error('Microphone access denied. Please allow microphone access to use voice input.');
-      }
+      // Start both audio recording and speech recognition
+      mediaRecorder.start();
+      recognition.start();
+      recognitionRef.current = recognition;
+      
+      return recognition;
 
     } catch (err: any) {
       setIsProcessing(false);
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+        durationIntervalRef.current = null;
+      }
       const errorMessage = err.message || 'Failed to start voice recording';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -124,14 +171,35 @@ export const useVoiceInput = () => {
       recognitionRef.current = null;
     }
     
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+    
     setIsRecording(false);
     setIsProcessing(false);
   }, []);
 
-  const clearTranscript = useCallback(() => {
+  const clearRecording = useCallback(() => {
     setTranscript('');
+    setAudioBlob(null);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(null);
+    setRecordingDuration(0);
     finalTranscriptRef.current = '';
     setError(null);
+  }, [audioUrl]);
+
+  const formatDuration = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
   return {
@@ -139,8 +207,12 @@ export const useVoiceInput = () => {
     transcript,
     error,
     isProcessing,
+    audioBlob,
+    audioUrl,
+    recordingDuration,
     startRecording,
     stopRecording,
-    clearTranscript,
+    clearRecording,
+    formatDuration,
   };
 };

@@ -12,11 +12,12 @@ import {
   Sidebar,
   Volume2,
   X,
+  Play,
+  Pause,
 } from "lucide-react";
 import { format } from "date-fns";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
-import Card from "../components/ui/Card";
 import ChatSidebar from "../components/chat/ChatSidebar";
 import { useAIChat } from "../hooks/useAIChat";
 import { useVoiceInput } from "../hooks/useVoiceInput";
@@ -33,23 +34,28 @@ const Chat = () => {
     renameSession,
   } = useChatSessions();
 
-  const { messages, isLoading, sendMessage } = useAIChat(activeSession?.id);
+  const { messages, isLoading, sendMessage, sendVoiceMessage } = useAIChat(activeSession?.id);
   const { 
     isRecording, 
     transcript, 
     error: voiceError,
     isProcessing,
+    audioUrl,
+    recordingDuration,
     startRecording, 
     stopRecording,
-    clearTranscript 
+    clearRecording,
+    formatDuration
   } = useVoiceInput();
 
   const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,13 +64,6 @@ const Chat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Update input with transcript
-  useEffect(() => {
-    if (transcript) {
-      setInputMessage(transcript);
-    }
-  }, [transcript]);
 
   // Create initial session if none exists
   useEffect(() => {
@@ -79,7 +78,6 @@ const Chat = () => {
 
     const messageToSend = inputMessage.trim();
     setInputMessage("");
-    clearTranscript(); // Clear the transcript after sending
 
     try {
       await sendMessage(messageToSend);
@@ -92,7 +90,6 @@ const Chat = () => {
     if (isRecording) {
       stopRecording(recognition);
       setRecognition(null);
-      setShowVoiceModal(false);
     } else {
       setShowVoiceModal(true);
       const newRecognition = await startRecording();
@@ -106,29 +103,49 @@ const Chat = () => {
       setRecognition(null);
     }
     setShowVoiceModal(false);
+    clearRecording();
   };
 
-  const handleSendVoiceMessage = () => {
-    if (transcript.trim()) {
-      setInputMessage(transcript);
-      setShowVoiceModal(false);
-      stopRecording(recognition);
-      setRecognition(null);
-      
-      // Auto-send the voice message
-      setTimeout(() => {
-        if (inputRef.current) {
-          const form = inputRef.current.closest('form');
-          if (form) {
-            form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-          }
-        }
-      }, 100);
+  const handleSendVoiceMessage = async () => {
+    if (transcript.trim() && audioUrl) {
+      try {
+        await sendVoiceMessage(audioUrl, transcript, recordingDuration);
+        setShowVoiceModal(false);
+        clearRecording();
+        toast.success('Voice message sent!');
+      } catch (error) {
+        console.error("Failed to send voice message:", error);
+      }
     }
   };
 
   const handleCreateNewChat = async () => {
     await createNewSession();
+  };
+
+  const handlePlayAudio = (messageId: string, audioUrl: string) => {
+    // Stop any currently playing audio
+    Object.values(audioRefs.current).forEach(audio => {
+      if (!audio.paused) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    });
+
+    if (playingAudio === messageId) {
+      setPlayingAudio(null);
+      return;
+    }
+
+    if (!audioRefs.current[messageId]) {
+      audioRefs.current[messageId] = new Audio(audioUrl);
+      audioRefs.current[messageId].onended = () => {
+        setPlayingAudio(null);
+      };
+    }
+
+    audioRefs.current[messageId].play();
+    setPlayingAudio(messageId);
   };
 
   const getSentimentColor = (sentiment?: string) => {
@@ -259,15 +276,59 @@ const Chat = () => {
                             : "bg-white border border-gray-200"
                         }`}
                       >
-                        <p
-                          className={`text-sm ${
-                            message.role === "user"
-                              ? "text-white"
-                              : "text-gray-800"
-                          }`}
-                        >
-                          {message.content}
-                        </p>
+                        {message.isVoiceMessage ? (
+                          // Voice Message UI
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={() => handlePlayAudio(message.id, message.audioUrl!)}
+                              className={`p-2 rounded-full transition-colors ${
+                                message.role === "user"
+                                  ? "bg-lavender-500 hover:bg-lavender-400 text-white"
+                                  : "bg-sage-100 hover:bg-sage-200 text-sage-600"
+                              }`}
+                            >
+                              {playingAudio === message.id ? (
+                                <Pause size={16} />
+                              ) : (
+                                <Play size={16} />
+                              )}
+                            </button>
+                            <div className="flex items-center space-x-2">
+                              <Volume2 size={16} className={message.role === "user" ? "text-lavender-100" : "text-gray-500"} />
+                              <div className="flex space-x-1">
+                                {[...Array(12)].map((_, i) => (
+                                  <div
+                                    key={i}
+                                    className={`w-1 rounded-full ${
+                                      message.role === "user" ? "bg-lavender-200" : "bg-gray-300"
+                                    }`}
+                                    style={{
+                                      height: `${Math.random() * 20 + 8}px`,
+                                      animation: playingAudio === message.id ? `pulse 1s infinite ${i * 0.1}s` : 'none'
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                              <span className={`text-sm ${
+                                message.role === "user" ? "text-lavender-100" : "text-gray-500"
+                              }`}>
+                                {formatDuration(message.audioDuration || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          // Regular Text Message
+                          <p
+                            className={`text-sm ${
+                              message.role === "user"
+                                ? "text-white"
+                                : "text-gray-800"
+                            }`}
+                          >
+                            {message.content}
+                          </p>
+                        )}
+                        
                         <div
                           className={`flex items-center justify-between mt-2 text-xs ${
                             message.role === "user"
@@ -339,11 +400,6 @@ const Chat = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
                     disabled={isLoading || !activeSession}
                   />
-                  {(isRecording || isProcessing) && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    </div>
-                  )}
                 </div>
 
                 <Button
@@ -380,36 +436,6 @@ const Chat = () => {
                 </Button>
               </form>
 
-              {/* Voice Recording Status */}
-              {(isRecording || isProcessing) && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-sm text-gray-600 flex items-center justify-between"
-                >
-                  <div className="flex items-center">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2"></div>
-                    {isProcessing ? "Initializing microphone..." : "Recording... Speak now"}
-                  </div>
-                  {transcript && (
-                    <span className="text-lavender-600 italic">
-                      "{transcript.substring(0, 50)}{transcript.length > 50 ? '...' : ''}"
-                    </span>
-                  )}
-                </motion.div>
-              )}
-
-              {voiceError && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 text-sm text-red-600 flex items-center"
-                >
-                  <X size={16} className="mr-1" />
-                  {voiceError}
-                </motion.div>
-              )}
-
               {!activeSession && (
                 <div className="mt-2 text-sm text-gray-500 text-center">
                   Create a new chat session to start messaging
@@ -439,7 +465,7 @@ const Chat = () => {
             >
               <div className="text-center">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Voice Input</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Record Voice Message</h3>
                   <button
                     onClick={handleVoiceModalClose}
                     className="text-gray-400 hover:text-gray-600"
@@ -461,18 +487,39 @@ const Chat = () => {
                     )}
                   </div>
 
+                  {isRecording && (
+                    <div className="text-2xl font-mono text-red-600 mb-2">
+                      {formatDuration(recordingDuration)}
+                    </div>
+                  )}
+
                   <p className="text-sm text-gray-600 mb-2">
                     {isProcessing 
                       ? "Initializing microphone..." 
                       : isRecording 
-                        ? "Listening... Speak clearly into your microphone" 
-                        : "Click the microphone to start recording"
+                        ? "Recording... Speak clearly into your microphone" 
+                        : audioUrl
+                          ? "Voice message recorded! You can play it back or send it."
+                          : "Click the microphone to start recording"
                     }
                   </p>
 
-                  {transcript && (
-                    <div className="bg-gray-50 rounded-lg p-3 mt-4">
-                      <p className="text-sm text-gray-700 italic">"{transcript}"</p>
+                  {audioUrl && !isRecording && (
+                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                      <div className="flex items-center justify-center space-x-3">
+                        <button
+                          onClick={() => handlePlayAudio('preview', audioUrl)}
+                          className="p-2 bg-lavender-100 text-lavender-600 rounded-full hover:bg-lavender-200 transition-colors"
+                        >
+                          {playingAudio === 'preview' ? <Pause size={16} /> : <Play size={16} />}
+                        </button>
+                        <div className="flex items-center space-x-2">
+                          <Volume2 size={16} className="text-gray-500" />
+                          <span className="text-sm text-gray-600">
+                            {formatDuration(recordingDuration)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -496,9 +543,30 @@ const Chat = () => {
                     >
                       Stop Recording
                     </Button>
+                  ) : audioUrl ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        fullWidth
+                        onClick={() => {
+                          clearRecording();
+                        }}
+                        leftIcon={<X size={18} />}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        variant="primary"
+                        fullWidth
+                        onClick={handleSendVoiceMessage}
+                        leftIcon={<Send size={18} />}
+                      >
+                        Send Voice Message
+                      </Button>
+                    </>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="primary"
                       fullWidth
                       onClick={handleVoiceToggle}
                       leftIcon={<Mic size={18} />}
@@ -507,23 +575,19 @@ const Chat = () => {
                       {isProcessing ? "Starting..." : "Start Recording"}
                     </Button>
                   )}
-
-                  {transcript && (
-                    <Button
-                      variant="primary"
-                      fullWidth
-                      onClick={handleSendVoiceMessage}
-                      leftIcon={<Send size={18} />}
-                    >
-                      Send Message
-                    </Button>
-                  )}
                 </div>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <style jsx>{`
+        @keyframes pulse {
+          0%, 100% { transform: scaleY(1); }
+          50% { transform: scaleY(1.5); }
+        }
+      `}</style>
     </div>
   );
 };

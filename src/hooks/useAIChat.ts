@@ -9,6 +9,9 @@ export interface ChatMessage {
   timestamp: Date;
   sentiment?: string;
   context?: unknown;
+  isVoiceMessage?: boolean;
+  audioUrl?: string;
+  audioDuration?: number;
 }
 
 export const useAIChat = (sessionId?: string) => {
@@ -183,9 +186,104 @@ export const useAIChat = (sessionId?: string) => {
     [messages, sessionId],
   );
 
+  const sendVoiceMessage = useCallback(
+    async (audioUrl: string, transcript: string, duration: number) => {
+      if (!sessionId) {
+        toast.error("No active chat session");
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const { data: { user }, error: userError } = await supabase.auth
+          .getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("User not authenticated");
+
+        // Add voice message to chat immediately
+        const voiceMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: transcript, // This will be used for AI processing
+          timestamp: new Date(),
+          isVoiceMessage: true,
+          audioUrl: audioUrl,
+          audioDuration: duration,
+        };
+        setMessages((prev) => [...prev, voiceMessage]);
+
+        // Prepare context from previous messages (last 10 messages)
+        const context = messages.slice(-10).map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+        // Call Dappier AI service with the transcript
+        const { data, error } = await supabase.functions.invoke("chat", {
+          body: {
+            message: transcript,
+            context,
+          },
+        });
+
+        if (error) {
+          toast.error(
+            "AI service error: " + (error.message || "Unknown error"),
+          );
+          throw error;
+        }
+        if (!data?.response) {
+          toast.error("Invalid response from AI service. Please try again.");
+          throw new Error("Invalid response from AI service");
+        }
+
+        // Extract the response content
+        const responseContent = typeof data.response === 'string' 
+          ? data.response 
+          : data.response.message || data.response;
+
+        // Add AI response to chat
+        const aiMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: responseContent,
+          sentiment: data.sentiment,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, aiMessage]);
+
+        // Save conversation to DB with session_id (save the transcript as the message)
+        const { error: saveError } = await supabase
+          .from("dappier_chat_history")
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            user_message: transcript,
+            ai_response: responseContent,
+            widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
+          });
+        if (saveError) throw saveError;
+
+        return aiMessage;
+      } catch (error: unknown) {
+        // Remove the voice message if sending failed
+        setMessages((prev) => prev.slice(0, -1));
+        const errorMsg = error instanceof Error
+          ? error.message
+          : "Failed to send voice message";
+        toast.error(errorMsg);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [messages, sessionId],
+  );
+
   return {
     messages,
     isLoading,
     sendMessage,
+    sendVoiceMessage,
   };
 };
