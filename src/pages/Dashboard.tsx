@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import {
@@ -14,26 +14,20 @@ import {
   Filler
 } from 'chart.js';
 import { 
-  SmilePlus, 
-  MessageSquare, 
-  Mic, 
-  BarChart2, 
-  Globe, 
   RefreshCcw,
   PenSquare,
   Calendar,
-  Clock,
   Target,
   Award,
   TrendingUp,
   Brain,
   Heart,
-  Sparkles
+  MessageSquare
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import ChatInterface from '../components/chat/ChatInterface';
 
 ChartJS.register(
   CategoryScale,
@@ -97,8 +91,6 @@ const chartOptions = {
 };
 
 const Dashboard = () => {
-  const [showChatPanel, setShowChatPanel] = useState(false);
-  
   const currentMood = '😌';
   const moodInterpretation = "You seem calm and balanced today. Your emotional stability has been consistent over the past week.";
   
@@ -130,7 +122,6 @@ const Dashboard = () => {
     { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
   ];
 
-  const dailyAffirmation = "Your journey is unique, and every step forward matters. Embrace your progress, no matter how small it may seem.";
   const wellnessScore = 85;
 
   return (
@@ -310,13 +301,15 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Journal</h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leftIcon={<PenSquare size={16} />}
-                  >
-                    New Entry
-                  </Button>
+                  <Link to="/journal">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leftIcon={<PenSquare size={16} />}
+                    >
+                      New Entry
+                    </Button>
+                  </Link>
                 </div>
                 <div className="space-y-3">
                   {journalEntries.map((entry, index) => (
@@ -343,23 +336,16 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
                 <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-col h-24"
-                    leftIcon={<MessageSquare size={24} />}
-                    onClick={() => setShowChatPanel(true)}
-                  >
-                    Start AI Chat
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-col h-24"
-                    leftIcon={<Mic size={24} />}
-                  >
-                    Voice Check-in
-                  </Button>
+                  <Link to="/chat">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-col h-24 w-full"
+                      leftIcon={<MessageSquare size={24} />}
+                    >
+                      Start AI Chat
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     size="lg"
@@ -368,6 +354,16 @@ const Dashboard = () => {
                   >
                     Set Goals
                   </Button>
+                  <Link to="/journal">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-col h-24 w-full"
+                      leftIcon={<PenSquare size={24} />}
+                    >
+                      Write Journal
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     size="lg"
@@ -382,12 +378,6 @@ const Dashboard = () => {
           </motion.div>
         </div>
       </main>
-
-      {/* AI Chat Interface */}
-      <ChatInterface 
-        isOpen={showChatPanel}
-        onClose={() => setShowChatPanel(false)}
-      />
     </div>
   );
 };

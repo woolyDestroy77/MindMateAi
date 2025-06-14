@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Moon, Sun, Globe, LogIn, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, Moon, Sun, Globe, LogIn, UserPlus, LogOut, MessageSquare } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import Button from '../ui/Button';
 import AuthModal from '../auth/AuthModal';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocation } from 'react-router-dom';
 
 interface NavbarProps {
   onLanguageChange?: (language: string) => void;
@@ -22,6 +22,7 @@ const Navbar: React.FC<NavbarProps> = ({
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState<'signin' | 'signup' | null>(null);
   const isDashboard = location.pathname === '/dashboard';
+  const isChat = location.pathname === '/chat';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,19 +57,31 @@ const Navbar: React.FC<NavbarProps> = ({
   const renderAuthButtons = () => {
     if (user) {
       return (
-        <Button 
-          variant="primary"
-          size="sm"
-          className="text-sm px-3 py-1.5 transition-all duration-300"
-          onClick={handleSignOut}
-          leftIcon={<LogOut size={16} />}
-        >
-          Sign Out
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Link to="/chat">
+            <Button 
+              variant="ghost"
+              size="sm"
+              className="text-sm px-3 py-1.5 transition-all duration-300"
+              leftIcon={<MessageSquare size={16} />}
+            >
+              AI Chat
+            </Button>
+          </Link>
+          <Button 
+            variant="primary"
+            size="sm"
+            className="text-sm px-3 py-1.5 transition-all duration-300"
+            onClick={handleSignOut}
+            leftIcon={<LogOut size={16} />}
+          >
+            Sign Out
+          </Button>
+        </div>
       );
     }
 
-    if (!isDashboard) {
+    if (!isDashboard && !isChat) {
       return (
         <div className="flex items-center space-x-2">
           <Button 
@@ -100,28 +113,28 @@ const Navbar: React.FC<NavbarProps> = ({
     <>
       <nav 
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled || isDashboard
+          isScrolled || isDashboard || isChat
             ? 'bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur-lg shadow-sm'
             : 'bg-transparent'
         }`}
         style={{ 
-          WebkitBackdropFilter: isScrolled || isDashboard ? 'blur(8px)' : 'none',
-          backdropFilter: isScrolled || isDashboard ? 'blur(8px)' : 'none' 
+          WebkitBackdropFilter: isScrolled || isDashboard || isChat ? 'blur(8px)' : 'none',
+          backdropFilter: isScrolled || isDashboard || isChat ? 'blur(8px)' : 'none' 
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="text-2xl font-bold bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent">
+                <Link to={user ? "/dashboard" : "/"} className="text-2xl font-bold bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent">
                   MindMate AI
-                </div>
+                </Link>
               </div>
             </div>
             
             <div className="hidden md:block">
               <div className="ml-10 flex items-center space-x-3">
-                {!isDashboard ? (
+                {!isDashboard && !isChat && !user ? (
                   <>
                     <a 
                       href="#features" 
@@ -156,26 +169,37 @@ const Navbar: React.FC<NavbarProps> = ({
                       <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                     </a>
                   </>
-                ) : (
+                ) : user && (
                   <>
-                    <a 
-                      href="#" 
-                      className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                    <Link 
+                      to="/dashboard" 
+                      className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                        isDashboard ? 'text-lavender-600' : 'text-gray-700 hover:text-lavender-600'
+                      }`}
                     >
                       <span className="relative z-10">Dashboard</span>
-                    </a>
-                    <a 
-                      href="#" 
+                      <span className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                        isDashboard ? 'scale-100' : 'scale-0 group-hover:scale-100'
+                      }`}></span>
+                    </Link>
+                    <Link 
+                      to="/journal" 
                       className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                     >
                       <span className="relative z-10">Journal</span>
-                    </a>
-                    <a 
-                      href="#" 
-                      className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                      <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                    </Link>
+                    <Link 
+                      to="/chat" 
+                      className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                        isChat ? 'text-lavender-600' : 'text-gray-700 hover:text-lavender-600'
+                      }`}
                     >
-                      <span className="relative z-10">Analytics</span>
-                    </a>
+                      <span className="relative z-10">AI Chat</span>
+                      <span className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                        isChat ? 'scale-100' : 'scale-0 group-hover:scale-100'
+                      }`}></span>
+                    </Link>
                   </>
                 )}
                 
@@ -223,7 +247,7 @@ const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/95 supports-[backdrop-filter]:bg-white/80 backdrop-blur-lg shadow-lg">
-            {!isDashboard ? (
+            {!isDashboard && !isChat && !user ? (
               <>
                 <a 
                   href="#features" 
@@ -254,26 +278,29 @@ const Navbar: React.FC<NavbarProps> = ({
                   FAQ
                 </a>
               </>
-            ) : (
+            ) : user && (
               <>
-                <a 
-                  href="#" 
+                <Link 
+                  to="/dashboard" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
-                </a>
-                <a 
-                  href="#" 
+                </Link>
+                <Link 
+                  to="/journal" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Journal
-                </a>
-                <a 
-                  href="#" 
+                </Link>
+                <Link 
+                  to="/chat" 
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  Analytics
-                </a>
+                  AI Chat
+                </Link>
               </>
             )}
 
@@ -282,13 +309,13 @@ const Navbar: React.FC<NavbarProps> = ({
                 variant="primary"
                 size="sm" 
                 fullWidth
-                className="text-sm transition-all duration-300"
+                className="text-sm transition-all duration-300 mt-2"
                 onClick={handleSignOut}
                 leftIcon={<LogOut size={16} />}
               >
                 Sign Out
               </Button>
-            ) : !isDashboard && (
+            ) : !isDashboard && !isChat && (
               <div className="flex flex-col space-y-2 pt-2">
                 <Button 
                   variant="ghost"
