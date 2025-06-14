@@ -14,20 +14,12 @@ export interface ChatMessage {
 export const useAIChat = (sessionId?: string) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const isInitialized = useRef(false);
-
-  // Reset messages when session changes
-  useEffect(() => {
-    if (sessionId) {
-      setMessages([]);
-      isInitialized.current = false;
-    }
-  }, [sessionId]);
+  const isInitialized = useRef<string | null>(null);
 
   // Fetch messages for current session
   useEffect(() => {
     const initChat = async () => {
-      if (!sessionId || isInitialized.current) return;
+      if (!sessionId || isInitialized.current === sessionId) return;
 
       try {
         setIsLoading(true);
@@ -36,7 +28,7 @@ export const useAIChat = (sessionId?: string) => {
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        // Fetch messages for this session
+        // Fetch messages for this specific session
         const { data: dbMessages, error: fetchError } = await supabase
           .from("dappier_chat_history")
           .select("id, user_message, ai_response, created_at")
@@ -79,6 +71,8 @@ export const useAIChat = (sessionId?: string) => {
             },
           ]);
         }
+        
+        isInitialized.current = sessionId;
       } catch (err: unknown) {
         const errorMsg = err instanceof Error
           ? err.message
@@ -86,9 +80,14 @@ export const useAIChat = (sessionId?: string) => {
         toast.error(errorMsg);
       } finally {
         setIsLoading(false);
-        isInitialized.current = true;
       }
     };
+
+    // Reset messages immediately when session changes
+    if (sessionId !== isInitialized.current) {
+      setMessages([]);
+      isInitialized.current = null;
+    }
 
     initChat();
   }, [sessionId]);
@@ -107,7 +106,7 @@ export const useAIChat = (sessionId?: string) => {
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        // Add user message to chat
+        // Add user message to chat immediately
         const userMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: "user",
@@ -141,11 +140,16 @@ export const useAIChat = (sessionId?: string) => {
           throw new Error("Invalid response from AI service");
         }
 
+        // Extract the response content
+        const responseContent = typeof data.response === 'string' 
+          ? data.response 
+          : data.response.message || data.response;
+
         // Add AI response to chat
         const aiMessage: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: data.response.message || data.response,
+          content: responseContent,
           sentiment: data.sentiment,
           timestamp: new Date(),
         };
@@ -158,14 +162,15 @@ export const useAIChat = (sessionId?: string) => {
             user_id: user.id,
             session_id: sessionId,
             user_message: content,
-            ai_response: data.response.message || data.response,
+            ai_response: responseContent,
             widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
           });
         if (saveError) throw saveError;
 
         return aiMessage;
       } catch (error: unknown) {
-        setMessages((prev) => prev.slice(0, -1)); // Remove user message if failed
+        // Remove the user message if sending failed
+        setMessages((prev) => prev.slice(0, -1));
         const errorMsg = error instanceof Error
           ? error.message
           : "Failed to send message";

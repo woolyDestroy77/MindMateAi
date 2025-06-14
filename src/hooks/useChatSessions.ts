@@ -49,7 +49,7 @@ export const useChatSessions = () => {
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
 
-      // Deactivate current active session
+      // Deactivate current active session first
       if (activeSession) {
         await supabase
           .from('chat_sessions')
@@ -73,6 +73,7 @@ export const useChatSessions = () => {
 
       if (error) throw error;
 
+      // Update local state
       setActiveSession(data);
       setSessions(prev => [data, ...prev.map(s => ({ ...s, is_active: false }))]);
       toast.success('New chat session created');
@@ -91,7 +92,10 @@ export const useChatSessions = () => {
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
 
-      // Deactivate all sessions
+      // Don't switch if already active
+      if (activeSession?.id === sessionId) return;
+
+      // Deactivate all sessions for this user
       await supabase
         .from('chat_sessions')
         .update({ is_active: false })
@@ -116,7 +120,7 @@ export const useChatSessions = () => {
       console.error('Error switching session:', error);
       toast.error('Failed to switch chat session');
     }
-  }, []);
+  }, [activeSession]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -129,9 +133,16 @@ export const useChatSessions = () => {
 
       setSessions(prev => prev.filter(s => s.id !== sessionId));
       
-      // If deleted session was active, create a new one
+      // If deleted session was active, create a new one or set to null
       if (activeSession?.id === sessionId) {
-        await createNewSession();
+        const remainingSessions = sessions.filter(s => s.id !== sessionId);
+        if (remainingSessions.length > 0) {
+          // Switch to the most recent session
+          await switchToSession(remainingSessions[0].id);
+        } else {
+          // Create a new session if no sessions remain
+          await createNewSession();
+        }
       }
 
       toast.success('Chat session deleted');
@@ -139,7 +150,7 @@ export const useChatSessions = () => {
       console.error('Error deleting session:', error);
       toast.error('Failed to delete chat session');
     }
-  }, [activeSession, createNewSession]);
+  }, [activeSession, sessions, createNewSession, switchToSession]);
 
   const renameSession = useCallback(async (sessionId: string, newName: string) => {
     try {
