@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Loader2, Bot, User, MessageSquare } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Bot, User, MessageSquare, History } from 'lucide-react';
 import { format } from 'date-fns';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useAIChat } from '../hooks/useAIChat';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { useDappierChat } from '../hooks/useDappierChat';
 
 const Chat = () => {
   const { messages, isLoading, sendMessage } = useAIChat();
   const { isRecording, transcript, startRecording, stopRecording } = useVoiceInput();
+  const { saveChatMessage } = useDappierChat();
   const [inputMessage, setInputMessage] = useState('');
   const [recognition, setRecognition] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'custom' | 'widget'>('custom');
@@ -117,6 +119,9 @@ const Chat = () => {
                 <div className="flex items-center">
                   <Bot size={16} className="mr-2" />
                   AI Widget
+                  <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
+                    Auto-Save
+                  </span>
                 </div>
               </button>
             </nav>
@@ -257,11 +262,17 @@ const Chat = () => {
           </Card>
         ) : (
           <Card variant="elevated" className="min-h-[600px] p-6">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Dappier AI Widget</h2>
-              <p className="text-gray-600">
-                Experience our enhanced AI chat powered by Dappier's advanced AI technology.
-              </p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">Dappier AI Widget</h2>
+                <p className="text-gray-600">
+                  Experience our enhanced AI chat powered by Dappier's advanced AI technology.
+                </p>
+              </div>
+              <div className="flex items-center text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full">
+                <History size={14} className="mr-1" />
+                Auto-saving conversations
+              </div>
             </div>
             
             {/* Dappier Widget Container */}
