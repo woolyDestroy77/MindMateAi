@@ -34,6 +34,9 @@ import {
   Lightbulb,
   PartyPopper,
   Star,
+  Smile,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -114,10 +117,12 @@ interface DailyGoal {
 }
 
 const Dashboard = () => {
-  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
+  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger, updateMoodFromAI } = useDashboardData();
   const [completedGoals, setCompletedGoals] = useState<string[]>([]);
   const [showCongrats, setShowCongrats] = useState(false);
+  const [showFeelBetterPopup, setShowFeelBetterPopup] = useState(false);
   const [isUpdatingWellness, setIsUpdatingWellness] = useState(false);
+  const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(false);
   
   // Force re-render when dashboard data changes
   useEffect(() => {
@@ -322,7 +327,7 @@ const Dashboard = () => {
 
         // Check if all goals are now completed
         const newCompletedCount = completedGoals.length + 1;
-        if (newCompletedCount === totalGoals) {
+        if (newCompletedCount === totalGoals && !hasShownFeelBetterToday) {
           setTimeout(() => {
             setShowCongrats(true);
             toast.success('🎉 All daily goals completed! Amazing work!', {
@@ -381,6 +386,53 @@ const Dashboard = () => {
     }
   };
 
+  // Handle "Do you feel better?" response
+  const handleFeelBetterResponse = async (feelsBetter: boolean) => {
+    try {
+      if (feelsBetter) {
+        // Update mood to happy using the existing mood update system
+        await updateMoodFromAI(
+          'POSITIVE',
+          'I completed all my daily wellness goals and I feel much better now!',
+          'That\'s wonderful! Completing your wellness goals is a fantastic achievement. Your dedication to mental health is paying off. Keep up the amazing work! 🌟'
+        );
+        
+        toast.success('🎉 Mood updated to happy! Great job on completing your goals!', {
+          icon: '😊',
+          duration: 4000,
+        });
+      } else {
+        toast.success('That\'s okay! Every step counts in your wellness journey. Keep going! 💪', {
+          icon: '🤗',
+          duration: 3000,
+        });
+      }
+      
+      setShowFeelBetterPopup(false);
+      setHasShownFeelBetterToday(true);
+      
+      // Refresh dashboard to show updated mood
+      setTimeout(() => {
+        refreshDashboardData();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Error updating mood:', error);
+      toast.error('Failed to update mood');
+    }
+  };
+
+  // Handle congratulations modal close
+  const handleCongratsClose = () => {
+    setShowCongrats(false);
+    // Show the "feel better" popup after a short delay
+    setTimeout(() => {
+      if (!hasShownFeelBetterToday) {
+        setShowFeelBetterPopup(true);
+      }
+    }, 1000);
+  };
+
   if (dashboardLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
@@ -416,7 +468,7 @@ const Dashboard = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowCongrats(false)}
+            onClick={handleCongratsClose}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -448,11 +500,68 @@ const Dashboard = () => {
               </div>
               <Button
                 variant="primary"
-                onClick={() => setShowCongrats(false)}
+                onClick={handleCongratsClose}
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
               >
                 Continue Your Journey
               </Button>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Feel Better Popup */}
+        {showFeelBetterPopup && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="text-6xl mb-4"
+              >
+                🤗
+              </motion.div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                Do you feel better now?
+              </h2>
+              <p className="text-gray-600 mb-8">
+                You've completed all your wellness goals today! 
+                How are you feeling after taking care of your mental health?
+              </p>
+              
+              <div className="flex space-x-4">
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => handleFeelBetterResponse(true)}
+                  leftIcon={<ThumbsUp size={20} />}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                >
+                  Yes, I feel better! 😊
+                </Button>
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => handleFeelBetterResponse(false)}
+                  leftIcon={<ThumbsDown size={20} />}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Not quite yet 🤔
+                </Button>
+              </div>
+              
+              <p className="text-xs text-gray-500 mt-4">
+                Your response helps us better understand your wellness journey
+              </p>
             </motion.div>
           </motion.div>
         )}
