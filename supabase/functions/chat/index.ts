@@ -56,7 +56,9 @@ function extractResponseContent(
 }
 
 function enhancedSentimentAnalysis(text: string): string {
-  const lowerText = text.toLowerCase();
+  const lowerText = text.toLowerCase().trim();
+  
+  console.log('🔍 SENTIMENT ANALYSIS - Analyzing text:', lowerText);
   
   // Enhanced sentiment analysis with more comprehensive patterns
   const sentimentIndicators = {
@@ -65,13 +67,23 @@ function enhancedSentimentAnalysis(text: string): string {
         'happy', 'good', 'great', 'excellent', 'wonderful', 'amazing', 'fantastic', 'love', 'joy', 'excited',
         'grateful', 'optimistic', 'pleased', 'satisfied', 'content', 'delighted', 'thrilled', 'cheerful',
         'glad', 'blessed', 'lucky', 'awesome', 'brilliant', 'perfect', 'beautiful', 'smile', 'laugh',
-        'fun', 'enjoy', 'celebration', 'success', 'achievement', 'proud', 'confident', 'hopeful'
+        'fun', 'enjoy', 'celebration', 'success', 'achievement', 'proud', 'confident', 'hopeful', 'elated',
+        'ecstatic', 'blissful', 'joyful', 'upbeat', 'positive', 'energetic', 'motivated', 'inspired'
       ],
       phrases: [
         'feeling good', 'feeling great', 'feeling happy', 'feeling amazing', 'feeling wonderful',
         'in a good mood', 'having a great day', 'things are good', 'life is good', 'doing well',
         'feeling positive', 'feeling blessed', 'feeling grateful', 'feeling lucky', 'love it',
-        'really enjoy', 'makes me happy', 'so excited', 'cant wait'
+        'really enjoy', 'makes me happy', 'so excited', 'cant wait', 'feeling fantastic',
+        'really good', 'super happy', 'absolutely love', 'feeling awesome', 'really pleased'
+      ],
+      patterns: [
+        /i feel (good|great|happy|amazing|wonderful|fantastic|awesome|brilliant|perfect)/,
+        /i am (happy|excited|thrilled|delighted|pleased|glad|grateful|blessed|lucky)/,
+        /feeling (good|great|happy|amazing|wonderful|fantastic|awesome|positive|upbeat)/,
+        /really (happy|excited|good|great|pleased|glad)/,
+        /so (happy|excited|good|great|pleased|glad)/,
+        /absolutely (love|amazing|wonderful|fantastic|brilliant)/
       ],
       weight: 1
     },
@@ -80,13 +92,25 @@ function enhancedSentimentAnalysis(text: string): string {
         'sad', 'bad', 'terrible', 'awful', 'hate', 'angry', 'frustrated', 'depressed', 'anxious', 'worried',
         'stressed', 'upset', 'disappointed', 'hurt', 'pain', 'crying', 'lonely', 'empty', 'miserable',
         'devastated', 'heartbroken', 'furious', 'mad', 'annoyed', 'irritated', 'scared', 'afraid',
-        'nervous', 'overwhelmed', 'exhausted', 'tired', 'drained', 'hopeless', 'lost', 'broken'
+        'nervous', 'overwhelmed', 'exhausted', 'tired', 'drained', 'hopeless', 'lost', 'broken',
+        'panicked', 'panicking', 'terrified', 'fearful', 'distressed', 'troubled', 'concerned',
+        'uneasy', 'restless', 'tense', 'agitated', 'distraught', 'despondent', 'melancholy'
       ],
       phrases: [
         'feeling sad', 'feeling bad', 'feeling down', 'feeling depressed', 'feeling angry', 'feeling frustrated',
         'feeling anxious', 'feeling worried', 'feeling stressed', 'feeling upset', 'feeling hurt',
         'not doing well', 'having a bad day', 'things are bad', 'life is hard', 'struggling with',
-        'cant stand', 'hate it when', 'makes me sad', 'makes me angry', 'really upset'
+        'cant stand', 'hate it when', 'makes me sad', 'makes me angry', 'really upset',
+        'feeling awful', 'feeling terrible', 'really anxious', 'super stressed', 'really worried',
+        'feeling overwhelmed', 'feeling lost', 'feeling broken', 'feeling empty', 'really scared'
+      ],
+      patterns: [
+        /i feel (sad|bad|terrible|awful|depressed|anxious|worried|stressed|upset|hurt|angry|frustrated)/,
+        /i am (sad|depressed|anxious|worried|stressed|upset|angry|frustrated|scared|afraid|nervous)/,
+        /feeling (sad|bad|down|depressed|anxious|worried|stressed|upset|angry|frustrated|awful|terrible)/,
+        /really (sad|anxious|worried|stressed|upset|angry|frustrated|scared|afraid)/,
+        /so (sad|anxious|worried|stressed|upset|angry|frustrated|scared|afraid)/,
+        /im (anxious|worried|stressed|depressed|sad|upset|angry|frustrated|scared|afraid)/
       ],
       weight: 1
     }
@@ -94,87 +118,88 @@ function enhancedSentimentAnalysis(text: string): string {
 
   let positiveScore = 0;
   let negativeScore = 0;
+  let detectionDetails: string[] = [];
 
-  // Check for direct emotional statements with higher weight
-  const emotionalPatterns = [
-    /i feel (.*)/,
-    /i am (.*)/,
-    /i'm (.*)/,
-    /feeling (.*)/,
-    /makes me (.*)/,
-    /i'm so (.*)/,
-    /really (.*)/
-  ];
-
-  for (const pattern of emotionalPatterns) {
-    const match = lowerText.match(pattern);
-    if (match) {
-      const emotionText = match[1];
-      
-      // Check positive indicators in emotional statements
-      sentimentIndicators.positive.keywords.forEach(keyword => {
-        if (emotionText.includes(keyword)) {
-          positiveScore += 2; // Higher weight for direct emotional statements
-        }
-      });
-      
-      sentimentIndicators.positive.phrases.forEach(phrase => {
-        if (emotionText.includes(phrase.replace('feeling ', ''))) {
-          positiveScore += 2;
-        }
-      });
-      
-      // Check negative indicators in emotional statements
-      sentimentIndicators.negative.keywords.forEach(keyword => {
-        if (emotionText.includes(keyword)) {
-          negativeScore += 2;
-        }
-      });
-      
-      sentimentIndicators.negative.phrases.forEach(phrase => {
-        if (emotionText.includes(phrase.replace('feeling ', ''))) {
-          negativeScore += 2;
-        }
-      });
+  // STEP 1: Check for direct emotional patterns (highest priority)
+  console.log('🎯 STEP 1: Checking emotional patterns...');
+  
+  // Check positive patterns
+  for (const pattern of sentimentIndicators.positive.patterns) {
+    if (pattern.test(lowerText)) {
+      positiveScore += 3; // High weight for direct patterns
+      detectionDetails.push(`Positive pattern: ${pattern.source}`);
+      console.log(`✅ POSITIVE PATTERN MATCH: ${pattern.source}`);
+    }
+  }
+  
+  // Check negative patterns
+  for (const pattern of sentimentIndicators.negative.patterns) {
+    if (pattern.test(lowerText)) {
+      negativeScore += 3; // High weight for direct patterns
+      detectionDetails.push(`Negative pattern: ${pattern.source}`);
+      console.log(`✅ NEGATIVE PATTERN MATCH: ${pattern.source}`);
     }
   }
 
-  // Check for phrase patterns
+  // STEP 2: Check for phrase patterns
+  console.log('🎯 STEP 2: Checking phrase patterns...');
+  
   sentimentIndicators.positive.phrases.forEach(phrase => {
     if (lowerText.includes(phrase)) {
-      positiveScore += 1.5;
+      positiveScore += 2;
+      detectionDetails.push(`Positive phrase: "${phrase}"`);
+      console.log(`✅ POSITIVE PHRASE: "${phrase}"`);
     }
   });
   
   sentimentIndicators.negative.phrases.forEach(phrase => {
     if (lowerText.includes(phrase)) {
-      negativeScore += 1.5;
+      negativeScore += 2;
+      detectionDetails.push(`Negative phrase: "${phrase}"`);
+      console.log(`✅ NEGATIVE PHRASE: "${phrase}"`);
     }
   });
 
-  // Check for individual keywords
+  // STEP 3: Check for individual keywords
+  console.log('🎯 STEP 3: Checking individual keywords...');
+  
   sentimentIndicators.positive.keywords.forEach(keyword => {
     if (lowerText.includes(keyword)) {
       positiveScore += 1;
+      detectionDetails.push(`Positive keyword: "${keyword}"`);
+      console.log(`🔑 POSITIVE KEYWORD: "${keyword}"`);
     }
   });
   
   sentimentIndicators.negative.keywords.forEach(keyword => {
     if (lowerText.includes(keyword)) {
       negativeScore += 1;
+      detectionDetails.push(`Negative keyword: "${keyword}"`);
+      console.log(`🔑 NEGATIVE KEYWORD: "${keyword}"`);
     }
   });
 
-  console.log('Sentiment analysis scores:', { positiveScore, negativeScore, text: lowerText });
+  console.log('📊 SENTIMENT SCORES:', { positiveScore, negativeScore });
+  console.log('🔍 DETECTION DETAILS:', detectionDetails);
 
-  // Determine sentiment with threshold
-  if (positiveScore > negativeScore && positiveScore > 0.5) {
-    return "POSITIVE";
-  } else if (negativeScore > positiveScore && negativeScore > 0.5) {
-    return "NEGATIVE";
+  // Determine sentiment with clear thresholds
+  let finalSentiment: string;
+  
+  if (positiveScore > negativeScore && positiveScore >= 1) {
+    finalSentiment = "POSITIVE";
+  } else if (negativeScore > positiveScore && negativeScore >= 1) {
+    finalSentiment = "NEGATIVE";
+  } else if (positiveScore === 0 && negativeScore === 0) {
+    // No emotional indicators found, default to neutral
+    finalSentiment = "NEUTRAL";
   } else {
-    return "NEUTRAL";
+    // Tie or very low scores
+    finalSentiment = "NEUTRAL";
   }
+
+  console.log(`🎭 FINAL SENTIMENT: ${finalSentiment} (positive: ${positiveScore}, negative: ${negativeScore})`);
+  
+  return finalSentiment;
 }
 
 function errorResponse(
@@ -204,6 +229,16 @@ Deno.serve(async (req) => {
 
     console.log('=== CHAT FUNCTION CALLED ===');
     console.log('User message:', message);
+
+    // Validate input
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return errorResponse(
+        "INVALID_INPUT",
+        "Message is required and must be a non-empty string",
+        "Empty or invalid message provided",
+        400,
+      );
+    }
 
     // Prepare enhanced query with context
     const enhancedQuery = buildEnhancedQuery(message, context);
@@ -288,6 +323,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           response: dappierData,
+          sentiment: "NEUTRAL", // Always provide a sentiment
         }),
         {
           status: 200,
@@ -296,21 +332,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Enhanced sentiment analysis
-    const sentiment = enhancedSentimentAnalysis(message);
+    // CRITICAL: Enhanced sentiment analysis on the original user message
+    const sentiment = enhancedSentimentAnalysis(message.trim());
     
-    console.log('Enhanced sentiment analysis result:', sentiment);
+    console.log('🎯 SENTIMENT ANALYSIS COMPLETE');
+    console.log('Original message:', message);
+    console.log('Detected sentiment:', sentiment);
 
     const finalResponse = {
       response: responseContent,
-      sentiment,
+      sentiment, // This should NEVER be undefined now
       service: "dappier",
       model_id: AI_MODEL_ID,
       data_model_id: DATA_MODEL_ID,
+      analysis_details: {
+        original_message: message,
+        detected_sentiment: sentiment,
+        timestamp: new Date().toISOString()
+      }
     };
 
     console.log('=== CHAT FUNCTION RESPONSE ===');
-    console.log('Final response:', finalResponse);
+    console.log('Final response sentiment:', finalResponse.sentiment);
 
     return new Response(
       JSON.stringify(finalResponse),
@@ -326,6 +369,7 @@ Deno.serve(async (req) => {
         error: "INTERNAL_ERROR",
         message: "An unexpected error occurred. Please try again.",
         details: error.message,
+        sentiment: "NEUTRAL", // Always provide a sentiment even on error
         timestamp: new Date().toISOString(),
       }),
       {
