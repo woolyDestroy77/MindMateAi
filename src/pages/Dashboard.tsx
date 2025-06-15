@@ -37,6 +37,8 @@ import {
   Smile,
   ThumbsUp,
   ThumbsDown,
+  Plus,
+  Trophy,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -124,6 +126,61 @@ const Dashboard = () => {
   const [isUpdatingWellness, setIsUpdatingWellness] = useState(false);
   const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(false);
   const [goalPointsMap, setGoalPointsMap] = useState<{ [key: string]: number }>({});
+  const [allGoalsFinished, setAllGoalsFinished] = useState(false);
+  
+  // Load persisted state from localStorage on component mount
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const savedCompletedGoals = localStorage.getItem(`completedGoals_${today}`);
+    const savedGoalPoints = localStorage.getItem(`goalPointsMap_${today}`);
+    const savedFeelBetterShown = localStorage.getItem(`hasShownFeelBetterToday_${today}`);
+    const savedAllGoalsFinished = localStorage.getItem(`allGoalsFinished_${today}`);
+    
+    if (savedCompletedGoals) {
+      try {
+        setCompletedGoals(JSON.parse(savedCompletedGoals));
+      } catch (error) {
+        console.error('Error parsing saved completed goals:', error);
+      }
+    }
+    
+    if (savedGoalPoints) {
+      try {
+        setGoalPointsMap(JSON.parse(savedGoalPoints));
+      } catch (error) {
+        console.error('Error parsing saved goal points:', error);
+      }
+    }
+    
+    if (savedFeelBetterShown) {
+      setHasShownFeelBetterToday(JSON.parse(savedFeelBetterShown));
+    }
+    
+    if (savedAllGoalsFinished) {
+      setAllGoalsFinished(JSON.parse(savedAllGoalsFinished));
+    }
+  }, []);
+
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`completedGoals_${today}`, JSON.stringify(completedGoals));
+  }, [completedGoals]);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`goalPointsMap_${today}`, JSON.stringify(goalPointsMap));
+  }, [goalPointsMap]);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`hasShownFeelBetterToday_${today}`, JSON.stringify(hasShownFeelBetterToday));
+  }, [hasShownFeelBetterToday]);
+
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`allGoalsFinished_${today}`, JSON.stringify(allGoalsFinished));
+  }, [allGoalsFinished]);
   
   // Force re-render when dashboard data changes
   useEffect(() => {
@@ -304,7 +361,7 @@ const Dashboard = () => {
 
   // Handle goal completion
   const handleGoalToggle = async (goalId: string) => {
-    if (isUpdatingWellness) return;
+    if (isUpdatingWellness || allGoalsFinished) return;
 
     const goal = dailyGoals.find(g => g.id === goalId);
     if (!goal || goal.type === 'base') return; // Can't toggle base goals
@@ -420,6 +477,7 @@ const Dashboard = () => {
       
       setShowFeelBetterPopup(false);
       setHasShownFeelBetterToday(true);
+      setAllGoalsFinished(true); // Mark all goals as finished
       
       // Refresh dashboard to show updated mood
       setTimeout(() => {
@@ -445,7 +503,7 @@ const Dashboard = () => {
 
   // Check when all goals are completed to show congratulations
   useEffect(() => {
-    if (allGoalsCompleted && completedGoalsCount > 0 && !showCongrats && !hasShownFeelBetterToday) {
+    if (allGoalsCompleted && completedGoalsCount > 0 && !showCongrats && !hasShownFeelBetterToday && !allGoalsFinished) {
       console.log('🎉 All goals completed! Showing congratulations...');
       setShowCongrats(true);
       
@@ -457,7 +515,7 @@ const Dashboard = () => {
         icon: '🎉',
       });
     }
-  }, [allGoalsCompleted, completedGoalsCount, showCongrats, hasShownFeelBetterToday, dailyGoals]);
+  }, [allGoalsCompleted, completedGoalsCount, showCongrats, hasShownFeelBetterToday, dailyGoals, allGoalsFinished]);
 
   if (dashboardLoading) {
     return (
@@ -810,10 +868,16 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-2">
                     <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
-                    {hasSharedMood && (
+                    {hasSharedMood && !allGoalsFinished && (
                       <div className="flex items-center space-x-1">
                         <Lightbulb size={14} className="text-yellow-500" />
                         <span className="text-xs text-yellow-600 font-medium">AI-Enhanced</span>
+                      </div>
+                    )}
+                    {allGoalsFinished && (
+                      <div className="flex items-center space-x-1">
+                        <Trophy size={14} className="text-green-500" />
+                        <span className="text-xs text-green-600 font-medium">Completed!</span>
                       </div>
                     )}
                   </div>
@@ -825,64 +889,117 @@ const Dashboard = () => {
                   </div>
                 </div>
                 
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {dailyGoals.map((goal, index) => (
+                {/* Goals Finished State */}
+                {allGoalsFinished ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative overflow-hidden rounded-lg p-6 text-center"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid rgba(34, 197, 94, 0.2)'
+                    }}
+                  >
+                    {/* Subtle background pattern */}
+                    <div className="absolute inset-0 opacity-5">
+                      <div className="absolute top-2 left-2 w-4 h-4 bg-green-500 rounded-full"></div>
+                      <div className="absolute top-8 right-4 w-2 h-2 bg-green-400 rounded-full"></div>
+                      <div className="absolute bottom-4 left-6 w-3 h-3 bg-green-600 rounded-full"></div>
+                      <div className="absolute bottom-2 right-2 w-2 h-2 bg-green-500 rounded-full"></div>
+                    </div>
+                    
                     <motion.div
-                      key={goal.id}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
-                        goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
-                        goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
-                      } ${goal.type === 'base' ? 'opacity-75' : ''}`}
-                      onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                      className="text-4xl mb-3"
                     >
-                      <div className="flex-shrink-0 mt-0.5">
-                        {goal.completed ? (
-                          <CheckCircle size={20} className="text-green-600" />
-                        ) : (
-                          <Circle size={20} className={`${
-                            goal.type === 'ai' ? 'text-blue-500' : 
-                            goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
-                          }`} />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm ${
-                            goal.completed ? 'text-green-700 line-through' : 
-                            goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
-                          }`}>
-                            {goal.text}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-2">
-                            +{goal.pointsValue}pts
-                          </span>
+                      🏆
+                    </motion.div>
+                    
+                    <h3 className="text-lg font-bold text-green-800 mb-2">
+                      Finished Daily Goals
+                    </h3>
+                    
+                    <p className="text-sm text-green-700 mb-4">
+                      Congratulations! You've completed all your wellness goals for today. 
+                      Your dedication to mental health is inspiring! 🌟
+                    </p>
+                    
+                    <div className="flex items-center justify-center space-x-2 mb-4">
+                      <Star className="text-yellow-500" size={16} />
+                      <span className="text-sm font-semibold text-green-700">
+                        +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Points Earned
+                      </span>
+                      <Star className="text-yellow-500" size={16} />
+                    </div>
+                    
+                    <div className="text-xs text-green-600 bg-green-50 rounded-full px-3 py-1 inline-block">
+                      We can add more daily goals later
+                    </div>
+                  </motion.div>
+                ) : (
+                  // Regular goals list
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {dailyGoals.map((goal, index) => (
+                      <motion.div
+                        key={goal.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                        className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
+                          goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
+                          goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
+                        } ${goal.type === 'base' ? 'opacity-75' : ''}`}
+                        onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
+                      >
+                        <div className="flex-shrink-0 mt-0.5">
+                          {goal.completed ? (
+                            <CheckCircle size={20} className="text-green-600" />
+                          ) : (
+                            <Circle size={20} className={`${
+                              goal.type === 'ai' ? 'text-blue-500' : 
+                              goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
+                            }`} />
+                          )}
                         </div>
-                        {goal.type === 'ai' && goal.priority === 'high' && (
-                          <div className="flex items-center mt-1">
-                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                              High Priority
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-sm ${
+                              goal.completed ? 'text-green-700 line-through' : 
+                              goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
+                            }`}>
+                              {goal.text}
+                            </span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              +{goal.pointsValue}pts
                             </span>
                           </div>
-                        )}
-                        {goal.type === 'ai' && !goal.completed && (
-                          <div className="text-xs text-blue-600 mt-1 italic">
-                            AI recommendation from your chat
-                          </div>
-                        )}
-                        {goal.type === 'base' && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            Completed automatically through chat
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+                          {goal.type === 'ai' && goal.priority === 'high' && (
+                            <div className="flex items-center mt-1">
+                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                High Priority
+                              </span>
+                            </div>
+                          )}
+                          {goal.type === 'ai' && !goal.completed && (
+                            <div className="text-xs text-blue-600 mt-1 italic">
+                              AI recommendation from your chat
+                            </div>
+                          )}
+                          {goal.type === 'base' && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Completed automatically through chat
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
 
-                {hasSharedMood && (
+                {hasSharedMood && !allGoalsFinished && (
                   <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center text-blue-700 text-sm">
                       <Lightbulb size={16} className="mr-2 text-yellow-500" />
