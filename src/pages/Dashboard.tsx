@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
@@ -123,6 +123,7 @@ const Dashboard = () => {
   const [showFeelBetterPopup, setShowFeelBetterPopup] = useState(false);
   const [isUpdatingWellness, setIsUpdatingWellness] = useState(false);
   const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(false);
+  const [goalPointsMap, setGoalPointsMap] = useState<{ [key: string]: number }>({});
   
   // Force re-render when dashboard data changes
   useEffect(() => {
@@ -317,6 +318,9 @@ const Dashboard = () => {
         // Mark goal as completed
         setCompletedGoals(prev => [...prev, goalId]);
         
+        // Store the points for this goal
+        setGoalPointsMap(prev => ({ ...prev, [goalId]: goal.pointsValue }));
+        
         // Update wellness score
         await updateWellnessScore(goal.pointsValue);
         
@@ -330,20 +334,26 @@ const Dashboard = () => {
         if (newCompletedCount === totalGoals && !hasShownFeelBetterToday) {
           setTimeout(() => {
             setShowCongrats(true);
-            toast.success('🎉 All daily goals completed! Amazing work!', {
-              duration: 5000,
-              icon: '🏆',
-            });
           }, 500);
         }
       } else {
         // Mark goal as incomplete
         setCompletedGoals(prev => prev.filter(id => id !== goalId));
         
-        // Decrease wellness score
-        await updateWellnessScore(-Math.floor(goal.pointsValue / 2));
+        // Get the exact points that were gained for this goal
+        const pointsToRemove = goalPointsMap[goalId] || goal.pointsValue;
         
-        toast.success(`Goal unmarked. -${Math.floor(goal.pointsValue / 2)} wellness points`, {
+        // Remove the stored points for this goal
+        setGoalPointsMap(prev => {
+          const newMap = { ...prev };
+          delete newMap[goalId];
+          return newMap;
+        });
+        
+        // Decrease wellness score by the exact amount gained
+        await updateWellnessScore(-pointsToRemove);
+        
+        toast.success(`Goal unmarked. -${pointsToRemove} wellness points`, {
           icon: '↩️',
           duration: 2000,
         });
@@ -433,6 +443,22 @@ const Dashboard = () => {
     }, 1000);
   };
 
+  // Check when all goals are completed to show congratulations
+  useEffect(() => {
+    if (allGoalsCompleted && completedGoalsCount > 0 && !showCongrats && !hasShownFeelBetterToday) {
+      console.log('🎉 All goals completed! Showing congratulations...');
+      setShowCongrats(true);
+      
+      // Calculate total points earned
+      const totalPoints = dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0);
+      
+      toast.success(`🏆 All daily goals completed! +${totalPoints} total wellness points!`, {
+        duration: 5000,
+        icon: '🎉',
+      });
+    }
+  }, [allGoalsCompleted, completedGoalsCount, showCongrats, hasShownFeelBetterToday, dailyGoals]);
+
   if (dashboardLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
@@ -463,108 +489,116 @@ const Dashboard = () => {
         </div>
 
         {/* Congratulations Modal */}
-        {showCongrats && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={handleCongratsClose}
-          >
+        <AnimatePresence>
+          {showCongrats && (
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
-              onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={handleCongratsClose}
             >
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="text-6xl mb-4"
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
+                onClick={e => e.stopPropagation()}
               >
-                🏆
-              </motion.div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                Congratulations!
-              </h2>
-              <p className="text-gray-600 mb-6">
-                You've completed all your daily wellness goals! Your dedication to mental health is inspiring. 
-                Keep up the amazing work! 🌟
-              </p>
-              <div className="flex items-center justify-center space-x-2 mb-6">
-                <PartyPopper className="text-yellow-500" size={20} />
-                <span className="text-lg font-semibold text-green-600">
-                  +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Wellness Points!
-                </span>
-                <Star className="text-yellow-500" size={20} />
-              </div>
-              <Button
-                variant="primary"
-                onClick={handleCongratsClose}
-                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-              >
-                Continue Your Journey
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-
-        {/* Feel Better Popup */}
-        {showFeelBetterPopup && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="text-6xl mb-4"
-              >
-                🤗
-              </motion.div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                Do you feel better now?
-              </h2>
-              <p className="text-gray-600 mb-8">
-                You've completed all your wellness goals today! 
-                How are you feeling after taking care of your mental health?
-              </p>
-              
-              <div className="flex space-x-4">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="text-6xl mb-4"
+                >
+                  🏆
+                </motion.div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                  Congratulations!
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  You've completed all your daily wellness goals! Your dedication to mental health is inspiring. 
+                  Keep up the amazing work! 🌟
+                </p>
+                <div className="flex items-center justify-center space-x-2 mb-6">
+                  <PartyPopper className="text-yellow-500" size={20} />
+                  <span className="text-lg font-semibold text-green-600">
+                    +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Wellness Points!
+                  </span>
+                  <Star className="text-yellow-500" size={20} />
+                </div>
                 <Button
                   variant="primary"
-                  fullWidth
-                  onClick={() => handleFeelBetterResponse(true)}
-                  leftIcon={<ThumbsUp size={20} />}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                  onClick={handleCongratsClose}
+                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                 >
-                  Yes, I feel better! 😊
+                  Continue Your Journey
                 </Button>
-                <Button
-                  variant="outline"
-                  fullWidth
-                  onClick={() => handleFeelBetterResponse(false)}
-                  leftIcon={<ThumbsDown size={20} />}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Not quite yet 🤔
-                </Button>
-              </div>
-              
-              <p className="text-xs text-gray-500 mt-4">
-                Your response helps us better understand your wellness journey
-              </p>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          )}
+        </AnimatePresence>
+
+        {/* Feel Better Popup */}
+        <AnimatePresence>
+          {showFeelBetterPopup && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.8, opacity: 0, y: 20 }}
+                className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
+                onClick={e => e.stopPropagation()}
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="text-6xl mb-4"
+                >
+                  🤗
+                </motion.div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                  Do you feel better now?
+                </h2>
+                <p className="text-gray-600 mb-8">
+                  You've completed all your wellness goals today! 
+                  How are you feeling after taking care of your mental health?
+                </p>
+                
+                <div className="flex space-x-4">
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={() => handleFeelBetterResponse(true)}
+                    leftIcon={<ThumbsUp size={20} />}
+                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                  >
+                    Yes, I feel better! 😊
+                  </Button>
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={() => handleFeelBetterResponse(false)}
+                    leftIcon={<ThumbsDown size={20} />}
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    Not quite yet 🤔
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-4">
+                  Your response helps us better understand your wellness journey
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
