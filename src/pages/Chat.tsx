@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   MessageCircle,
   Sparkles,
+  Download,
+  VolumeX,
 } from "lucide-react";
 import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -62,6 +64,10 @@ const Chat = () => {
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
+  const [audioDurations, setAudioDurations] = useState<{ [key: string]: number }>({});
+  const [audioVolume, setAudioVolume] = useState(0.8);
+  const [isMuted, setIsMuted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
@@ -174,28 +180,127 @@ const Chat = () => {
     }
   };
 
+  // Enhanced audio playback with progress tracking
   const handlePlayAudio = (messageId: string, audioUrl: string) => {
-    Object.values(audioRefs.current).forEach(audio => {
-      if (!audio.paused) {
+    console.log('🎵 Playing audio for message:', messageId, 'URL:', audioUrl);
+    
+    // Stop all other audio first
+    Object.entries(audioRefs.current).forEach(([id, audio]) => {
+      if (id !== messageId && !audio.paused) {
         audio.pause();
         audio.currentTime = 0;
+        setAudioProgress(prev => ({ ...prev, [id]: 0 }));
       }
     });
 
+    // If this audio is already playing, pause it
     if (playingAudio === messageId) {
-      setPlayingAudio(null);
+      const audio = audioRefs.current[messageId];
+      if (audio) {
+        audio.pause();
+        setPlayingAudio(null);
+      }
       return;
     }
 
+    // Create or get audio element
     if (!audioRefs.current[messageId]) {
-      audioRefs.current[messageId] = new Audio(audioUrl);
-      audioRefs.current[messageId].onended = () => {
+      const audio = new Audio(audioUrl);
+      audio.volume = isMuted ? 0 : audioVolume;
+      audio.preload = 'metadata';
+      
+      // Set up event listeners
+      audio.onloadedmetadata = () => {
+        console.log('Audio metadata loaded, duration:', audio.duration);
+        setAudioDurations(prev => ({ ...prev, [messageId]: audio.duration }));
+      };
+
+      audio.ontimeupdate = () => {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        setAudioProgress(prev => ({ ...prev, [messageId]: progress }));
+      };
+
+      audio.onended = () => {
+        console.log('Audio playback ended for message:', messageId);
+        setPlayingAudio(null);
+        setAudioProgress(prev => ({ ...prev, [messageId]: 0 }));
+      };
+
+      audio.onerror = (e) => {
+        console.error('Audio playback error for message:', messageId, e);
+        toast.error('Failed to play voice message');
         setPlayingAudio(null);
       };
+
+      audio.oncanplay = () => {
+        console.log('Audio can play for message:', messageId);
+      };
+
+      audioRefs.current[messageId] = audio;
     }
 
-    audioRefs.current[messageId].play();
-    setPlayingAudio(messageId);
+    const audio = audioRefs.current[messageId];
+    
+    // Update volume
+    audio.volume = isMuted ? 0 : audioVolume;
+    
+    // Play audio
+    audio.play()
+      .then(() => {
+        console.log('Audio playback started successfully for message:', messageId);
+        setPlayingAudio(messageId);
+      })
+      .catch((error) => {
+        console.error('Failed to play audio for message:', messageId, error);
+        toast.error('Failed to play voice message. The audio file may be corrupted or unavailable.');
+        setPlayingAudio(null);
+      });
+  };
+
+  // Handle audio progress click (seek)
+  const handleProgressClick = (messageId: string, event: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRefs.current[messageId];
+    if (!audio || !audioDurations[messageId]) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * audioDurations[messageId];
+    
+    audio.currentTime = newTime;
+    setAudioProgress(prev => ({ ...prev, [messageId]: percentage * 100 }));
+  };
+
+  // Download audio file
+  const handleDownloadAudio = (audioUrl: string, messageId: string) => {
+    try {
+      const link = document.createElement('a');
+      link.href = audioUrl;
+      link.download = `voice-message-${messageId}.wav`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Voice message download started');
+    } catch (error) {
+      console.error('Failed to download audio:', error);
+      toast.error('Failed to download voice message');
+    }
+  };
+
+  // Volume control
+  const handleVolumeChange = (newVolume: number) => {
+    setAudioVolume(newVolume);
+    Object.values(audioRefs.current).forEach(audio => {
+      audio.volume = isMuted ? 0 : newVolume;
+    });
+  };
+
+  const toggleMute = () => {
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    Object.values(audioRefs.current).forEach(audio => {
+      audio.volume = newMuted ? 0 : audioVolume;
+    });
   };
 
   const getSentimentColor = (sentiment?: string) => {
@@ -557,44 +662,102 @@ const Chat = () => {
                           }`}
                         >
                           {message.isVoiceMessage ? (
-                            // Voice Message UI
-                            <div className="flex items-center space-x-3">
-                              <button
-                                onClick={() => handlePlayAudio(message.id, message.audioUrl!)}
-                                className={`p-2 rounded-full transition-colors ${
-                                  message.role === "user"
-                                    ? "bg-lavender-400 hover:bg-lavender-300 text-white"
-                                    : "bg-sage-100 hover:bg-sage-200 text-sage-600"
-                                }`}
-                              >
-                                {playingAudio === message.id ? (
-                                  <Pause size={16} />
-                                ) : (
-                                  <Play size={16} />
-                                )}
-                              </button>
-                              <div className="flex items-center space-x-2 min-w-0">
-                                <Volume2 size={16} className={`flex-shrink-0 ${message.role === "user" ? "text-white" : "text-gray-500"}`} />
-                                <div className="flex space-x-1">
-                                  {[...Array(10)].map((_, i) => (
-                                    <div
-                                      key={i}
-                                      className={`w-1 rounded-full ${
-                                        message.role === "user" ? "bg-white" : "bg-gray-300"
-                                      }`}
-                                      style={{
-                                        height: `${Math.random() * 16 + 8}px`,
-                                        animation: playingAudio === message.id ? `pulse 1s infinite ${i * 0.1}s` : 'none'
-                                      }}
-                                    />
-                                  ))}
+                            // Enhanced Voice Message UI with full controls
+                            <div className="space-y-3">
+                              {/* Voice message header */}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <Volume2 size={16} className={`${message.role === "user" ? "text-white" : "text-gray-500"}`} />
+                                  <span className={`text-sm font-medium ${message.role === "user" ? "text-white" : "text-gray-700"}`}>
+                                    Voice Message
+                                  </span>
                                 </div>
-                                <span className={`text-sm ${
-                                  message.role === "user" ? "text-white" : "text-gray-500"
-                                }`}>
-                                  {formatDuration(message.audioDuration || 0)}
-                                </span>
+                                <div className="flex items-center space-x-2">
+                                  {message.audioUrl && (
+                                    <button
+                                      onClick={() => handleDownloadAudio(message.audioUrl!, message.id)}
+                                      className={`p-1 rounded transition-colors ${
+                                        message.role === "user"
+                                          ? "hover:bg-lavender-400 text-white"
+                                          : "hover:bg-gray-100 text-gray-500"
+                                      }`}
+                                      title="Download voice message"
+                                    >
+                                      <Download size={14} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
+
+                              {/* Audio controls */}
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={() => handlePlayAudio(message.id, message.audioUrl!)}
+                                  disabled={!message.audioUrl}
+                                  className={`p-2 rounded-full transition-colors ${
+                                    message.role === "user"
+                                      ? "bg-lavender-400 hover:bg-lavender-300 text-white"
+                                      : "bg-sage-100 hover:bg-sage-200 text-sage-600"
+                                  } ${!message.audioUrl ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                  {playingAudio === message.id ? (
+                                    <Pause size={16} />
+                                  ) : (
+                                    <Play size={16} />
+                                  )}
+                                </button>
+
+                                {/* Progress bar */}
+                                <div className="flex-1 space-y-1">
+                                  <div 
+                                    className={`h-2 rounded-full cursor-pointer ${
+                                      message.role === "user" ? "bg-lavender-300" : "bg-gray-200"
+                                    }`}
+                                    onClick={(e) => handleProgressClick(message.id, e)}
+                                  >
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-150 ${
+                                        message.role === "user" ? "bg-white" : "bg-sage-500"
+                                      }`}
+                                      style={{ width: `${audioProgress[message.id] || 0}%` }}
+                                    />
+                                  </div>
+                                  
+                                  {/* Time display */}
+                                  <div className="flex justify-between text-xs">
+                                    <span className={message.role === "user" ? "text-white/80" : "text-gray-500"}>
+                                      {playingAudio === message.id && audioRefs.current[message.id] 
+                                        ? formatDuration(Math.floor(audioRefs.current[message.id].currentTime))
+                                        : "0:00"
+                                      }
+                                    </span>
+                                    <span className={message.role === "user" ? "text-white/80" : "text-gray-500"}>
+                                      {formatDuration(audioDurations[message.id] || message.audioDuration || 0)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Transcript (if available) */}
+                              {message.content && (
+                                <div className={`text-sm p-2 rounded ${
+                                  message.role === "user" 
+                                    ? "bg-lavender-400/30 text-white/90" 
+                                    : "bg-gray-50 text-gray-700"
+                                }`}>
+                                  <div className="text-xs opacity-75 mb-1">Transcript:</div>
+                                  <div className="italic">"{message.content}"</div>
+                                </div>
+                              )}
+
+                              {/* Audio status indicator */}
+                              {!message.audioUrl && (
+                                <div className={`text-xs italic ${
+                                  message.role === "user" ? "text-white/70" : "text-gray-500"
+                                }`}>
+                                  Audio unavailable
+                                </div>
+                              )}
                             </div>
                           ) : (
                             // Regular Text Message with Enhanced Formatting
@@ -676,6 +839,30 @@ const Chat = () => {
         {/* Enhanced Input Area */}
         <div className="bg-white/90 backdrop-blur-sm border-t border-gray-200 p-4">
           <div className="max-w-4xl mx-auto">
+            {/* Volume Control (when voice messages are present) */}
+            {messages.some(m => m.isVoiceMessage) && (
+              <div className="flex items-center justify-center space-x-4 mb-3 p-2 bg-gray-50 rounded-lg">
+                <button
+                  onClick={toggleMute}
+                  className="p-1 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={isMuted ? 0 : audioVolume}
+                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                  className="w-24 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+                />
+                <span className="text-xs text-gray-500 w-8">
+                  {Math.round((isMuted ? 0 : audioVolume) * 100)}%
+                </span>
+              </div>
+            )}
+
             <form
               onSubmit={handleSendMessage}
               className="flex items-end space-x-3"
