@@ -29,6 +29,9 @@ import {
   BarChart3,
   ArrowRight,
   Sparkles,
+  CheckCircle,
+  Circle,
+  Lightbulb,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -158,6 +161,112 @@ const Dashboard = () => {
   const hasSharedMood = dashboardData.lastMessage && 
     dashboardData.lastMessage.trim() !== '' &&
     !dashboardData.moodInterpretation.includes('Welcome to PureMind AI');
+
+  // Generate AI wellness recommendations based on mood and sentiment
+  const getAIWellnessRecommendations = () => {
+    const recommendations = [];
+    
+    // Base recommendations that are always relevant
+    const baseGoals = [
+      { id: 'daily-chat', text: 'Daily wellness chat', completed: hasSharedMood, type: 'base' },
+      { id: 'mood-tracking', text: 'Mood tracking', completed: hasSharedMood, type: 'base' },
+      { id: 'emotional-checkin', text: 'Emotional check-in', completed: hasSharedMood, type: 'base' },
+    ];
+
+    // AI-generated recommendations based on current mood and sentiment
+    const aiRecommendations = [];
+    
+    if (hasSharedMood) {
+      const moodName = dashboardData.moodName.toLowerCase();
+      const sentiment = dashboardData.sentiment.toLowerCase();
+      const wellnessScore = dashboardData.wellnessScore;
+      
+      // Mood-specific recommendations
+      switch (moodName) {
+        case 'anxious':
+          aiRecommendations.push(
+            { id: 'breathing', text: '• Practice 5-minute breathing exercise', completed: false, type: 'ai', priority: 'high' },
+            { id: 'grounding', text: '• Try 5-4-3-2-1 grounding technique', completed: false, type: 'ai', priority: 'medium' }
+          );
+          break;
+        case 'sad':
+          aiRecommendations.push(
+            { id: 'gratitude', text: '• Write 3 things you\'re grateful for', completed: false, type: 'ai', priority: 'high' },
+            { id: 'movement', text: '• Take a 10-minute walk outside', completed: false, type: 'ai', priority: 'medium' }
+          );
+          break;
+        case 'angry':
+          aiRecommendations.push(
+            { id: 'cooldown', text: '• Take 10 deep breaths to cool down', completed: false, type: 'ai', priority: 'high' },
+            { id: 'journal-anger', text: '• Journal about what triggered this feeling', completed: false, type: 'ai', priority: 'medium' }
+          );
+          break;
+        case 'tired':
+          aiRecommendations.push(
+            { id: 'rest', text: '• Schedule 15-minute power nap', completed: false, type: 'ai', priority: 'high' },
+            { id: 'hydration', text: '• Drink a glass of water', completed: false, type: 'ai', priority: 'medium' }
+          );
+          break;
+        case 'excited':
+          aiRecommendations.push(
+            { id: 'channel-energy', text: '• Channel energy into a creative activity', completed: false, type: 'ai', priority: 'medium' },
+            { id: 'share-joy', text: '• Share your excitement with someone', completed: false, type: 'ai', priority: 'low' }
+          );
+          break;
+        case 'happy':
+          aiRecommendations.push(
+            { id: 'savor-moment', text: '• Take a moment to savor this feeling', completed: false, type: 'ai', priority: 'medium' },
+            { id: 'spread-positivity', text: '• Do something kind for someone else', completed: false, type: 'ai', priority: 'low' }
+          );
+          break;
+        case 'calm':
+          aiRecommendations.push(
+            { id: 'meditation', text: '• Extend this calm with 10-minute meditation', completed: false, type: 'ai', priority: 'medium' },
+            { id: 'reflection', text: '• Reflect on what brought this peace', completed: false, type: 'ai', priority: 'low' }
+          );
+          break;
+        default:
+          aiRecommendations.push(
+            { id: 'mindfulness', text: '• Practice 5-minute mindfulness', completed: false, type: 'ai', priority: 'medium' }
+          );
+      }
+
+      // Wellness score-based recommendations
+      if (wellnessScore < 40) {
+        aiRecommendations.push(
+          { id: 'self-care', text: '• Prioritize one self-care activity today', completed: false, type: 'ai', priority: 'high' }
+        );
+      } else if (wellnessScore > 80) {
+        aiRecommendations.push(
+          { id: 'maintain', text: '• Keep up the great wellness habits!', completed: false, type: 'ai', priority: 'low' }
+        );
+      }
+
+      // Sentiment-based recommendations
+      if (sentiment === 'negative') {
+        aiRecommendations.push(
+          { id: 'support', text: '• Reach out to a friend or family member', completed: false, type: 'ai', priority: 'medium' }
+        );
+      }
+    } else {
+      // Recommendations for users who haven't shared mood yet
+      aiRecommendations.push(
+        { id: 'start-journey', text: '• Share your current mood to get started', completed: false, type: 'ai', priority: 'high' },
+        { id: 'explore', text: '• Explore the daily chat feature', completed: false, type: 'ai', priority: 'medium' }
+      );
+    }
+
+    // Always add some general wellness goals
+    const generalGoals = [
+      { id: 'evening-reflection', text: 'Evening reflection', completed: false, type: 'general' },
+      { id: 'gratitude-practice', text: 'Gratitude practice', completed: false, type: 'general' }
+    ];
+
+    return [...baseGoals, ...aiRecommendations.slice(0, 2), ...generalGoals]; // Limit AI recommendations to 2
+  };
+
+  const dailyGoals = getAIWellnessRecommendations();
+  const completedGoals = dailyGoals.filter(goal => goal.completed).length;
 
   if (dashboardLoading) {
     return (
@@ -387,7 +496,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Daily Goals */}
+          {/* AI-Enhanced Daily Goals */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -396,31 +505,71 @@ const Dashboard = () => {
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
-                  <span className="text-sm text-gray-500">{hasSharedMood ? '3/5' : '2/5'} completed</span>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
+                    {hasSharedMood && (
+                      <div className="flex items-center space-x-1">
+                        <Lightbulb size={14} className="text-yellow-500" />
+                        <span className="text-xs text-yellow-600 font-medium">AI-Enhanced</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-sm text-gray-500">{completedGoals}/{dailyGoals.length} completed</span>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">Daily wellness chat</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" checked={hasSharedMood} readOnly />
-                    <span className={`ml-3 ${hasSharedMood ? 'text-gray-700' : 'text-gray-400'}`}>Mood tracking</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" checked={hasSharedMood} readOnly />
-                    <span className={`ml-3 ${hasSharedMood ? 'text-gray-700' : 'text-gray-400'}`}>Emotional check-in</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" />
-                    <span className="ml-3 text-gray-700">Evening reflection</span>
-                  </div>
-                  <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" />
-                    <span className="ml-3 text-gray-700">Gratitude practice</span>
-                  </div>
+                
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {dailyGoals.map((goal, index) => (
+                    <motion.div
+                      key={goal.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.1 }}
+                      className={`flex items-start space-x-3 p-2 rounded-lg transition-colors ${
+                        goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
+                        goal.completed ? 'bg-green-50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-shrink-0 mt-0.5">
+                        {goal.completed ? (
+                          <CheckCircle size={18} className="text-green-600" />
+                        ) : (
+                          <Circle size={18} className={`${
+                            goal.type === 'ai' ? 'text-blue-500' : 'text-gray-400'
+                          }`} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-sm ${
+                          goal.completed ? 'text-green-700 line-through' : 
+                          goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
+                        }`}>
+                          {goal.text}
+                        </span>
+                        {goal.type === 'ai' && goal.priority === 'high' && (
+                          <div className="flex items-center mt-1">
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              High Priority
+                            </span>
+                          </div>
+                        )}
+                        {goal.type === 'ai' && !goal.completed && (
+                          <div className="text-xs text-blue-600 mt-1 italic">
+                            AI recommendation based on your {dashboardData.moodName} mood
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
+
+                {hasSharedMood && (
+                  <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center text-blue-700 text-sm">
+                      <Lightbulb size={16} className="mr-2 text-yellow-500" />
+                      <span className="font-medium">AI recommendations update based on your mood and wellness patterns!</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
           </motion.div>
