@@ -335,10 +335,52 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
     [messages, onMoodUpdate],
   );
 
+  const deleteChatHistory = useCallback(async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("User not authenticated");
+
+      console.log('=== DELETING CHAT HISTORY ===');
+      console.log('User ID:', user.id);
+
+      // Delete all chat history for this user
+      const { error: deleteError } = await supabase
+        .from("dappier_chat_history")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteError) throw deleteError;
+
+      // Clear local messages and show welcome message
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content:
+            "Welcome back to your daily wellness chat! 🌟 Your chat history has been cleared, and we're starting fresh. I'm here to support your mental health journey. Share how you're feeling today, any thoughts on your mind, or simply check in with your emotional state. How are you doing today?",
+          timestamp: new Date(),
+        },
+      ]);
+
+      console.log('Chat history deleted successfully');
+      toast.success('Chat history cleared successfully! Starting fresh.');
+
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error
+        ? error.message
+        : "Failed to delete chat history";
+      console.error('Error deleting chat history:', error);
+      toast.error(errorMsg);
+      throw error;
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
     sendMessage,
     sendVoiceMessage,
+    deleteChatHistory,
   };
 };

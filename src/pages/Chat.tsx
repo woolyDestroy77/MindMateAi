@@ -18,6 +18,9 @@ import {
   Activity,
   Heart,
   Clock,
+  Trash2,
+  MoreVertical,
+  AlertTriangle,
 } from "lucide-react";
 import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -33,7 +36,7 @@ const Chat = () => {
   // Use a fixed session ID for the single daily chat
   const DAILY_CHAT_SESSION = "daily-health-chat";
   
-  const { messages, isLoading, sendMessage, sendVoiceMessage } = useAIChat(
+  const { messages, isLoading, sendMessage, sendVoiceMessage, deleteChatHistory } = useAIChat(
     DAILY_CHAT_SESSION,
     updateMoodFromAI
   );
@@ -56,6 +59,8 @@ const Chat = () => {
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
@@ -134,6 +139,16 @@ const Chat = () => {
       } catch (error) {
         console.error("Failed to send voice message:", error);
       }
+    }
+  };
+
+  const handleDeleteChatHistory = async () => {
+    try {
+      await deleteChatHistory();
+      setShowDeleteConfirm(false);
+      setShowOptionsMenu(false);
+    } catch (error) {
+      console.error("Failed to delete chat history:", error);
     }
   };
 
@@ -250,6 +265,38 @@ const Chat = () => {
                   <span className="text-sm font-medium text-sage-800 capitalize">
                     {dashboardData.moodName}
                   </span>
+                </div>
+
+                {/* Options Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <MoreVertical size={18} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showOptionsMenu && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        className="absolute right-0 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 min-w-[180px]"
+                      >
+                        <button
+                          onClick={() => {
+                            setShowDeleteConfirm(true);
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
+                        >
+                          <Trash2 size={14} className="mr-2" />
+                          Clear Chat History
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
@@ -594,6 +641,61 @@ const Chat = () => {
           </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 mx-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Clear Chat History?
+                </h3>
+                
+                <p className="text-sm text-gray-600 mb-6">
+                  This will permanently delete all your chat messages and conversation history. 
+                  Your mood data and wellness scores will be preserved. This action cannot be undone.
+                </p>
+                
+                <div className="flex space-x-3">
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={handleDeleteChatHistory}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    leftIcon={<Trash2 size={16} />}
+                  >
+                    Clear History
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Voice Recording Modal */}
       <AnimatePresence>
