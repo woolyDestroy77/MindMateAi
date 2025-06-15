@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -86,11 +85,11 @@ const Chat = () => {
 
     if (messages.length === 0) {
       setShowWelcomeMessage(true);
-      // Set timer to hide welcome message after 5 seconds
+      // Set timer to hide welcome message after 3 seconds (shorter)
       welcomeTimerRef.current = setTimeout(() => {
         setShowWelcomeMessage(false);
         welcomeTimerRef.current = null;
-      }, 5000);
+      }, 3000);
     } else {
       // If there are messages, hide welcome message immediately
       setShowWelcomeMessage(false);
@@ -278,7 +277,7 @@ const Chat = () => {
                   <div className="min-w-0">
                     <div className="font-semibold text-sm">Welcome to Your Daily Wellness Chat</div>
                     <div className="text-xs text-lavender-700 mt-1">
-                      This is your personal space to track emotions, share thoughts, and monitor your mental wellness journey. Every message helps build your wellness profile!
+                      Share your feelings and thoughts to track your mental wellness journey automatically!
                     </div>
                   </div>
                 </div>
