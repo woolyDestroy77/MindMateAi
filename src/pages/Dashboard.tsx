@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -32,12 +32,16 @@ import {
   CheckCircle,
   Circle,
   Lightbulb,
+  PartyPopper,
+  Star,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { supabase } from '../lib/supabase';
 
 ChartJS.register(
   CategoryScale,
@@ -100,8 +104,20 @@ const chartOptions = {
   },
 };
 
+interface DailyGoal {
+  id: string;
+  text: string;
+  completed: boolean;
+  type: 'base' | 'ai' | 'general';
+  priority?: 'high' | 'medium' | 'low';
+  pointsValue: number;
+}
+
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
+  const [completedGoals, setCompletedGoals] = useState<string[]>([]);
+  const [showCongrats, setShowCongrats] = useState(false);
+  const [isUpdatingWellness, setIsUpdatingWellness] = useState(false);
   
   // Force re-render when dashboard data changes
   useEffect(() => {
@@ -162,111 +178,208 @@ const Dashboard = () => {
     dashboardData.lastMessage.trim() !== '' &&
     !dashboardData.moodInterpretation.includes('Welcome to PureMind AI');
 
-  // Generate AI wellness recommendations based on mood and sentiment
-  const getAIWellnessRecommendations = () => {
-    const recommendations = [];
+  // Extract AI recommendations from the last AI response
+  const extractAIRecommendations = () => {
+    if (!dashboardData.aiResponse) return [];
     
-    // Base recommendations that are always relevant
-    const baseGoals = [
-      { id: 'daily-chat', text: 'Daily wellness chat', completed: hasSharedMood, type: 'base' },
-      { id: 'mood-tracking', text: 'Mood tracking', completed: hasSharedMood, type: 'base' },
-      { id: 'emotional-checkin', text: 'Emotional check-in', completed: hasSharedMood, type: 'base' },
-    ];
-
-    // AI-generated recommendations based on current mood and sentiment
-    const aiRecommendations = [];
+    const response = dashboardData.aiResponse;
+    const recommendations: DailyGoal[] = [];
     
-    if (hasSharedMood) {
-      const moodName = dashboardData.moodName.toLowerCase();
-      const sentiment = dashboardData.sentiment.toLowerCase();
-      const wellnessScore = dashboardData.wellnessScore;
-      
-      // Mood-specific recommendations
-      switch (moodName) {
-        case 'anxious':
-          aiRecommendations.push(
-            { id: 'breathing', text: '• Practice 5-minute breathing exercise', completed: false, type: 'ai', priority: 'high' },
-            { id: 'grounding', text: '• Try 5-4-3-2-1 grounding technique', completed: false, type: 'ai', priority: 'medium' }
-          );
-          break;
-        case 'sad':
-          aiRecommendations.push(
-            { id: 'gratitude', text: '• Write 3 things you\'re grateful for', completed: false, type: 'ai', priority: 'high' },
-            { id: 'movement', text: '• Take a 10-minute walk outside', completed: false, type: 'ai', priority: 'medium' }
-          );
-          break;
-        case 'angry':
-          aiRecommendations.push(
-            { id: 'cooldown', text: '• Take 10 deep breaths to cool down', completed: false, type: 'ai', priority: 'high' },
-            { id: 'journal-anger', text: '• Journal about what triggered this feeling', completed: false, type: 'ai', priority: 'medium' }
-          );
-          break;
-        case 'tired':
-          aiRecommendations.push(
-            { id: 'rest', text: '• Schedule 15-minute power nap', completed: false, type: 'ai', priority: 'high' },
-            { id: 'hydration', text: '• Drink a glass of water', completed: false, type: 'ai', priority: 'medium' }
-          );
-          break;
-        case 'excited':
-          aiRecommendations.push(
-            { id: 'channel-energy', text: '• Channel energy into a creative activity', completed: false, type: 'ai', priority: 'medium' },
-            { id: 'share-joy', text: '• Share your excitement with someone', completed: false, type: 'ai', priority: 'low' }
-          );
-          break;
-        case 'happy':
-          aiRecommendations.push(
-            { id: 'savor-moment', text: '• Take a moment to savor this feeling', completed: false, type: 'ai', priority: 'medium' },
-            { id: 'spread-positivity', text: '• Do something kind for someone else', completed: false, type: 'ai', priority: 'low' }
-          );
-          break;
-        case 'calm':
-          aiRecommendations.push(
-            { id: 'meditation', text: '• Extend this calm with 10-minute meditation', completed: false, type: 'ai', priority: 'medium' },
-            { id: 'reflection', text: '• Reflect on what brought this peace', completed: false, type: 'ai', priority: 'low' }
-          );
-          break;
-        default:
-          aiRecommendations.push(
-            { id: 'mindfulness', text: '• Practice 5-minute mindfulness', completed: false, type: 'ai', priority: 'medium' }
-          );
+    // Look for bullet points or numbered lists in the AI response
+    const bulletRegex = /[-•*]\s*(.+?)(?=\n|$)/g;
+    const numberedRegex = /\d+\.\s*(.+?)(?=\n|$)/g;
+    
+    let match;
+    let id = 1;
+    
+    // Extract bullet points
+    while ((match = bulletRegex.exec(response)) !== null) {
+      const text = match[1].trim();
+      if (text.length > 10) { // Only meaningful recommendations
+        recommendations.push({
+          id: `ai-${id++}`,
+          text: text,
+          completed: false,
+          type: 'ai',
+          priority: 'medium',
+          pointsValue: 5
+        });
       }
-
-      // Wellness score-based recommendations
-      if (wellnessScore < 40) {
-        aiRecommendations.push(
-          { id: 'self-care', text: '• Prioritize one self-care activity today', completed: false, type: 'ai', priority: 'high' }
-        );
-      } else if (wellnessScore > 80) {
-        aiRecommendations.push(
-          { id: 'maintain', text: '• Keep up the great wellness habits!', completed: false, type: 'ai', priority: 'low' }
-        );
-      }
-
-      // Sentiment-based recommendations
-      if (sentiment === 'negative') {
-        aiRecommendations.push(
-          { id: 'support', text: '• Reach out to a friend or family member', completed: false, type: 'ai', priority: 'medium' }
-        );
-      }
-    } else {
-      // Recommendations for users who haven't shared mood yet
-      aiRecommendations.push(
-        { id: 'start-journey', text: '• Share your current mood to get started', completed: false, type: 'ai', priority: 'high' },
-        { id: 'explore', text: '• Explore the daily chat feature', completed: false, type: 'ai', priority: 'medium' }
-      );
     }
-
-    // Always add some general wellness goals
-    const generalGoals = [
-      { id: 'evening-reflection', text: 'Evening reflection', completed: false, type: 'general' },
-      { id: 'gratitude-practice', text: 'Gratitude practice', completed: false, type: 'general' }
-    ];
-
-    return [...baseGoals, ...aiRecommendations.slice(0, 2), ...generalGoals]; // Limit AI recommendations to 2
+    
+    // Extract numbered lists if no bullet points found
+    if (recommendations.length === 0) {
+      while ((match = numberedRegex.exec(response)) !== null) {
+        const text = match[1].trim();
+        if (text.length > 10) {
+          recommendations.push({
+            id: `ai-${id++}`,
+            text: text,
+            completed: false,
+            type: 'ai',
+            priority: 'medium',
+            pointsValue: 5
+          });
+        }
+      }
+    }
+    
+    return recommendations.slice(0, 3); // Limit to 3 AI recommendations
   };
 
-  const dailyGoals = getAIWellnessRecommendations();
-  const completedGoals = dailyGoals.filter(goal => goal.completed).length;
+  // Generate daily goals based on mood and AI recommendations
+  const getDailyGoals = (): DailyGoal[] => {
+    const goals: DailyGoal[] = [];
+    
+    // Base goals that are always present
+    const baseGoals: DailyGoal[] = [
+      { 
+        id: 'daily-chat', 
+        text: 'Complete daily wellness chat', 
+        completed: hasSharedMood, 
+        type: 'base',
+        pointsValue: 10
+      },
+      { 
+        id: 'mood-tracking', 
+        text: 'Track your current mood', 
+        completed: hasSharedMood, 
+        type: 'base',
+        pointsValue: 8
+      },
+      { 
+        id: 'emotional-checkin', 
+        text: 'Share your emotional state', 
+        completed: hasSharedMood, 
+        type: 'base',
+        pointsValue: 7
+      },
+    ];
+
+    goals.push(...baseGoals);
+
+    // Add AI-generated recommendations from the last chat
+    if (hasSharedMood) {
+      const aiRecommendations = extractAIRecommendations();
+      goals.push(...aiRecommendations);
+    }
+
+    // Add some general wellness goals
+    const generalGoals: DailyGoal[] = [
+      { 
+        id: 'evening-reflection', 
+        text: 'Evening reflection practice', 
+        completed: false, 
+        type: 'general',
+        pointsValue: 6
+      },
+      { 
+        id: 'gratitude-practice', 
+        text: 'Write down 3 things you\'re grateful for', 
+        completed: false, 
+        type: 'general',
+        pointsValue: 5
+      }
+    ];
+
+    goals.push(...generalGoals);
+
+    // Mark completed goals based on state
+    return goals.map(goal => ({
+      ...goal,
+      completed: completedGoals.includes(goal.id) || goal.completed
+    }));
+  };
+
+  const dailyGoals = getDailyGoals();
+  const completedGoalsCount = dailyGoals.filter(goal => goal.completed).length;
+  const totalGoals = dailyGoals.length;
+  const allGoalsCompleted = completedGoalsCount === totalGoals && totalGoals > 0;
+
+  // Handle goal completion
+  const handleGoalToggle = async (goalId: string) => {
+    if (isUpdatingWellness) return;
+
+    const goal = dailyGoals.find(g => g.id === goalId);
+    if (!goal || goal.type === 'base') return; // Can't toggle base goals
+
+    const isCompleting = !completedGoals.includes(goalId);
+    
+    try {
+      setIsUpdatingWellness(true);
+      
+      if (isCompleting) {
+        // Mark goal as completed
+        setCompletedGoals(prev => [...prev, goalId]);
+        
+        // Update wellness score
+        await updateWellnessScore(goal.pointsValue);
+        
+        toast.success(`✅ Goal completed! +${goal.pointsValue} wellness points`, {
+          icon: '🎯',
+          duration: 3000,
+        });
+
+        // Check if all goals are now completed
+        const newCompletedCount = completedGoals.length + 1;
+        if (newCompletedCount === totalGoals) {
+          setTimeout(() => {
+            setShowCongrats(true);
+            toast.success('🎉 All daily goals completed! Amazing work!', {
+              duration: 5000,
+              icon: '🏆',
+            });
+          }, 500);
+        }
+      } else {
+        // Mark goal as incomplete
+        setCompletedGoals(prev => prev.filter(id => id !== goalId));
+        
+        // Decrease wellness score
+        await updateWellnessScore(-Math.floor(goal.pointsValue / 2));
+        
+        toast.success(`Goal unmarked. -${Math.floor(goal.pointsValue / 2)} wellness points`, {
+          icon: '↩️',
+          duration: 2000,
+        });
+      }
+    } catch (error) {
+      console.error('Error updating goal:', error);
+      toast.error('Failed to update goal');
+    } finally {
+      setIsUpdatingWellness(false);
+    }
+  };
+
+  // Update wellness score in database
+  const updateWellnessScore = async (points: number) => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
+
+      const newScore = Math.max(10, Math.min(100, dashboardData.wellnessScore + points));
+      
+      const { error: updateError } = await supabase
+        .from('user_mood_data')
+        .update({ 
+          wellness_score: newScore,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Refresh dashboard data to show updated score
+      setTimeout(() => {
+        refreshDashboardData();
+      }, 500);
+
+    } catch (error) {
+      console.error('Error updating wellness score:', error);
+      throw error;
+    }
+  };
 
   if (dashboardLoading) {
     return (
@@ -296,6 +409,53 @@ const Dashboard = () => {
             Track your daily emotional wellness journey with AI-powered insights from your continuous chat conversations.
           </p>
         </div>
+
+        {/* Congratulations Modal */}
+        {showCongrats && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowCongrats(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="text-6xl mb-4"
+              >
+                🏆
+              </motion.div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                Congratulations!
+              </h2>
+              <p className="text-gray-600 mb-6">
+                You've completed all your daily wellness goals! Your dedication to mental health is inspiring. 
+                Keep up the amazing work! 🌟
+              </p>
+              <div className="flex items-center justify-center space-x-2 mb-6">
+                <PartyPopper className="text-yellow-500" size={20} />
+                <span className="text-lg font-semibold text-green-600">
+                  +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Wellness Points!
+                </span>
+                <Star className="text-yellow-500" size={20} />
+              </div>
+              <Button
+                variant="primary"
+                onClick={() => setShowCongrats(false)}
+                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+              >
+                Continue Your Journey
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
@@ -496,7 +656,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* AI-Enhanced Daily Goals */}
+          {/* Interactive Daily Goals */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -514,37 +674,49 @@ const Dashboard = () => {
                       </div>
                     )}
                   </div>
-                  <span className="text-sm text-gray-500">{completedGoals}/{dailyGoals.length} completed</span>
+                  <div className="text-right">
+                    <span className="text-sm text-gray-500">{completedGoalsCount}/{totalGoals} completed</span>
+                    {allGoalsCompleted && (
+                      <div className="text-xs text-green-600 font-medium">All Done! 🎉</div>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-3 max-h-80 overflow-y-auto">
                   {dailyGoals.map((goal, index) => (
                     <motion.div
                       key={goal.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.1 }}
-                      className={`flex items-start space-x-3 p-2 rounded-lg transition-colors ${
+                      className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
                         goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
-                        goal.completed ? 'bg-green-50' : 'hover:bg-gray-50'
-                      }`}
+                        goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
+                      } ${goal.type === 'base' ? 'opacity-75' : ''}`}
+                      onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
                     >
                       <div className="flex-shrink-0 mt-0.5">
                         {goal.completed ? (
-                          <CheckCircle size={18} className="text-green-600" />
+                          <CheckCircle size={20} className="text-green-600" />
                         ) : (
-                          <Circle size={18} className={`${
-                            goal.type === 'ai' ? 'text-blue-500' : 'text-gray-400'
+                          <Circle size={20} className={`${
+                            goal.type === 'ai' ? 'text-blue-500' : 
+                            goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
                           }`} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <span className={`text-sm ${
-                          goal.completed ? 'text-green-700 line-through' : 
-                          goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
-                        }`}>
-                          {goal.text}
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm ${
+                            goal.completed ? 'text-green-700 line-through' : 
+                            goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
+                          }`}>
+                            {goal.text}
+                          </span>
+                          <span className="text-xs text-gray-500 ml-2">
+                            +{goal.pointsValue}pts
+                          </span>
+                        </div>
                         {goal.type === 'ai' && goal.priority === 'high' && (
                           <div className="flex items-center mt-1">
                             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
@@ -554,7 +726,12 @@ const Dashboard = () => {
                         )}
                         {goal.type === 'ai' && !goal.completed && (
                           <div className="text-xs text-blue-600 mt-1 italic">
-                            AI recommendation based on your {dashboardData.moodName} mood
+                            AI recommendation from your chat
+                          </div>
+                        )}
+                        {goal.type === 'base' && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Completed automatically through chat
                           </div>
                         )}
                       </div>
@@ -566,7 +743,7 @@ const Dashboard = () => {
                   <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center text-blue-700 text-sm">
                       <Lightbulb size={16} className="mr-2 text-yellow-500" />
-                      <span className="font-medium">AI recommendations update based on your mood and wellness patterns!</span>
+                      <span className="font-medium">Complete goals to boost your wellness score!</span>
                     </div>
                   </div>
                 )}
