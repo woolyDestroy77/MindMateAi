@@ -21,6 +21,8 @@ import {
   Trash2,
   MoreVertical,
   AlertTriangle,
+  MessageCircle,
+  Sparkles,
 } from "lucide-react";
 import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -237,6 +239,24 @@ const Chat = () => {
     }
   };
 
+  // Quick mood prompts for easy interaction
+  const moodPrompts = [
+    { emoji: "😊", text: "I'm feeling happy today!", mood: "happy" },
+    { emoji: "😌", text: "I'm feeling calm and peaceful", mood: "calm" },
+    { emoji: "😐", text: "I'm feeling okay, nothing special", mood: "neutral" },
+    { emoji: "😕", text: "I'm feeling a bit down today", mood: "sad" },
+    { emoji: "😰", text: "I'm feeling anxious or worried", mood: "anxious" },
+    { emoji: "😠", text: "I'm feeling frustrated or angry", mood: "angry" },
+  ];
+
+  const handleQuickMoodResponse = async (prompt: { emoji: string; text: string; mood: string }) => {
+    try {
+      await sendMessage(prompt.text);
+    } catch (error) {
+      console.error("Failed to send mood prompt:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
       <Navbar />
@@ -372,7 +392,7 @@ const Chat = () => {
               </motion.div>
             )}
 
-            {/* Welcome message for first-time users */}
+            {/* Mood Prompt Section for Empty Chat */}
             {messages.length === 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -382,27 +402,59 @@ const Chat = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 max-w-2xl mx-auto">
                   <div className="text-4xl mb-4">🌟</div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-3">
-                    Welcome to Your Personal Wellness Journey
+                    Tell Us Your Mood
                   </h2>
-                  <p className="text-gray-600 mb-4">
-                    This is your dedicated space for daily emotional check-ins. Share your feelings, thoughts, and experiences. 
-                    I'll help track your mood patterns and provide personalized wellness insights.
+                  <p className="text-gray-600 mb-6">
+                    Start your wellness journey by sharing how you're feeling right now. 
+                    Your mood will be automatically tracked and analyzed to provide personalized insights.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                    <div className="text-center p-3 bg-lavender-50 rounded-lg">
-                      <TrendingUp className="w-6 h-6 text-lavender-600 mx-auto mb-2" />
-                      <div className="text-sm font-medium text-lavender-800">Mood Tracking</div>
-                      <div className="text-xs text-lavender-600">Automatic analysis</div>
+                  
+                  {/* Quick Mood Selection */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-gray-700 flex items-center justify-center">
+                      <MessageCircle size={16} className="mr-2 text-lavender-500" />
+                      Quick Mood Check-in
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {moodPrompts.map((prompt, index) => (
+                        <motion.button
+                          key={prompt.mood}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          onClick={() => handleQuickMoodResponse(prompt)}
+                          disabled={isLoading}
+                          className="flex items-center space-x-3 p-3 bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100 border border-lavender-200 rounded-lg transition-all duration-200 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed text-left"
+                        >
+                          <span className="text-2xl">{prompt.emoji}</span>
+                          <span className="text-sm text-gray-700 flex-1">{prompt.text}</span>
+                          <Sparkles size={14} className="text-lavender-500 opacity-60" />
+                        </motion.button>
+                      ))}
                     </div>
-                    <div className="text-center p-3 bg-sage-50 rounded-lg">
-                      <Heart className="w-6 h-6 text-sage-600 mx-auto mb-2" />
-                      <div className="text-sm font-medium text-sage-800">Wellness Insights</div>
-                      <div className="text-xs text-sage-600">Personalized tips</div>
-                    </div>
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <Zap className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                      <div className="text-sm font-medium text-blue-800">Daily Progress</div>
-                      <div className="text-xs text-blue-600">Continuous support</div>
+                    
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <p className="text-xs text-gray-500 mb-3">
+                        Or type your own message below to share more details about your current state
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="text-center p-3 bg-lavender-50 rounded-lg">
+                          <TrendingUp className="w-6 h-6 text-lavender-600 mx-auto mb-2" />
+                          <div className="text-sm font-medium text-lavender-800">Mood Tracking</div>
+                          <div className="text-xs text-lavender-600">Automatic analysis</div>
+                        </div>
+                        <div className="text-center p-3 bg-sage-50 rounded-lg">
+                          <Heart className="w-6 h-6 text-sage-600 mx-auto mb-2" />
+                          <div className="text-sm font-medium text-sage-800">Wellness Insights</div>
+                          <div className="text-xs text-sage-600">Personalized tips</div>
+                        </div>
+                        <div className="text-center p-3 bg-blue-50 rounded-lg">
+                          <Zap className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                          <div className="text-sm font-medium text-blue-800">Daily Progress</div>
+                          <div className="text-xs text-blue-600">Continuous support</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -605,7 +657,10 @@ const Chat = () => {
                       handleSendMessage(e);
                     }
                   }}
-                  placeholder="How are you feeling today? Share your thoughts, emotions, or any wellness updates..."
+                  placeholder={messages.length === 0 
+                    ? "How are you feeling right now? Share your current mood and thoughts..." 
+                    : "How are you feeling today? Share your thoughts, emotions, or any wellness updates..."
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none min-h-[48px] max-h-32 bg-white/80 backdrop-blur-sm"
                   rows={1}
                   disabled={isLoading}
@@ -653,7 +708,7 @@ const Chat = () => {
                 className="flex-shrink-0 rounded-xl bg-gradient-to-r from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
               >
                 <span className="hidden sm:inline">
-                  {isLoading ? "Analyzing..." : "Send & Track"}
+                  {isLoading ? "Analyzing..." : messages.length === 0 ? "Share Mood" : "Send & Track"}
                 </span>
                 <span className="sm:hidden">
                   {isLoading ? "..." : "Send"}
