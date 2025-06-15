@@ -30,9 +30,22 @@ export const useVoiceInput = () => {
       // Request microphone permission and get audio stream
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Set up audio recording
+      // Set up audio recording with widely supported format
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Determine the best supported MIME type
+      let mimeType = 'audio/webm';
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+          mimeType = 'audio/ogg';
+        } else {
+          mimeType = ''; // Let the browser choose
+        }
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
@@ -42,7 +55,9 @@ export const useVoiceInput = () => {
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        // Use the same MIME type that was used for recording
+        const finalMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
         setAudioBlob(audioBlob);
         setAudioUrl(audioUrl);
