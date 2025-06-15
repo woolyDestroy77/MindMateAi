@@ -256,6 +256,38 @@ const Chat = () => {
     }
   };
 
+  // Helper function to format AI responses with bullet points
+  const formatAIResponse = (content: string) => {
+    // Split content into lines and identify bullet points
+    const lines = content.split('\n').filter(line => line.trim());
+    const formattedLines: JSX.Element[] = [];
+    
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // Check if line starts with bullet point indicators
+      if (trimmedLine.match(/^[-•*]\s/) || trimmedLine.match(/^\d+\.\s/)) {
+        // This is a bullet point
+        const bulletContent = trimmedLine.replace(/^[-•*]\s/, '').replace(/^\d+\.\s/, '');
+        formattedLines.push(
+          <div key={index} className="flex items-start space-x-3 my-2">
+            <div className="flex-shrink-0 w-2 h-2 bg-sage-500 rounded-full mt-2"></div>
+            <span className="text-sm leading-relaxed">{bulletContent}</span>
+          </div>
+        );
+      } else {
+        // Regular text
+        formattedLines.push(
+          <p key={index} className="text-sm leading-relaxed mb-2">
+            {trimmedLine}
+          </p>
+        );
+      }
+    });
+    
+    return <div className="space-y-1">{formattedLines}</div>;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
       <Navbar />
@@ -565,16 +597,19 @@ const Chat = () => {
                               </div>
                             </div>
                           ) : (
-                            // Regular Text Message
-                            <p
-                              className={`text-sm md:text-base leading-relaxed ${
+                            // Regular Text Message with Enhanced Formatting
+                            <div
+                              className={`${
                                 message.role === "user"
                                   ? "text-white"
                                   : "text-gray-900"
                               }`}
                             >
-                              {message.content}
-                            </p>
+                              {message.role === "assistant" 
+                                ? formatAIResponse(message.content)
+                                : <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
+                              }
+                            </div>
                           )}
                           
                           <div
@@ -626,7 +661,7 @@ const Chat = () => {
                     <div className="flex items-center space-x-2">
                       <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                       <span className="text-sm text-gray-900">
-                        Analyzing your wellness and crafting a personalized response...
+                        Analyzing your wellness...
                       </span>
                     </div>
                   </div>

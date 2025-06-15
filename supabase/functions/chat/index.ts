@@ -34,14 +34,22 @@ function buildEnhancedQuery(
   message: string,
   context?: ChatContextMessage[],
 ): string {
+  // Add instruction for shorter responses
+  const responseInstruction = `
+IMPORTANT: Keep your response SHORT and conversational (2-3 sentences max). 
+Use bullet points ONLY when giving specific advice or steps.
+Be warm but concise. Focus on the main point.
+
+`;
+
   if (context && context.length > 0) {
     const contextString = context
-      .slice(-5)
+      .slice(-3) // Reduced context for shorter responses
       .map((msg) => `${msg.role}: ${msg.content}`)
       .join("\n");
-    return `Context from previous conversation:\n${contextString}\n\nCurrent question: ${message}`;
+    return `${responseInstruction}Context:\n${contextString}\n\nUser: ${message}`;
   }
-  return message;
+  return `${responseInstruction}User: ${message}`;
 }
 
 function extractResponseContent(
