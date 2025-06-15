@@ -352,19 +352,19 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
 
       if (deleteError) throw deleteError;
 
-      // Clear local messages and show welcome message
+      // Clear local messages and show "start new chat" message
       setMessages([
         {
           id: crypto.randomUUID(),
           role: "assistant",
           content:
-            "Welcome back to your daily wellness chat! 🌟 Your chat history has been cleared, and we're starting fresh. I'm here to support your mental health journey. Share how you're feeling today, any thoughts on your mind, or simply check in with your emotional state. How are you doing today?",
+            "🆕 **Start a new chat!** Your previous conversation history has been cleared. I'm ready to begin a fresh wellness journey with you. Share how you're feeling today, any thoughts on your mind, or simply tell me what's going on in your life. Every new conversation helps me better understand and support your mental wellness. What would you like to talk about?",
           timestamp: new Date(),
         },
       ]);
 
       console.log('Chat history deleted successfully');
-      toast.success('Chat history cleared successfully! Starting fresh.');
+      toast.success('Chat history cleared! Ready for a fresh start.');
 
     } catch (error: unknown) {
       const errorMsg = error instanceof Error
