@@ -27,6 +27,8 @@ import {
   Activity,
   Clock,
   BarChart3,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -152,6 +154,11 @@ const Dashboard = () => {
     }
   };
 
+  // Check if user has shared their mood yet (not default state)
+  const hasSharedMood = dashboardData.lastMessage && 
+    dashboardData.lastMessage.trim() !== '' &&
+    !dashboardData.moodInterpretation.includes('Welcome to PureMind AI');
+
   if (dashboardLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
@@ -252,7 +259,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Current Mood - AI Updated */}
+          {/* Current Mood - AI Updated or Prompt to Share */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -264,71 +271,118 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Current Mood</h2>
                   <div className="flex items-center space-x-2">
-                    <Zap size={16} className="text-lavender-500" />
-                    <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
+                    {hasSharedMood ? (
+                      <>
+                        <Zap size={16} className="text-lavender-500" />
+                        <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={16} className="text-orange-500" />
+                        <span className="text-xs text-orange-600 font-medium">Not Set</span>
+                      </>
+                    )}
                   </div>
                 </div>
-                <motion.div 
-                  className="text-6xl text-center py-4"
-                  key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
-                  initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-                >
-                  {dashboardData.currentMood}
-                </motion.div>
-                <motion.p 
-                  className="text-gray-600 text-center text-sm"
-                  key={`interpretation-${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}-${updateTrigger}`}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  {dashboardData.moodInterpretation}
-                </motion.p>
-                <div className="text-xs text-gray-500 text-center">
-                  Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
-                </div>
-                <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
-                  <Clock size={12} />
-                  <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
-                </div>
-                {dashboardData.lastMessage && (
-                  <motion.div 
-                    className="bg-gray-50 rounded-lg p-3 mt-3"
-                    key={`message-${dashboardData.lastMessage}-${updateTrigger}`}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
-                    <div className="text-sm text-gray-700 italic">
-                      "{dashboardData.lastMessage.length > 100 
-                        ? dashboardData.lastMessage.substring(0, 100) + '...' 
-                        : dashboardData.lastMessage}"
+
+                {hasSharedMood ? (
+                  // Show actual mood data
+                  <>
+                    <motion.div 
+                      className="text-6xl text-center py-4"
+                      key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
+                      initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                      animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                      transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                    >
+                      {dashboardData.currentMood}
+                    </motion.div>
+                    <motion.p 
+                      className="text-gray-600 text-center text-sm"
+                      key={`interpretation-${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}-${updateTrigger}`}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                    >
+                      {dashboardData.moodInterpretation}
+                    </motion.p>
+                    <div className="text-xs text-gray-500 text-center">
+                      Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
                     </div>
-                  </motion.div>
+                    <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
+                      <Clock size={12} />
+                      <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
+                    </div>
+                    {dashboardData.lastMessage && (
+                      <motion.div 
+                        className="bg-gray-50 rounded-lg p-3 mt-3"
+                        key={`message-${dashboardData.lastMessage}-${updateTrigger}`}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
+                        <div className="text-sm text-gray-700 italic">
+                          "{dashboardData.lastMessage.length > 100 
+                            ? dashboardData.lastMessage.substring(0, 100) + '...' 
+                            : dashboardData.lastMessage}"
+                        </div>
+                      </motion.div>
+                    )}
+                  </>
+                ) : (
+                  // Show prompt to share mood
+                  <>
+                    <motion.div 
+                      className="text-center py-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <div className="text-4xl mb-4">🤔</div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Share Your Mood
+                      </h3>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Start a conversation in the daily chat to automatically track your mood and get personalized wellness insights.
+                      </p>
+                      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 mb-4">
+                        <div className="flex items-center justify-center text-orange-700 text-sm">
+                          <MessageSquare size={16} className="mr-2" />
+                          <span>Tell us how you're feeling today!</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </>
                 )}
+
                 <Link to="/chat">
                   <Button
-                    variant="outline"
+                    variant={hasSharedMood ? "outline" : "primary"}
                     size="sm"
                     fullWidth
                     leftIcon={<MessageSquare size={16} />}
-                    className="bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100"
+                    rightIcon={!hasSharedMood ? <ArrowRight size={16} /> : undefined}
+                    className={hasSharedMood 
+                      ? "bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100" 
+                      : "bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white animate-pulse"
+                    }
                   >
-                    Continue Daily Chat
+                    {hasSharedMood ? "Continue Daily Chat" : "Start Daily Chat to Check Mood"}
                   </Button>
                 </Link>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  fullWidth
-                  onClick={refreshDashboardData}
-                  leftIcon={<RefreshCcw size={16} />}
-                >
-                  Refresh Data
-                </Button>
+                
+                {hasSharedMood && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    fullWidth
+                    onClick={refreshDashboardData}
+                    leftIcon={<RefreshCcw size={16} />}
+                  >
+                    Refresh Data
+                  </Button>
+                )}
               </div>
             </Card>
           </motion.div>
@@ -343,7 +397,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
-                  <span className="text-sm text-gray-500">3/5 completed</span>
+                  <span className="text-sm text-gray-500">{hasSharedMood ? '3/5' : '2/5'} completed</span>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center">
@@ -351,12 +405,12 @@ const Dashboard = () => {
                     <span className="ml-3 text-gray-700">Daily wellness chat</span>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">Mood tracking</span>
+                    <input type="checkbox" className="rounded text-lavender-600" checked={hasSharedMood} readOnly />
+                    <span className={`ml-3 ${hasSharedMood ? 'text-gray-700' : 'text-gray-400'}`}>Mood tracking</span>
                   </div>
                   <div className="flex items-center">
-                    <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">Emotional check-in</span>
+                    <input type="checkbox" className="rounded text-lavender-600" checked={hasSharedMood} readOnly />
+                    <span className={`ml-3 ${hasSharedMood ? 'text-gray-700' : 'text-gray-400'}`}>Emotional check-in</span>
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" />
@@ -443,11 +497,20 @@ const Dashboard = () => {
                     <Button
                       variant="primary"
                       size="lg"
-                      className="flex-col h-24 w-full relative bg-gradient-to-br from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
+                      className={`flex-col h-24 w-full relative ${
+                        hasSharedMood 
+                          ? "bg-gradient-to-br from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
+                          : "bg-gradient-to-br from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 animate-pulse"
+                      }`}
                       leftIcon={<MessageSquare size={24} />}
                     >
-                      Daily Chat
-                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                      {hasSharedMood ? "Daily Chat" : "Share Mood"}
+                      {!hasSharedMood && (
+                        <span className="absolute top-1 right-1 w-3 h-3 bg-red-400 rounded-full animate-ping"></span>
+                      )}
+                      {hasSharedMood && (
+                        <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                      )}
                     </Button>
                   </Link>
                   <Button
@@ -477,8 +540,16 @@ const Dashboard = () => {
                     Meditate
                   </Button>
                 </div>
-                <div className="text-xs text-center text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50 p-3 rounded-lg">
-                  💬 <strong>Daily Chat Active:</strong> Your conversations automatically update all wellness metrics and provide continuous emotional support!
+                <div className={`text-xs text-center p-3 rounded-lg ${
+                  hasSharedMood 
+                    ? "text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50"
+                    : "text-orange-600 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200"
+                }`}>
+                  {hasSharedMood ? (
+                    <>💬 <strong>Daily Chat Active:</strong> Your conversations automatically update all wellness metrics and provide continuous emotional support!</>
+                  ) : (
+                    <>🎯 <strong>Get Started:</strong> Share your mood in the daily chat to unlock personalized wellness tracking and AI insights!</>
+                  )}
                 </div>
               </div>
             </Card>
