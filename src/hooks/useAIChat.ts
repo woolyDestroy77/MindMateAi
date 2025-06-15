@@ -19,10 +19,13 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
   const [isLoading, setIsLoading] = useState(false);
   const isInitialized = useRef<string | null>(null);
 
-  // Fetch messages for current session
+  // For single daily chat, we use a consistent session approach
+  const DAILY_SESSION_ID = sessionId || "daily-health-chat";
+
+  // Fetch messages for the daily chat session
   useEffect(() => {
     const initChat = async () => {
-      if (!sessionId || isInitialized.current === sessionId) return;
+      if (isInitialized.current === DAILY_SESSION_ID) return;
 
       try {
         setIsLoading(true);
@@ -31,12 +34,13 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        // Fetch messages for this specific session
+        console.log('Initializing daily chat for user:', user.id);
+
+        // Fetch ALL messages for this user (daily chat approach)
         const { data: dbMessages, error: fetchError } = await supabase
           .from("dappier_chat_history")
           .select("id, user_message, ai_response, created_at")
           .eq("user_id", user.id)
-          .eq("session_id", sessionId)
           .order("created_at", { ascending: true });
 
         if (fetchError) throw fetchError;
@@ -62,24 +66,25 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
             },
           ]);
           setMessages(formattedMessages);
+          console.log(`Loaded ${formattedMessages.length} messages from chat history`);
         } else {
-          // Show welcome message for new sessions
+          // Show welcome message for new users
           setMessages([
             {
               id: crypto.randomUUID(),
               role: "assistant",
               content:
-                "Hi! I'm MindMate AI, your mental wellness companion. I'm here to listen, support, and help you explore ways to improve your emotional well-being. How are you feeling today?",
+                "Welcome to your daily wellness chat! 🌟 I'm here to support your mental health journey. Share how you're feeling today, any thoughts on your mind, or simply check in with your emotional state. Every message helps me understand your wellness patterns better and provide personalized support. How are you doing today?",
               timestamp: new Date(),
             },
           ]);
         }
         
-        isInitialized.current = sessionId;
+        isInitialized.current = DAILY_SESSION_ID;
       } catch (err: unknown) {
         const errorMsg = err instanceof Error
           ? err.message
-          : "Failed to initialize chat";
+          : "Failed to initialize daily chat";
         toast.error(errorMsg);
       } finally {
         setIsLoading(false);
@@ -87,21 +92,16 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
     };
 
     // Reset messages immediately when session changes
-    if (sessionId !== isInitialized.current) {
+    if (DAILY_SESSION_ID !== isInitialized.current) {
       setMessages([]);
       isInitialized.current = null;
     }
 
     initChat();
-  }, [sessionId]);
+  }, [DAILY_SESSION_ID]);
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (!sessionId) {
-        toast.error("No active chat session");
-        return;
-      }
-
       try {
         setIsLoading(true);
         const { data: { user }, error: userError } = await supabase.auth
@@ -109,7 +109,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        console.log('=== SENDING MESSAGE ===');
+        console.log('=== SENDING DAILY WELLNESS MESSAGE ===');
         console.log('User message:', content);
         console.log('onMoodUpdate callback available:', !!onMoodUpdate);
 
@@ -122,7 +122,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         };
         setMessages((prev) => [...prev, userMessage]);
 
-        // Prepare context from previous messages (last 10 messages)
+        // Prepare context from recent messages (last 10 messages)
         const context = messages.slice(-10).map((msg) => ({
           role: msg.role,
           content: msg.content,
@@ -165,12 +165,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         };
         setMessages((prev) => [...prev, aiMessage]);
 
-        // Save conversation to DB with session_id
+        // Save conversation to DB (without session_id for daily chat)
         const { error: saveError } = await supabase
           .from("dappier_chat_history")
           .insert({
             user_id: user.id,
-            session_id: sessionId,
             user_message: content,
             ai_response: responseContent,
             widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
@@ -214,16 +213,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         setIsLoading(false);
       }
     },
-    [messages, sessionId, onMoodUpdate],
+    [messages, onMoodUpdate],
   );
 
   const sendVoiceMessage = useCallback(
     async (audioUrl: string, transcript: string, duration: number) => {
-      if (!sessionId) {
-        toast.error("No active chat session");
-        return;
-      }
-
       try {
         setIsLoading(true);
         const { data: { user }, error: userError } = await supabase.auth
@@ -231,7 +225,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
-        console.log('=== SENDING VOICE MESSAGE ===');
+        console.log('=== SENDING VOICE WELLNESS MESSAGE ===');
         console.log('Voice transcript:', transcript);
         console.log('onMoodUpdate callback available:', !!onMoodUpdate);
 
@@ -247,7 +241,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         };
         setMessages((prev) => [...prev, voiceMessage]);
 
-        // Prepare context from previous messages (last 10 messages)
+        // Prepare context from recent messages (last 10 messages)
         const context = messages.slice(-10).map((msg) => ({
           role: msg.role,
           content: msg.content,
@@ -290,12 +284,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         };
         setMessages((prev) => [...prev, aiMessage]);
 
-        // Save conversation to DB with session_id (save the transcript as the message)
+        // Save conversation to DB (save the transcript as the message)
         const { error: saveError } = await supabase
           .from("dappier_chat_history")
           .insert({
             user_id: user.id,
-            session_id: sessionId,
             user_message: transcript,
             ai_response: responseContent,
             widget_id: "wd_01jxpzftx6e3ntsgzwtgbze71c",
@@ -339,7 +332,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         setIsLoading(false);
       }
     },
-    [messages, sessionId, onMoodUpdate],
+    [messages, onMoodUpdate],
   );
 
   return {

@@ -26,6 +26,7 @@ import {
   Zap,
   Activity,
   Clock,
+  BarChart3,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -125,7 +126,7 @@ const Dashboard = () => {
   ];
 
   const achievements = [
-    { title: '7-Day Streak', icon: Calendar, description: 'Logged mood daily for a week' },
+    { title: '7-Day Streak', icon: Calendar, description: 'Daily wellness check-ins for a week' },
     { title: 'Mindfulness Master', icon: Brain, description: '10 meditation sessions completed' },
     { title: 'Emotion Explorer', icon: Heart, description: 'Tracked 5 different emotions' },
     { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
@@ -153,12 +154,12 @@ const Dashboard = () => {
 
   if (dashboardLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
         <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavender-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+            <p className="mt-4 text-gray-600">Loading your wellness dashboard...</p>
           </div>
         </main>
       </div>
@@ -166,17 +167,27 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-lavender-600 to-sage-600 bg-clip-text text-transparent mb-2">
+            Your Wellness Dashboard
+          </h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Track your daily emotional wellness journey with AI-powered insights from your continuous chat conversations.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            key={`wellness-${dashboardData.wellnessScore}-${dashboardData.lastUpdated}-${updateTrigger}`} // Force re-render on any change
+            key={`wellness-${dashboardData.wellnessScore}-${dashboardData.lastUpdated}-${updateTrigger}`}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -231,7 +242,7 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="text-center text-sm text-gray-600">
-                  Updated based on your AI conversations
+                  Updated from your daily chat conversations
                 </div>
                 <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
                   <Clock size={12} />
@@ -246,7 +257,7 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            key={`mood-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`} // Force re-render on any change
+            key={`mood-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -259,7 +270,7 @@ const Dashboard = () => {
                 </div>
                 <motion.div 
                   className="text-6xl text-center py-4"
-                  key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`} // Animate when mood changes
+                  key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
                   initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                   animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
@@ -304,8 +315,9 @@ const Dashboard = () => {
                     size="sm"
                     fullWidth
                     leftIcon={<MessageSquare size={16} />}
+                    className="bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100"
                   >
-                    Chat to Update Mood
+                    Continue Daily Chat
                   </Button>
                 </Link>
                 <Button
@@ -336,15 +348,15 @@ const Dashboard = () => {
                 <div className="space-y-3">
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">15min meditation</span>
+                    <span className="ml-3 text-gray-700">Daily wellness chat</span>
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">Journal entry</span>
+                    <span className="ml-3 text-gray-700">Mood tracking</span>
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" checked readOnly />
-                    <span className="ml-3 text-gray-700">AI mood check-in</span>
+                    <span className="ml-3 text-gray-700">Emotional check-in</span>
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" />
@@ -352,7 +364,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex items-center">
                     <input type="checkbox" className="rounded text-lavender-600" />
-                    <span className="ml-3 text-gray-700">Gratitude list</span>
+                    <span className="ml-3 text-gray-700">Gratitude practice</span>
                   </div>
                 </div>
               </div>
@@ -369,7 +381,7 @@ const Dashboard = () => {
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Mood Trends</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Weekly Mood Trends</h2>
                   <div className="flex items-center space-x-2">
                     <div className="flex space-x-2">
                       <Button variant="ghost" size="sm">Week</Button>
@@ -377,8 +389,8 @@ const Dashboard = () => {
                       <Button variant="ghost" size="sm">Year</Button>
                     </div>
                     <div className="flex items-center text-xs text-lavender-600">
-                      <Zap size={12} className="mr-1" />
-                      AI-Enhanced
+                      <BarChart3 size={12} className="mr-1" />
+                      Daily Chat Data
                     </div>
                   </div>
                 </div>
@@ -386,7 +398,7 @@ const Dashboard = () => {
                   <Line data={moodData} options={chartOptions} />
                 </div>
                 <div className="text-xs text-gray-500 text-center">
-                  Mood data automatically collected from your AI conversations and manual entries
+                  Mood trends automatically generated from your daily wellness conversations
                 </div>
               </div>
             </Card>
@@ -406,45 +418,10 @@ const Dashboard = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   {achievements.map((achievement, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg text-center">
+                    <div key={index} className="p-3 bg-gradient-to-br from-lavender-50 to-sage-50 rounded-lg text-center">
                       <achievement.icon className="w-6 h-6 mx-auto text-lavender-500 mb-2" />
                       <h3 className="text-sm font-medium text-gray-900">{achievement.title}</h3>
                       <p className="text-xs text-gray-500 mt-1">{achievement.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-
-          {/* Journal Entries */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-          >
-            <Card variant="elevated" className="h-full">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Journal</h2>
-                  <Link to="/journal">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leftIcon={<PenSquare size={16} />}
-                    >
-                      New Entry
-                    </Button>
-                  </Link>
-                </div>
-                <div className="space-y-3">
-                  {journalEntries.map((entry, index) => (
-                    <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="flex justify-between items-center mb-2">
-                        <div className="text-sm text-gray-500">{entry.date}</div>
-                        <div className="text-xl">{entry.mood}</div>
-                      </div>
-                      <div className="text-gray-700">{entry.content}</div>
                     </div>
                   ))}
                 </div>
@@ -456,7 +433,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -466,10 +443,10 @@ const Dashboard = () => {
                     <Button
                       variant="primary"
                       size="lg"
-                      className="flex-col h-24 w-full relative"
+                      className="flex-col h-24 w-full relative bg-gradient-to-br from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
                       leftIcon={<MessageSquare size={24} />}
                     >
-                      AI Mood Chat
+                      Daily Chat
                       <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                     </Button>
                   </Link>
@@ -500,8 +477,8 @@ const Dashboard = () => {
                     Meditate
                   </Button>
                 </div>
-                <div className="text-xs text-center text-lavender-600 bg-lavender-50 p-2 rounded">
-                  💡 Your AI conversations automatically update your mood and wellness data!
+                <div className="text-xs text-center text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50 p-3 rounded-lg">
+                  💬 <strong>Daily Chat Active:</strong> Your conversations automatically update all wellness metrics and provide continuous emotional support!
                 </div>
               </div>
             </Card>
