@@ -111,11 +111,12 @@ export const useDashboardData = () => {
     userMessage: string, 
     aiResponse: string
   ) => {
+    console.log('=== UPDATE MOOD FROM AI CALLED ===');
+    console.log('Sentiment:', sentiment);
+    console.log('User message:', userMessage);
+    console.log('AI response:', aiResponse);
+
     try {
-      console.log('=== DIRECT MOOD UPDATE ===');
-      console.log('User message:', userMessage);
-      console.log('AI sentiment:', sentiment);
-      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) {
@@ -188,9 +189,11 @@ export const useDashboardData = () => {
         
         console.log('=== MOOD UPDATE COMPLETE ===');
         console.log('New dashboard data:', newDashboardData);
+        console.log('Update trigger incremented to:', updateTrigger + 1);
         
         // Force a refresh after a short delay to ensure sync
         setTimeout(() => {
+          console.log('Triggering delayed refresh...');
           fetchDashboardData();
         }, 1000);
         
@@ -202,7 +205,7 @@ export const useDashboardData = () => {
       console.error('Error updating mood from AI:', error);
       toast.error('Failed to update mood data');
     }
-  }, [dashboardData.wellnessScore, fetchDashboardData]);
+  }, [dashboardData.wellnessScore, fetchDashboardData, updateTrigger]);
 
   // Set up real-time subscription for mood data changes
   useEffect(() => {

@@ -15,6 +15,7 @@ import {
   Play,
   Pause,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -29,6 +30,9 @@ import { useDashboardData } from "../hooks/useDashboardData";
 const Chat = () => {
   const { updateMoodFromAI } = useDashboardData();
   
+  console.log('=== CHAT COMPONENT INITIALIZED ===');
+  console.log('updateMoodFromAI function available:', !!updateMoodFromAI);
+  
   const {
     sessions,
     activeSession,
@@ -39,9 +43,10 @@ const Chat = () => {
     renameSession,
   } = useChatSessions();
 
+  // CRITICAL: Pass the mood update callback to useAIChat
   const { messages, isLoading, sendMessage, sendVoiceMessage } = useAIChat(
     activeSession?.id,
-    updateMoodFromAI // Pass the mood update callback
+    updateMoodFromAI // This is the key connection!
   );
   
   const { 
@@ -86,7 +91,7 @@ const Chat = () => {
   useEffect(() => {
     if (messages.length > 2) { // Show after some conversation
       setShowMoodUpdateNotice(true);
-      const timer = setTimeout(() => setShowMoodUpdateNotice(false), 5000);
+      const timer = setTimeout(() => setShowMoodUpdateNotice(false), 8000);
       return () => clearTimeout(timer);
     }
   }, [messages.length]);
@@ -98,8 +103,14 @@ const Chat = () => {
     const messageToSend = inputMessage.trim();
     setInputMessage("");
 
+    console.log('=== CHAT COMPONENT SENDING MESSAGE ===');
+    console.log('Message:', messageToSend);
+    console.log('Active session:', activeSession?.id);
+    console.log('updateMoodFromAI available:', !!updateMoodFromAI);
+
     try {
       await sendMessage(messageToSend);
+      console.log('Message sent successfully from Chat component');
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -127,11 +138,15 @@ const Chat = () => {
 
   const handleSendVoiceMessage = async () => {
     if (transcript.trim() && audioUrl) {
+      console.log('=== CHAT COMPONENT SENDING VOICE MESSAGE ===');
+      console.log('Transcript:', transcript);
+      console.log('updateMoodFromAI available:', !!updateMoodFromAI);
+      
       try {
         await sendVoiceMessage(audioUrl, transcript, recordingDuration);
         setShowVoiceModal(false);
         clearRecording();
-        toast.success('Voice message sent!');
+        toast.success('Voice message sent and mood analyzed!');
       } catch (error) {
         console.error("Failed to send voice message:", error);
       }
@@ -191,12 +206,15 @@ const Chat = () => {
             exit={{ opacity: 0, y: -50 }}
             className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <div className="bg-lavender-100 border border-lavender-300 rounded-lg px-4 py-2 shadow-lg">
+            <div className="bg-lavender-100 border border-lavender-300 rounded-lg px-4 py-3 shadow-lg max-w-md">
               <div className="flex items-center space-x-2 text-lavender-800">
                 <TrendingUp size={16} />
                 <span className="text-sm font-medium">
-                  💡 Your mood is being tracked based on our conversation and will update your dashboard!
+                  🎯 Mood Tracking Active!
                 </span>
+              </div>
+              <div className="text-xs text-lavender-700 mt-1">
+                Your emotional expressions are being analyzed to update your dashboard automatically. Try saying "I'm feeling anxious" or "I'm really happy today"!
               </div>
             </div>
           </motion.div>
@@ -252,7 +270,10 @@ const Chat = () => {
                 {activeSession && (
                   <p className="text-sm text-gray-500">
                     Created {format(new Date(activeSession.created_at), "MMM d, yyyy 'at' h:mm a")}
-                    <span className="ml-2 text-lavender-600">• Dashboard Integration Active</span>
+                    <span className="ml-2 text-lavender-600 flex items-center">
+                      <Zap size={12} className="mr-1" />
+                      Dashboard Integration Active
+                    </span>
                   </p>
                 )}
               </div>
@@ -380,15 +401,15 @@ const Chat = () => {
                           <span>{format(message.timestamp, "h:mm a")}</span>
                           {message.sentiment && (
                             <span
-                              className={`capitalize ${
+                              className={`capitalize flex items-center space-x-1 ${
                                 message.role === "user"
                                   ? "text-white opacity-80"
                                   : getSentimentColor(message.sentiment)
                               }`}
                             >
-                              {message.sentiment}
+                              <span>{message.sentiment}</span>
                               {message.role === "user" && (
-                                <span className="ml-1" title="This message may update your dashboard mood">
+                                <span className="ml-1" title="This message updates your dashboard mood">
                                   📊
                                 </span>
                               )}
@@ -417,7 +438,7 @@ const Chat = () => {
                       <div className="flex items-center space-x-2">
                         <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                         <span className="text-sm text-gray-900">
-                          MindMate AI is thinking and analyzing your mood...
+                          MindMate AI is analyzing your mood and crafting a response...
                         </span>
                       </div>
                     </div>
@@ -442,7 +463,7 @@ const Chat = () => {
                     type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
-                    placeholder="Share your thoughts and feelings... Your mood will be tracked automatically"
+                    placeholder="Express your feelings... Try: 'I'm feeling anxious about work' or 'I'm really happy today!'"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
                     disabled={isLoading || !activeSession}
                   />
@@ -478,7 +499,7 @@ const Chat = () => {
                     )
                   }
                 >
-                  {isLoading ? "Analyzing..." : "Send"}
+                  {isLoading ? "Analyzing..." : "Send & Track Mood"}
                 </Button>
               </form>
 
@@ -488,8 +509,8 @@ const Chat = () => {
                 </div>
               )}
               
-              <div className="mt-2 text-xs text-center text-lavender-600">
-                💡 Your conversations help track your emotional wellbeing and update your dashboard automatically
+              <div className="mt-2 text-xs text-center text-lavender-600 bg-lavender-50 p-2 rounded">
+                💡 <strong>Mood Tracking:</strong> Express emotions like "I'm anxious", "feeling happy", "really sad today" to automatically update your dashboard!
               </div>
             </div>
           </div>
@@ -547,10 +568,10 @@ const Chat = () => {
                     {isProcessing 
                       ? "Initializing microphone..." 
                       : isRecording 
-                        ? "Recording... Share your feelings and thoughts" 
+                        ? "Recording... Express your emotions for mood tracking!" 
                         : audioUrl
-                          ? "Voice message recorded! This will help track your mood."
-                          : "Click the microphone to start recording your thoughts"
+                          ? "Voice message recorded! This will analyze your mood and update your dashboard."
+                          : "Click to record your emotional state"
                     }
                   </p>
 

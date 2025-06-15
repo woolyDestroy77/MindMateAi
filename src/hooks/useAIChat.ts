@@ -109,6 +109,10 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
 
+        console.log('=== SENDING MESSAGE ===');
+        console.log('User message:', content);
+        console.log('onMoodUpdate callback available:', !!onMoodUpdate);
+
         // Add user message to chat immediately
         const userMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -148,6 +152,9 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           ? data.response 
           : data.response.message || data.response;
 
+        console.log('AI response received:', responseContent);
+        console.log('Sentiment detected:', data.sentiment);
+
         // Add AI response to chat
         const aiMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -170,9 +177,28 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           });
         if (saveError) throw saveError;
 
-        // Trigger mood update callback if provided
+        // CRITICAL: Trigger mood update callback if provided
         if (onMoodUpdate && data.sentiment) {
-          onMoodUpdate(data.sentiment, content, responseContent);
+          console.log('=== TRIGGERING MOOD UPDATE ===');
+          console.log('Calling onMoodUpdate with:', {
+            sentiment: data.sentiment,
+            userMessage: content,
+            aiResponse: responseContent
+          });
+          
+          try {
+            await onMoodUpdate(data.sentiment, content, responseContent);
+            console.log('Mood update callback completed successfully');
+          } catch (moodError) {
+            console.error('Error in mood update callback:', moodError);
+            // Don't throw here, just log the error
+          }
+        } else {
+          console.log('Mood update skipped:', {
+            hasCallback: !!onMoodUpdate,
+            hasSentiment: !!data.sentiment,
+            sentiment: data.sentiment
+          });
         }
 
         return aiMessage;
@@ -204,6 +230,10 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           .getUser();
         if (userError) throw userError;
         if (!user) throw new Error("User not authenticated");
+
+        console.log('=== SENDING VOICE MESSAGE ===');
+        console.log('Voice transcript:', transcript);
+        console.log('onMoodUpdate callback available:', !!onMoodUpdate);
 
         // Add voice message to chat immediately
         const voiceMessage: ChatMessage = {
@@ -247,6 +277,9 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           ? data.response 
           : data.response.message || data.response;
 
+        console.log('AI response to voice message:', responseContent);
+        console.log('Sentiment detected:', data.sentiment);
+
         // Add AI response to chat
         const aiMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -269,9 +302,28 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           });
         if (saveError) throw saveError;
 
-        // Trigger mood update callback if provided
+        // CRITICAL: Trigger mood update callback if provided
         if (onMoodUpdate && data.sentiment) {
-          onMoodUpdate(data.sentiment, transcript, responseContent);
+          console.log('=== TRIGGERING MOOD UPDATE FROM VOICE ===');
+          console.log('Calling onMoodUpdate with:', {
+            sentiment: data.sentiment,
+            userMessage: transcript,
+            aiResponse: responseContent
+          });
+          
+          try {
+            await onMoodUpdate(data.sentiment, transcript, responseContent);
+            console.log('Voice mood update callback completed successfully');
+          } catch (moodError) {
+            console.error('Error in voice mood update callback:', moodError);
+            // Don't throw here, just log the error
+          }
+        } else {
+          console.log('Voice mood update skipped:', {
+            hasCallback: !!onMoodUpdate,
+            hasSentiment: !!data.sentiment,
+            sentiment: data.sentiment
+          });
         }
 
         return aiMessage;
