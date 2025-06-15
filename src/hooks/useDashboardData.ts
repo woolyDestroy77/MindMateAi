@@ -23,6 +23,7 @@ export const useDashboardData = () => {
     lastUpdated: new Date().toISOString(),
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [updateTrigger, setUpdateTrigger] = useState(0); // Force re-render trigger
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -111,7 +112,7 @@ export const useDashboardData = () => {
     aiResponse: string
   ) => {
     try {
-      console.log('=== MOOD UPDATE FROM AI ===');
+      console.log('=== DIRECT MOOD UPDATE ===');
       console.log('User message:', userMessage);
       console.log('AI sentiment:', sentiment);
       
@@ -163,7 +164,7 @@ export const useDashboardData = () => {
 
         console.log('Successfully updated mood data:', updatedData);
 
-        // Update local state immediately with fresh timestamp
+        // IMMEDIATELY update local state with fresh data
         const newDashboardData: DashboardData = {
           currentMood: updatedData.current_mood,
           moodName: updatedData.mood_name,
@@ -175,16 +176,24 @@ export const useDashboardData = () => {
           aiResponse: updatedData.ai_response,
         };
 
+        // Force immediate update
         setDashboardData(newDashboardData);
+        setUpdateTrigger(prev => prev + 1); // Force re-render
         
         // Show notification about the mood update
-        toast.success(`Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
+        toast.success(`🎯 Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
           duration: 4000,
           icon: moodAnalysis.mood,
         });
         
         console.log('=== MOOD UPDATE COMPLETE ===');
         console.log('New dashboard data:', newDashboardData);
+        
+        // Force a refresh after a short delay to ensure sync
+        setTimeout(() => {
+          fetchDashboardData();
+        }, 1000);
+        
       } else {
         console.log('Mood update skipped - no clear emotional keywords found');
         console.log('Confidence:', moodAnalysis.confidence);
@@ -193,7 +202,7 @@ export const useDashboardData = () => {
       console.error('Error updating mood from AI:', error);
       toast.error('Failed to update mood data');
     }
-  }, [dashboardData.wellnessScore]);
+  }, [dashboardData.wellnessScore, fetchDashboardData]);
 
   // Set up real-time subscription for mood data changes
   useEffect(() => {
@@ -231,6 +240,7 @@ export const useDashboardData = () => {
               
               console.log('Updating dashboard data from real-time:', updatedDashboardData);
               setDashboardData(updatedDashboardData);
+              setUpdateTrigger(prev => prev + 1); // Force re-render
             }
           }
         )
@@ -254,6 +264,7 @@ export const useDashboardData = () => {
     isLoading,
     updateMoodFromAI,
     refreshDashboardData: fetchDashboardData,
+    updateTrigger, // Expose trigger for components that need to force re-render
   };
 };
 

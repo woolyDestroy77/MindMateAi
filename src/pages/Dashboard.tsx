@@ -25,7 +25,8 @@ import {
   MessageSquare,
   Zap,
   Activity,
-  Clock
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -95,12 +96,13 @@ const chartOptions = {
 };
 
 const Dashboard = () => {
-  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData } = useDashboardData();
+  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
   
   // Force re-render when dashboard data changes
   useEffect(() => {
     console.log('Dashboard data updated:', dashboardData);
-  }, [dashboardData]);
+    console.log('Update trigger:', updateTrigger);
+  }, [dashboardData, updateTrigger]);
   
   const journalEntries = [
     {
@@ -169,13 +171,26 @@ const Dashboard = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        {/* Debug Info */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2 text-blue-800">
+            <AlertCircle size={16} />
+            <span className="text-sm font-medium">Debug Info:</span>
+          </div>
+          <div className="text-xs text-blue-700 mt-1">
+            Last Updated: {dashboardData.lastUpdated} | 
+            Update Trigger: {updateTrigger} | 
+            Mood: {dashboardData.moodName} {dashboardData.currentMood}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            key={`wellness-${dashboardData.wellnessScore}-${dashboardData.lastUpdated}`} // Force re-render on score change
+            key={`wellness-${dashboardData.wellnessScore}-${dashboardData.lastUpdated}-${updateTrigger}`} // Force re-render on any change
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -218,7 +233,7 @@ const Dashboard = () => {
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                       <motion.span 
                         className="text-3xl font-bold text-gray-900"
-                        key={dashboardData.wellnessScore}
+                        key={`score-${dashboardData.wellnessScore}-${updateTrigger}`}
                         initial={{ scale: 0.8 }}
                         animate={{ scale: 1 }}
                         transition={{ duration: 0.3 }}
@@ -245,7 +260,7 @@ const Dashboard = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            key={`mood-${dashboardData.currentMood}-${dashboardData.lastUpdated}`} // Force re-render on mood change
+            key={`mood-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`} // Force re-render on any change
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -258,7 +273,7 @@ const Dashboard = () => {
                 </div>
                 <motion.div 
                   className="text-6xl text-center py-4"
-                  key={`${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}`} // Animate when mood changes
+                  key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`} // Animate when mood changes
                   initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
                   animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
@@ -267,7 +282,7 @@ const Dashboard = () => {
                 </motion.div>
                 <motion.p 
                   className="text-gray-600 text-center text-sm"
-                  key={`${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}`}
+                  key={`interpretation-${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}-${updateTrigger}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
@@ -282,14 +297,20 @@ const Dashboard = () => {
                   <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
                 </div>
                 {dashboardData.lastMessage && (
-                  <div className="bg-gray-50 rounded-lg p-3 mt-3">
+                  <motion.div 
+                    className="bg-gray-50 rounded-lg p-3 mt-3"
+                    key={`message-${dashboardData.lastMessage}-${updateTrigger}`}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
                     <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
                     <div className="text-sm text-gray-700 italic">
                       "{dashboardData.lastMessage.length > 100 
                         ? dashboardData.lastMessage.substring(0, 100) + '...' 
                         : dashboardData.lastMessage}"
                     </div>
-                  </div>
+                  </motion.div>
                 )}
                 <Link to="/chat">
                   <Button
