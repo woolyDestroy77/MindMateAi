@@ -32,7 +32,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         const { data: { user }, error: userError } = await supabase.auth
           .getUser();
         if (userError) throw userError;
-        if (!user) throw new Error("User not authenticated");
+        if (!user) {
+          // Clear any stale session data and sign out
+          await supabase.auth.signOut();
+          throw new Error("Your session has expired or is invalid. Please sign in again.");
+        }
 
         console.log('Initializing daily chat for user:', user.id);
 
@@ -107,7 +111,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         const { data: { user }, error: userError } = await supabase.auth
           .getUser();
         if (userError) throw userError;
-        if (!user) throw new Error("User not authenticated");
+        if (!user) {
+          // Clear any stale session data and sign out
+          await supabase.auth.signOut();
+          throw new Error("Your session has expired or is invalid. Please sign in again.");
+        }
 
         console.log('=== SENDING DAILY WELLNESS MESSAGE ===');
         console.log('User message:', content);
@@ -223,7 +231,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         const { data: { user }, error: userError } = await supabase.auth
           .getUser();
         if (userError) throw userError;
-        if (!user) throw new Error("User not authenticated");
+        if (!user) {
+          // Clear any stale session data and sign out
+          await supabase.auth.signOut();
+          throw new Error("Your session has expired or is invalid. Please sign in again.");
+        }
 
         console.log('=== SENDING VOICE WELLNESS MESSAGE ===');
         console.log('Voice transcript:', transcript);
@@ -339,7 +351,11 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        // Clear any stale session data and sign out
+        await supabase.auth.signOut();
+        throw new Error("Your session has expired or is invalid. Please sign in again.");
+      }
 
       console.log('=== DELETING CHAT HISTORY ===');
       console.log('User ID:', user.id);

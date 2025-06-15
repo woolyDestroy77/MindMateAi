@@ -34,8 +34,10 @@ export const useDashboardData = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) {
+        // Clear any stale session data and sign out
+        await supabase.auth.signOut();
         setIsLoading(false);
-        return;
+        throw new Error("Your session has expired or is invalid. Please sign in again.");
       }
 
       console.log('Fetching dashboard data for user:', user.id);
@@ -104,7 +106,8 @@ export const useDashboardData = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setIsLoading(false);
-      toast.error('Failed to load dashboard data');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load dashboard data';
+      toast.error(errorMsg);
     }
   }, []);
 
@@ -122,8 +125,10 @@ export const useDashboardData = () => {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) {
-        console.error('No user found for mood update');
-        return;
+        // Clear any stale session data and sign out
+        await supabase.auth.signOut();
+        console.error('No user found for mood update - session expired');
+        throw new Error("Your session has expired or is invalid. Please sign in again.");
       }
 
       // Enhanced keyword-based mood analysis
@@ -210,7 +215,8 @@ export const useDashboardData = () => {
       }
     } catch (error) {
       console.error('Error updating mood from AI:', error);
-      toast.error('Failed to update mood data');
+      const errorMsg = error instanceof Error ? error.message : 'Failed to update mood data';
+      toast.error(errorMsg);
     }
   }, [dashboardData.wellnessScore]);
 
