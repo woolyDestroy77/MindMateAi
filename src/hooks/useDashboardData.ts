@@ -135,11 +135,19 @@ export const useDashboardData = () => {
       if (moodAnalysis.shouldUpdate || moodAnalysis.confidence > 0.1) {
         const currentTime = new Date().toISOString();
         
+        // Calculate new wellness score based on mood and historical data
+        const newWellnessScore = await calculateAdvancedWellnessScore(
+          user.id,
+          moodAnalysis.sentiment,
+          moodAnalysis.moodName,
+          dashboardData.wellnessScore
+        );
+        
         const newMoodData = {
           current_mood: moodAnalysis.mood,
           mood_name: moodAnalysis.moodName,
           mood_interpretation: generateMoodInterpretation(moodAnalysis, userMessage),
-          wellness_score: calculateWellnessScore(moodAnalysis.sentiment, dashboardData.wellnessScore),
+          wellness_score: newWellnessScore,
           sentiment: moodAnalysis.sentiment,
           last_message: userMessage,
           ai_response: aiResponse,
@@ -183,14 +191,18 @@ export const useDashboardData = () => {
         setDashboardData(newDashboardData);
         setUpdateTrigger(prev => prev + 1);
         
-        // Show notification about the mood update
-        toast.success(`🎯 Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
+        // Show notification about the mood update with wellness score change
+        const scoreChange = newWellnessScore - dashboardData.wellnessScore;
+        const scoreChangeText = scoreChange > 0 ? `+${scoreChange}` : `${scoreChange}`;
+        
+        toast.success(`🎯 Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName}) | Wellness: ${scoreChangeText}`, {
           duration: 4000,
           icon: moodAnalysis.mood,
         });
         
         console.log('=== MOOD UPDATE COMPLETE ===');
         console.log('New dashboard data:', newDashboardData);
+        console.log('Wellness score change:', scoreChangeText);
         
       } else {
         console.log('Mood update skipped - no clear emotional keywords found');
@@ -329,7 +341,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling good', 'feeling great', 'feeling happy', 'in a good mood', 'having a great day', 'life is good', 'things are good'],
       emoji: '😊',
       sentiment: 'positive',
-      weight: 1.0
+      weight: 1.0,
+      baseScore: 85
     },
     
     excited: {
@@ -339,7 +352,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling excited', 'feeling pumped', 'feeling energetic', 'feeling enthusiastic'],
       emoji: '🤩',
       sentiment: 'positive',
-      weight: 1.0
+      weight: 1.0,
+      baseScore: 90
     },
 
     // SAD/NEGATIVE MOODS
@@ -350,7 +364,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling sad', 'feeling down', 'feeling depressed', 'feeling blue', 'feeling low', 'having a bad day', 'feeling broken'],
       emoji: '😢',
       sentiment: 'negative',
-      weight: 1.0
+      weight: 1.0,
+      baseScore: 35
     },
 
     // ANGRY/FRUSTRATED MOODS
@@ -361,7 +376,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling angry', 'feeling mad', 'feeling frustrated', 'pissed off', 'fed up with', 'sick and tired'],
       emoji: '😠',
       sentiment: 'negative',
-      weight: 1.0
+      weight: 1.0,
+      baseScore: 25
     },
 
     // ANXIOUS/WORRIED MOODS
@@ -372,7 +388,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling anxious', 'feeling worried', 'feeling nervous', 'feeling stressed', 'feeling overwhelmed'],
       emoji: '😰',
       sentiment: 'negative',
-      weight: 1.0
+      weight: 1.0,
+      baseScore: 40
     },
 
     // CALM/PEACEFUL MOODS
@@ -383,7 +400,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling calm', 'feeling peaceful', 'feeling relaxed', 'feeling centered', 'feeling balanced'],
       emoji: '😌',
       sentiment: 'positive',
-      weight: 0.8
+      weight: 0.8,
+      baseScore: 75
     },
 
     // TIRED/EXHAUSTED MOODS
@@ -394,7 +412,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling tired', 'feeling exhausted', 'feeling drained', 'feeling worn out'],
       emoji: '😴',
       sentiment: 'neutral',
-      weight: 0.7
+      weight: 0.7,
+      baseScore: 50
     },
 
     // CONFUSED/UNCERTAIN MOODS
@@ -405,7 +424,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       phrases: ['feeling confused', 'feeling lost', 'feeling uncertain', 'feeling unclear'],
       emoji: '🤔',
       sentiment: 'neutral',
-      weight: 0.6
+      weight: 0.6,
+      baseScore: 60
     }
   };
 
@@ -607,7 +627,8 @@ function analyzeKeywordMood(message: string, sentiment: string) {
     shouldUpdate,
     detectionMethod,
     keywordsFound,
-    keywordsChecked
+    keywordsChecked,
+    baseScore: detectedMood ? moodKeywords[detectedMood as keyof typeof moodKeywords].baseScore : 60
   };
 
   console.log('🎯 FINAL KEYWORD ANALYSIS RESULT:', result);
@@ -616,6 +637,165 @@ function analyzeKeywordMood(message: string, sentiment: string) {
   console.log(`🔄 Should update: ${shouldUpdate}`);
 
   return result;
+}
+
+// Advanced wellness score calculation based on mood patterns and historical data
+async function calculateAdvancedWellnessScore(
+  userId: string,
+  sentiment: string,
+  moodName: string,
+  currentScore: number
+): Promise<number> {
+  console.log('🧮 CALCULATING ADVANCED WELLNESS SCORE');
+  console.log('Input:', { sentiment, moodName, currentScore });
+
+  try {
+    // Fetch recent mood history (last 7 days) for trend analysis
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { data: recentMoods, error } = await supabase
+      .from('dappier_chat_history')
+      .select('created_at, user_message')
+      .eq('user_id', userId)
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching mood history:', error);
+      // Fallback to simple calculation if history fetch fails
+      return calculateSimpleWellnessScore(sentiment, moodName, currentScore);
+    }
+
+    // Mood base scores (0-100 scale)
+    const moodBaseScores: { [key: string]: number } = {
+      'excited': 90,
+      'happy': 85,
+      'calm': 75,
+      'confused': 60,
+      'tired': 50,
+      'anxious': 40,
+      'sad': 35,
+      'angry': 25
+    };
+
+    // Get base score for current mood
+    const baseScore = moodBaseScores[moodName] || 60;
+    
+    // Calculate trend factor based on recent messages
+    let trendFactor = 0;
+    let positiveCount = 0;
+    let negativeCount = 0;
+    let neutralCount = 0;
+
+    if (recentMoods && recentMoods.length > 0) {
+      recentMoods.forEach((mood, index) => {
+        const weight = 1 - (index * 0.1); // More recent messages have higher weight
+        const moodAnalysis = analyzeKeywordMood(mood.user_message, '');
+        
+        if (moodAnalysis.sentiment === 'positive') {
+          positiveCount += weight;
+        } else if (moodAnalysis.sentiment === 'negative') {
+          negativeCount += weight;
+        } else {
+          neutralCount += weight;
+        }
+      });
+
+      // Calculate trend factor (-20 to +20)
+      const totalWeight = positiveCount + negativeCount + neutralCount;
+      if (totalWeight > 0) {
+        const positiveRatio = positiveCount / totalWeight;
+        const negativeRatio = negativeCount / totalWeight;
+        trendFactor = (positiveRatio - negativeRatio) * 20;
+      }
+    }
+
+    // Calculate momentum factor based on current vs previous score
+    const momentumFactor = Math.max(-15, Math.min(15, (baseScore - currentScore) * 0.3));
+
+    // Calculate consistency bonus/penalty
+    let consistencyFactor = 0;
+    if (recentMoods && recentMoods.length >= 3) {
+      const recentSentiments = recentMoods.slice(0, 5).map(mood => {
+        const analysis = analyzeKeywordMood(mood.user_message, '');
+        return analysis.sentiment;
+      });
+      
+      const consistentPositive = recentSentiments.filter(s => s === 'positive').length;
+      const consistentNegative = recentSentiments.filter(s => s === 'negative').length;
+      
+      if (consistentPositive >= 3) {
+        consistencyFactor = 5; // Bonus for consistent positive mood
+      } else if (consistentNegative >= 3) {
+        consistencyFactor = -5; // Penalty for consistent negative mood
+      }
+    }
+
+    // Time-based factor (encourage regular check-ins)
+    const now = new Date();
+    const lastCheckIn = recentMoods && recentMoods.length > 0 ? new Date(recentMoods[0].created_at) : new Date();
+    const hoursSinceLastCheckIn = Math.abs(now.getTime() - lastCheckIn.getTime()) / (1000 * 60 * 60);
+    
+    let timeBasedFactor = 0;
+    if (hoursSinceLastCheckIn <= 24) {
+      timeBasedFactor = 2; // Small bonus for regular daily check-ins
+    } else if (hoursSinceLastCheckIn > 72) {
+      timeBasedFactor = -3; // Small penalty for long gaps
+    }
+
+    // Calculate final score with weighted average approach
+    const targetScore = baseScore + trendFactor + consistencyFactor + timeBasedFactor;
+    
+    // Smooth transition: don't change score too dramatically
+    const maxChange = 12; // Maximum change per update
+    const scoreDifference = targetScore - currentScore;
+    const actualChange = Math.max(-maxChange, Math.min(maxChange, scoreDifference + momentumFactor));
+    
+    const newScore = Math.max(10, Math.min(100, Math.round(currentScore + actualChange)));
+
+    console.log('📊 WELLNESS SCORE CALCULATION BREAKDOWN:');
+    console.log(`Base score for ${moodName}: ${baseScore}`);
+    console.log(`Trend factor (recent history): ${trendFactor.toFixed(1)}`);
+    console.log(`Momentum factor: ${momentumFactor.toFixed(1)}`);
+    console.log(`Consistency factor: ${consistencyFactor}`);
+    console.log(`Time-based factor: ${timeBasedFactor}`);
+    console.log(`Target score: ${targetScore.toFixed(1)}`);
+    console.log(`Actual change: ${actualChange.toFixed(1)}`);
+    console.log(`Final score: ${currentScore} → ${newScore}`);
+
+    return newScore;
+
+  } catch (error) {
+    console.error('Error in advanced wellness calculation:', error);
+    return calculateSimpleWellnessScore(sentiment, moodName, currentScore);
+  }
+}
+
+// Fallback simple wellness score calculation
+function calculateSimpleWellnessScore(sentiment: string, moodName: string, currentScore: number): number {
+  console.log('🔄 Using simple wellness score calculation');
+  
+  const moodAdjustments: { [key: string]: number } = {
+    'excited': 8,
+    'happy': 6,
+    'calm': 2,
+    'confused': -1,
+    'tired': -3,
+    'anxious': -5,
+    'sad': -7,
+    'angry': -8
+  };
+
+  const adjustment = moodAdjustments[moodName] || 0;
+  const sentimentMultiplier = sentiment === 'positive' ? 1.2 : sentiment === 'negative' ? 0.8 : 1.0;
+  
+  const finalAdjustment = Math.round(adjustment * sentimentMultiplier);
+  const newScore = Math.max(10, Math.min(100, currentScore + finalAdjustment));
+  
+  console.log(`Simple calculation: ${currentScore} + ${finalAdjustment} = ${newScore}`);
+  return newScore;
 }
 
 // Generate mood interpretation based on analysis
@@ -687,23 +867,4 @@ function generateMoodInterpretation(moodAnalysis: any, userMessage: string) {
     : '';
   
   return randomInterpretation + detectionNote;
-}
-
-// Calculate wellness score based on sentiment
-function calculateWellnessScore(sentiment: string, currentScore: number): number {
-  let adjustment;
-  
-  switch (sentiment) {
-    case 'positive':
-      adjustment = Math.floor(Math.random() * 10) + 5; // +5 to +14
-      break;
-    case 'negative':
-      adjustment = -(Math.floor(Math.random() * 10) + 5); // -5 to -14
-      break;
-    default:
-      adjustment = Math.floor(Math.random() * 6) - 3; // -3 to +2
-  }
-  
-  const newScore = currentScore + adjustment;
-  return Math.max(10, Math.min(100, newScore)); // Keep between 10-100
 }
