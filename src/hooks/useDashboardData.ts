@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export interface DashboardData {
   currentMood: string;
@@ -24,7 +25,7 @@ export const useDashboardData = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [updateTrigger, setUpdateTrigger] = useState(0);
-  const subscriptionRef = useRef<any>(null);
+  const subscriptionRef = useRef<RealtimeChannel | null>(null);
   const isSubscribedRef = useRef(false);
 
   const fetchDashboardData = useCallback(async () => {
@@ -214,11 +215,22 @@ export const useDashboardData = () => {
       if (!user) return;
 
       console.log('Setting up real-time subscription for user:', user.id);
-      isSubscribedRef.current = true;
 
       try {
-        const subscription = supabase
-          .channel(`mood_data_changes_${user.id}`) // Unique channel name
+        const channelName = `mood_data_changes_${user.id}`;
+        
+        // Get the channel instance
+        const currentChannel = supabase.channel(channelName);
+        
+        // Check if the channel is already joined or joining
+        if (currentChannel.state === 'joined' || currentChannel.state === 'joining') {
+          console.log('Channel already active, skipping subscription setup');
+          return;
+        }
+
+        isSubscribedRef.current = true;
+
+        const subscription = currentChannel
           .on(
             'postgres_changes',
             {
@@ -251,6 +263,12 @@ export const useDashboardData = () => {
           )
           .subscribe((status) => {
             console.log('Subscription status:', status);
+            if (status === 'SUBSCRIBED') {
+              console.log('Successfully subscribed to real-time updates');
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              console.error('Subscription error:', status);
+              isSubscribedRef.current = false;
+            }
           });
 
         subscriptionRef.current = subscription;
