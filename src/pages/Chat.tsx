@@ -30,9 +30,6 @@ import { useDashboardData } from "../hooks/useDashboardData";
 const Chat = () => {
   const { updateMoodFromAI } = useDashboardData();
   
-  console.log('=== CHAT COMPONENT INITIALIZED ===');
-  console.log('updateMoodFromAI function available:', !!updateMoodFromAI);
-  
   const {
     sessions,
     activeSession,
@@ -103,14 +100,8 @@ const Chat = () => {
     const messageToSend = inputMessage.trim();
     setInputMessage("");
 
-    console.log('=== CHAT COMPONENT SENDING MESSAGE ===');
-    console.log('Message:', messageToSend);
-    console.log('Active session:', activeSession?.id);
-    console.log('updateMoodFromAI available:', !!updateMoodFromAI);
-
     try {
       await sendMessage(messageToSend);
-      console.log('Message sent successfully from Chat component');
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -138,10 +129,6 @@ const Chat = () => {
 
   const handleSendVoiceMessage = async () => {
     if (transcript.trim() && audioUrl) {
-      console.log('=== CHAT COMPONENT SENDING VOICE MESSAGE ===');
-      console.log('Transcript:', transcript);
-      console.log('updateMoodFromAI available:', !!updateMoodFromAI);
-      
       try {
         await sendVoiceMessage(audioUrl, transcript, recordingDuration);
         setShowVoiceModal(false);

@@ -26,7 +26,6 @@ import {
   Zap,
   Activity,
   Clock,
-  AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -171,19 +170,6 @@ const Dashboard = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        {/* Debug Info */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center space-x-2 text-blue-800">
-            <AlertCircle size={16} />
-            <span className="text-sm font-medium">Debug Info:</span>
-          </div>
-          <div className="text-xs text-blue-700 mt-1">
-            Last Updated: {dashboardData.lastUpdated} | 
-            Update Trigger: {updateTrigger} | 
-            Mood: {dashboardData.moodName} {dashboardData.currentMood}
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
           <motion.div

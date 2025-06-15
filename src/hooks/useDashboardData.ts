@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
@@ -23,7 +23,9 @@ export const useDashboardData = () => {
     lastUpdated: new Date().toISOString(),
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [updateTrigger, setUpdateTrigger] = useState(0); // Force re-render trigger
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+  const subscriptionRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -46,7 +48,7 @@ export const useDashboardData = () => {
         .limit(1)
         .single();
 
-      if (moodError && moodError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (moodError && moodError.code !== 'PGRST116') {
         console.error('Error fetching mood data:', moodError);
         throw moodError;
       }
@@ -66,7 +68,6 @@ export const useDashboardData = () => {
         setDashboardData(fetchedData);
       } else {
         console.log('No mood data found, creating default entry');
-        // Create default mood data for new user
         const defaultData = {
           user_id: user.id,
           current_mood: '😌',
@@ -179,7 +180,7 @@ export const useDashboardData = () => {
 
         // Force immediate update
         setDashboardData(newDashboardData);
-        setUpdateTrigger(prev => prev + 1); // Force re-render
+        setUpdateTrigger(prev => prev + 1);
         
         // Show notification about the mood update
         toast.success(`🎯 Mood updated: ${moodAnalysis.mood} (${moodAnalysis.moodName})`, {
@@ -189,13 +190,6 @@ export const useDashboardData = () => {
         
         console.log('=== MOOD UPDATE COMPLETE ===');
         console.log('New dashboard data:', newDashboardData);
-        console.log('Update trigger incremented to:', updateTrigger + 1);
-        
-        // Force a refresh after a short delay to ensure sync
-        setTimeout(() => {
-          console.log('Triggering delayed refresh...');
-          fetchDashboardData();
-        }, 1000);
         
       } else {
         console.log('Mood update skipped - no clear emotional keywords found');
@@ -205,58 +199,88 @@ export const useDashboardData = () => {
       console.error('Error updating mood from AI:', error);
       toast.error('Failed to update mood data');
     }
-  }, [dashboardData.wellnessScore, fetchDashboardData, updateTrigger]);
+  }, [dashboardData.wellnessScore]);
 
-  // Set up real-time subscription for mood data changes
+  // Set up real-time subscription ONCE
   useEffect(() => {
     const setupRealtimeSubscription = async () => {
+      // Prevent multiple subscriptions
+      if (isSubscribedRef.current) {
+        console.log('Real-time subscription already active, skipping...');
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       console.log('Setting up real-time subscription for user:', user.id);
+      isSubscribedRef.current = true;
 
-      const subscription = supabase
-        .channel('mood_data_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'user_mood_data',
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            console.log('Real-time mood data change detected:', payload);
-            
-            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-              const newData = payload.new as any;
-              const updatedDashboardData: DashboardData = {
-                currentMood: newData.current_mood,
-                moodName: newData.mood_name,
-                moodInterpretation: newData.mood_interpretation,
-                wellnessScore: newData.wellness_score,
-                sentiment: newData.sentiment,
-                lastUpdated: newData.updated_at,
-                lastMessage: newData.last_message,
-                aiResponse: newData.ai_response,
-              };
+      try {
+        const subscription = supabase
+          .channel(`mood_data_changes_${user.id}`) // Unique channel name
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'user_mood_data',
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              console.log('Real-time mood data change detected:', payload);
               
-              console.log('Updating dashboard data from real-time:', updatedDashboardData);
-              setDashboardData(updatedDashboardData);
-              setUpdateTrigger(prev => prev + 1); // Force re-render
+              if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+                const newData = payload.new as any;
+                const updatedDashboardData: DashboardData = {
+                  currentMood: newData.current_mood,
+                  moodName: newData.mood_name,
+                  moodInterpretation: newData.mood_interpretation,
+                  wellnessScore: newData.wellness_score,
+                  sentiment: newData.sentiment,
+                  lastUpdated: newData.updated_at,
+                  lastMessage: newData.last_message,
+                  aiResponse: newData.ai_response,
+                };
+                
+                console.log('Updating dashboard data from real-time:', updatedDashboardData);
+                setDashboardData(updatedDashboardData);
+                setUpdateTrigger(prev => prev + 1);
+              }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe((status) => {
+            console.log('Subscription status:', status);
+          });
 
-      return () => {
-        console.log('Cleaning up real-time subscription');
-        subscription.unsubscribe();
-      };
+        subscriptionRef.current = subscription;
+
+        return () => {
+          console.log('Cleaning up real-time subscription');
+          if (subscriptionRef.current) {
+            subscriptionRef.current.unsubscribe();
+            subscriptionRef.current = null;
+          }
+          isSubscribedRef.current = false;
+        };
+      } catch (error) {
+        console.error('Error setting up real-time subscription:', error);
+        isSubscribedRef.current = false;
+      }
     };
 
     setupRealtimeSubscription();
-  }, []);
+
+    // Cleanup function
+    return () => {
+      if (subscriptionRef.current) {
+        console.log('Cleaning up subscription on unmount');
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      isSubscribedRef.current = false;
+    };
+  }, []); // Empty dependency array - only run once
 
   useEffect(() => {
     fetchDashboardData();
@@ -267,7 +291,7 @@ export const useDashboardData = () => {
     isLoading,
     updateMoodFromAI,
     refreshDashboardData: fetchDashboardData,
-    updateTrigger, // Expose trigger for components that need to force re-render
+    updateTrigger,
   };
 };
 
@@ -523,9 +547,9 @@ function analyzeKeywordMood(message: string, sentiment: string) {
       }
     }
     
-    if (bestMood && bestScore > 0.2) { // Lowered threshold for better detection
+    if (bestMood && bestScore > 0.2) {
       detectedMood = bestMood;
-      confidence = Math.min(bestScore + 0.2, 0.85); // Boost confidence but cap it
+      confidence = Math.min(bestScore + 0.2, 0.85);
       detectionMethod = bestMethod;
       keywordsFound = bestKeywords;
       console.log(`✅ KEYWORD MATCH: mood "${detectedMood}" - confidence: ${confidence}`);
