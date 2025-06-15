@@ -64,6 +64,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const welcomeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -73,13 +74,33 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Show welcome message for new day or first visit
+  // Show welcome message for new day or first visit with proper auto-hide
   useEffect(() => {
+    // Clear any existing timer
+    if (welcomeTimerRef.current) {
+      clearTimeout(welcomeTimerRef.current);
+      welcomeTimerRef.current = null;
+    }
+
     if (messages.length === 0) {
       setShowWelcomeMessage(true);
-      const timer = setTimeout(() => setShowWelcomeMessage(false), 10000);
-      return () => clearTimeout(timer);
+      // Set timer to hide welcome message after 5 seconds
+      welcomeTimerRef.current = setTimeout(() => {
+        setShowWelcomeMessage(false);
+        welcomeTimerRef.current = null;
+      }, 5000);
+    } else {
+      // If there are messages, hide welcome message immediately
+      setShowWelcomeMessage(false);
     }
+
+    // Cleanup function
+    return () => {
+      if (welcomeTimerRef.current) {
+        clearTimeout(welcomeTimerRef.current);
+        welcomeTimerRef.current = null;
+      }
+    };
   }, [messages.length]);
 
   // Calculate time since last message for daily check-in prompts
@@ -208,6 +229,14 @@ const Chat = () => {
     }
   };
 
+  const handleCloseWelcomeMessage = () => {
+    setShowWelcomeMessage(false);
+    if (welcomeTimerRef.current) {
+      clearTimeout(welcomeTimerRef.current);
+      welcomeTimerRef.current = null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
       <Navbar />
@@ -219,17 +248,27 @@ const Chat = () => {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
+            transition={{ duration: 0.3 }}
             className="fixed top-16 left-2 right-2 md:top-20 md:left-1/2 md:transform md:-translate-x-1/2 z-50"
           >
             <div className="bg-gradient-to-r from-lavender-100 to-sage-100 border border-lavender-300 rounded-xl px-4 py-3 shadow-lg max-w-lg mx-auto">
-              <div className="flex items-center space-x-3 text-lavender-800">
-                <Heart size={20} className="flex-shrink-0 text-lavender-600" />
-                <div>
-                  <div className="font-semibold text-sm">Welcome to Your Daily Wellness Chat</div>
-                  <div className="text-xs text-lavender-700 mt-1">
-                    This is your personal space to track emotions, share thoughts, and monitor your mental wellness journey. Every message helps build your wellness profile!
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-lavender-800 flex-1">
+                  <Heart size={20} className="flex-shrink-0 text-lavender-600" />
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm">Welcome to Your Daily Wellness Chat</div>
+                    <div className="text-xs text-lavender-700 mt-1">
+                      This is your personal space to track emotions, share thoughts, and monitor your mental wellness journey. Every message helps build your wellness profile!
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={handleCloseWelcomeMessage}
+                  className="ml-2 text-lavender-600 hover:text-lavender-800 transition-colors flex-shrink-0"
+                  aria-label="Close welcome message"
+                >
+                  <X size={16} />
+                </button>
               </div>
             </div>
           </motion.div>
