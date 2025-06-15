@@ -1,1 +1,1 @@
-MindMateAi
+PureMind AI

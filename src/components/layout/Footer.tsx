@@ -8,7 +8,7 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="text-2xl font-bold bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent">
-              MindMate AI
+              PureMind AI
             </div>
             <p className="text-gray-600 text-sm">
               AI-powered mental wellness companion that's always there to support your emotional wellbeing.
@@ -62,7 +62,7 @@ const Footer: React.FC = () => {
         
         <div className="mt-8 pt-8 border-t border-gray-200">
           <p className="text-gray-500 text-sm text-center">
-            © {new Date().getFullYear()} MindMate AI. All rights reserved. Made with <Heart size={14} className="inline text-red-500" /> for better mental wellness.
+            © {new Date().getFullYear()} PureMind AI. All rights reserved. Made with <Heart size={14} className="inline text-red-500" /> for better mental wellness.
           </p>
         </div>
       </div>

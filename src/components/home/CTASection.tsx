@@ -10,7 +10,7 @@ const CTASection: React.FC = () => {
             Begin Your Wellness Journey Today
           </h2>
           <p className="mt-4 max-w-2xl text-xl text-white opacity-90 mx-auto">
-            Take the first step toward better mental wellbeing with MindMate AI's personalized support.
+            Take the first step toward better mental wellbeing with PureMind AI's personalized support.
           </p>
           
           <div className="mt-8 flex justify-center">
@@ -20,7 +20,7 @@ const CTASection: React.FC = () => {
                 size="lg"
                 className="bg-white text-lavender-600 hover:bg-gray-100 hover:text-lavender-700"
               >
-                Try MindMate AI for Free
+                Try PureMind AI for Free
               </Button>
             </div>
             <div className="ml-3 inline-flex">

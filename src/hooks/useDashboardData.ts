@@ -73,7 +73,7 @@ export const useDashboardData = () => {
           user_id: user.id,
           current_mood: '😌',
           mood_name: 'calm',
-          mood_interpretation: 'Welcome to MindMate AI! Your mood will be tracked automatically as you chat with our AI.',
+          mood_interpretation: 'Welcome to PureMind AI! Your mood will be tracked automatically as you chat with our AI.',
           wellness_score: 75,
           sentiment: 'neutral',
         };

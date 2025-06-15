@@ -5,13 +5,13 @@ import { FaqItem } from '../../types';
 
 const faqs: FaqItem[] = [
   {
-    question: "How does MindMate AI track emotions?",
-    answer: "MindMate AI uses natural language processing to analyze patterns in your journal entries and voice recordings. The system looks for emotional indicators in your writing style, word choice, and tone to help you understand your emotional patterns.",
+    question: "How does PureMind AI track emotions?",
+    answer: "PureMind AI uses natural language processing to analyze patterns in your journal entries and voice recordings. The system looks for emotional indicators in your writing style, word choice, and tone to help you understand your emotional patterns.",
     category: "technical"
   },
   {
-    question: "Is MindMate AI a replacement for therapy?",
-    answer: "No, MindMate AI is not a replacement for professional therapy or medical advice. It's designed as a supportive tool to complement professional care, provide emotional tracking, and help with daily mental wellness practices.",
+    question: "Is PureMind AI a replacement for therapy?",
+    answer: "No, PureMind AI is not a replacement for professional therapy or medical advice. It's designed as a supportive tool to complement professional care, provide emotional tracking, and help with daily mental wellness practices.",
     category: "general"
   },
   {
@@ -20,13 +20,13 @@ const faqs: FaqItem[] = [
     category: "privacy"
   },
   {
-    question: "Can I use MindMate AI in my native language?",
-    answer: "Yes! MindMate AI supports multiple languages. The emotion detection and analysis are calibrated to work effectively across different languages and cultural expressions of emotion.",
+    question: "Can I use PureMind AI in my native language?",
+    answer: "Yes! PureMind AI supports multiple languages. The emotion detection and analysis are calibrated to work effectively across different languages and cultural expressions of emotion.",
     category: "general"
   },
   {
     question: "What should I do in a mental health emergency?",
-    answer: "MindMate AI is not designed for emergencies. If you're experiencing a crisis or having thoughts of harming yourself or others, please contact emergency services (911 in the US), call a crisis helpline like the 988 Suicide & Crisis Lifeline, or go to your nearest emergency room.",
+    answer: "PureMind AI is not designed for emergencies. If you're experiencing a crisis or having thoughts of harming yourself or others, please contact emergency services (911 in the US), call a crisis helpline like the 988 Suicide & Crisis Lifeline, or go to your nearest emergency room.",
     category: "support"
   },
   {
@@ -98,7 +98,7 @@ const FAQ: React.FC = () => {
             Frequently Asked Questions
           </h2>
           <p className="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
-            Find answers to common questions about MindMate AI and mental wellness support.
+            Find answers to common questions about PureMind AI and mental wellness support.
           </p>
         </motion.div>
         

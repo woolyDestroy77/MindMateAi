@@ -84,7 +84,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
             <p className="text-gray-600 mb-6">
               {mode === 'signin' 
                 ? 'Sign in to continue your wellness journey'
-                : 'Join MindMate AI to start your wellness journey'}
+                : 'Join PureMind AI to start your wellness journey'}
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">

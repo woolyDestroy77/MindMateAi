@@ -91,7 +91,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
           <div className="h-full flex flex-col">
             <div className="p-4 border-b bg-lavender-50 flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">
-                MindMate AI Chat
+                PureMind AI Chat
               </h2>
               <button
                 onClick={onClose}
@@ -165,7 +165,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
               </div>
               {isLoading && (
                 <div className="mt-2 text-sm text-gray-500 text-center">
-                  MindMate AI is thinking...
+                  PureMind AI is thinking...
                 </div>
               )}
             </div>

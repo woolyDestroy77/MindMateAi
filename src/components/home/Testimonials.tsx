@@ -7,7 +7,7 @@ const testimonials: Testimonial[] = [
   {
     id: '1',
     name: 'Sarah L.',
-    text: 'MindMate AI helped me recognize patterns in my anxiety that I hadn\'t noticed before. The voice responses feel remarkably human and comforting during tough moments.',
+    text: 'PureMind AI helped me recognize patterns in my anxiety that I hadn\'t noticed before. The voice responses feel remarkably human and comforting during tough moments.',
     emotion: 'anxious',
     avatar: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=200'
   },
@@ -21,14 +21,14 @@ const testimonials: Testimonial[] = [
   {
     id: '3',
     name: 'Elena R.',
-    text: 'I use the multilingual feature to practice expressing emotions in my native language. MindMate AI adapts perfectly to cultural nuances in how I communicate my feelings.',
+    text: 'I use the multilingual feature to practice expressing emotions in my native language. PureMind AI adapts perfectly to cultural nuances in how I communicate my feelings.',
     emotion: 'happy',
     avatar: 'https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=200'
   },
   {
     id: '4',
     name: 'David K.',
-    text: 'The emotion detection is surprisingly accurate. During a stressful work period, MindMate suggested techniques that helped me manage anger and frustration in healthier ways.',
+    text: 'The emotion detection is surprisingly accurate. During a stressful work period, PureMind suggested techniques that helped me manage anger and frustration in healthier ways.',
     emotion: 'angry',
     avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=200'
   },
@@ -122,7 +122,7 @@ const Testimonials: React.FC = () => {
             Real People, Real Growth
           </h2>
           <p className="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
-            See how MindMate AI has helped others on their mental wellness journey.
+            See how PureMind AI has helped others on their mental wellness journey.
           </p>
         </motion.div>
         
@@ -139,7 +139,7 @@ const Testimonials: React.FC = () => {
           className="mt-10 text-center"
         >
           <p className="text-base text-gray-600">
-            Join thousands of others who have improved their mental wellbeing with MindMate AI.
+            Join thousands of others who have improved their mental wellbeing with PureMind AI.
           </p>
         </motion.div>
       </div>

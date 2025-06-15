@@ -38,7 +38,7 @@ const HowItWorks: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            How MindMate AI Works
+            How PureMind AI Works
           </h2>
           <p className="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
             Our intelligent system helps you understand and track your emotional journey.
@@ -57,7 +57,7 @@ const HowItWorks: React.FC = () => {
                       <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                     </div>
-                    <div className="mx-auto text-white font-medium">MindMate AI Journal</div>
+                    <div className="mx-auto text-white font-medium">PureMind AI Journal</div>
                   </div>
                   <div className="p-6 space-y-6">
                     <div className="flex flex-col space-y-3">

@@ -105,7 +105,7 @@ const Features: React.FC = () => {
             Features Designed for Your Wellbeing
           </h2>
           <p className="mt-4 max-w-2xl text-xl text-gray-600 mx-auto">
-            MindMate AI combines cutting-edge technology with compassionate design to support your mental wellness journey.
+            PureMind AI combines cutting-edge technology with compassionate design to support your mental wellness journey.
           </p>
         </motion.div>
         

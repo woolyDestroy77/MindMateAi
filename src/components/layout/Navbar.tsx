@@ -147,7 +147,7 @@ const Navbar: React.FC<NavbarProps> = ({
                   to={user ? "/dashboard" : "/"}
                   className="text-2xl font-bold bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent"
                 >
-                  MindMate AI
+                  PureMind AI
                 </Link>
               </div>
             </div>

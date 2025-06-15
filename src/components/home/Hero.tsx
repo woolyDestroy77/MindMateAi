@@ -41,7 +41,7 @@ const Hero: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="block text-sm font-semibold uppercase tracking-wide text-lavender-600"
               >
-                Introducing MindMate AI
+                Introducing PureMind AI
               </motion.span>
               <span className="mt-1 block text-4xl tracking-tight font-extrabold sm:text-5xl xl:text-6xl">
                 <motion.span
@@ -68,7 +68,7 @@ const Hero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.6 }}
               className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl"
             >
-              MindMate AI helps you track your emotional journey through intelligent journaling, mood analysis, and personalized wellness insights.
+              PureMind AI helps you track your emotional journey through intelligent journaling, mood analysis, and personalized wellness insights.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
