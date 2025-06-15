@@ -16,6 +16,8 @@ import {
   Pause,
   TrendingUp,
   Zap,
+  Menu,
+  ChevronLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "react-hot-toast";
@@ -61,7 +63,7 @@ const Chat = () => {
 
   const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
   const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [showMoodUpdateNotice, setShowMoodUpdateNotice] = useState(false);
@@ -92,6 +94,21 @@ const Chat = () => {
       return () => clearTimeout(timer);
     }
   }, [messages.length]);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(true); // Auto-open on desktop
+      } else {
+        setSidebarOpen(false); // Auto-close on mobile
+      }
+    };
+
+    handleResize(); // Check initial size
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +159,10 @@ const Chat = () => {
 
   const handleCreateNewChat = async () => {
     await createNewSession();
+    // Close sidebar on mobile after creating new chat
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   const handlePlayAudio = (messageId: string, audioUrl: string) => {
@@ -184,19 +205,19 @@ const Chat = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      {/* Mood Update Notice */}
+      {/* Mood Update Notice - Mobile Optimized */}
       <AnimatePresence>
         {showMoodUpdateNotice && (
           <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50"
+            className="fixed top-16 left-2 right-2 md:top-20 md:left-1/2 md:transform md:-translate-x-1/2 z-50"
           >
-            <div className="bg-lavender-100 border border-lavender-300 rounded-lg px-4 py-3 shadow-lg max-w-md">
+            <div className="bg-lavender-100 border border-lavender-300 rounded-lg px-3 py-2 md:px-4 md:py-3 shadow-lg max-w-md mx-auto">
               <div className="flex items-center space-x-2 text-lavender-800">
-                <TrendingUp size={16} />
-                <span className="text-sm font-medium">
+                <TrendingUp size={14} className="flex-shrink-0" />
+                <span className="text-xs md:text-sm font-medium">
                   🎯 Mood Tracking Active!
                 </span>
               </div>
@@ -208,60 +229,78 @@ const Chat = () => {
         )}
       </AnimatePresence>
 
-      <main className="flex h-screen pt-16">
-        {/* Sidebar */}
+      <main className="flex h-screen pt-16 relative">
+        {/* Mobile Sidebar Overlay */}
         <AnimatePresence>
           {sidebarOpen && (
-            <motion.div
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 20 }}
-              className="fixed left-0 top-16 bottom-0 z-40"
-            >
-              <ChatSidebar
-                sessions={sessions}
-                activeSession={activeSession}
-                isLoading={sessionsLoading}
-                onCreateNew={handleCreateNewChat}
-                onSwitchSession={switchToSession}
-                onDeleteSession={deleteSession}
-                onRenameSession={renameSession}
+            <>
+              {/* Backdrop for mobile */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                onClick={() => setSidebarOpen(false)}
               />
-            </motion.div>
+              
+              {/* Sidebar */}
+              <motion.div
+                initial={{ x: -320 }}
+                animate={{ x: 0 }}
+                exit={{ x: -320 }}
+                transition={{ type: "spring", damping: 20 }}
+                className="fixed left-0 top-16 bottom-0 z-50 md:relative md:top-0"
+              >
+                <ChatSidebar
+                  sessions={sessions}
+                  activeSession={activeSession}
+                  isLoading={sessionsLoading}
+                  onCreateNew={handleCreateNewChat}
+                  onSwitchSession={(sessionId) => {
+                    switchToSession(sessionId);
+                    // Close sidebar on mobile after switching
+                    if (window.innerWidth < 768) {
+                      setSidebarOpen(false);
+                    }
+                  }}
+                  onDeleteSession={deleteSession}
+                  onRenameSession={renameSession}
+                />
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
 
-        {/* Main Chat Area */}
-        <div
-          className={`flex-1 flex flex-col transition-all duration-300 ${
-            sidebarOpen ? "ml-80" : "ml-0"
-          }`}
-        >
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-            <div className="flex items-center">
+        {/* Main Chat Area - Responsive */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header - Mobile Optimized */}
+          <div className="bg-white border-b border-gray-200 p-3 md:p-4 flex items-center justify-between">
+            <div className="flex items-center min-w-0 flex-1">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                leftIcon={<Sidebar size={18} />}
-                className="mr-3"
+                leftIcon={sidebarOpen ? <ChevronLeft size={18} /> : <Menu size={18} />}
+                className="mr-2 md:mr-3 flex-shrink-0"
               >
-                {sidebarOpen ? "Hide" : "Show"} Sidebar
+                <span className="hidden md:inline">
+                  {sidebarOpen ? "Hide" : "Show"} Sidebar
+                </span>
               </Button>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg md:text-xl font-semibold text-gray-900 truncate">
                   {activeSession?.name || "MindMate AI Chat"}
                 </h1>
                 {activeSession && (
-                  <p className="text-sm text-gray-500">
-                    Created {format(new Date(activeSession.created_at), "MMM d, yyyy 'at' h:mm a")}
-                    <span className="ml-2 text-lavender-600 flex items-center">
-                      <Zap size={12} className="mr-1" />
+                  <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm text-gray-500">
+                    <span className="truncate">
+                      Created {format(new Date(activeSession.created_at), "MMM d, yyyy 'at' h:mm a")}
+                    </span>
+                    <span className="flex items-center text-lavender-600 mt-1 md:mt-0 md:ml-2">
+                      <Zap size={10} className="mr-1 flex-shrink-0" />
                       Dashboard Integration Active
                     </span>
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -269,15 +308,17 @@ const Chat = () => {
               variant="primary"
               size="sm"
               onClick={handleCreateNewChat}
-              leftIcon={<MessageSquare size={16} />}
+              leftIcon={<MessageSquare size={14} />}
+              className="ml-2 flex-shrink-0"
             >
-              New Chat
+              <span className="hidden sm:inline">New Chat</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="max-w-4xl mx-auto space-y-4">
+          {/* Messages Area - Mobile Optimized */}
+          <div className="flex-1 overflow-y-auto p-3 md:p-6">
+            <div className="max-w-4xl mx-auto space-y-3 md:space-y-4">
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div
@@ -290,7 +331,7 @@ const Chat = () => {
                     }`}
                   >
                     <div
-                      className={`flex max-w-[80%] ${
+                      className={`flex max-w-[85%] md:max-w-[80%] ${
                         message.role === "user"
                           ? "flex-row-reverse"
                           : "flex-row"
@@ -299,66 +340,66 @@ const Chat = () => {
                       {/* Avatar */}
                       <div
                         className={`flex-shrink-0 ${
-                          message.role === "user" ? "ml-3" : "mr-3"
+                          message.role === "user" ? "ml-2 md:ml-3" : "mr-2 md:mr-3"
                         }`}
                       >
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                          className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center ${
                             message.role === "user"
                               ? "bg-lavender-100 text-lavender-600"
                               : "bg-sage-100 text-sage-600"
                           }`}
                         >
                           {message.role === "user" ? (
-                            <User size={16} />
+                            <User size={12} className="md:w-4 md:h-4" />
                           ) : (
-                            <Bot size={16} />
+                            <Bot size={12} className="md:w-4 md:h-4" />
                           )}
                         </div>
                       </div>
 
                       {/* Message Content */}
                       <div
-                        className={`rounded-lg px-4 py-3 ${
+                        className={`rounded-lg px-3 py-2 md:px-4 md:py-3 ${
                           message.role === "user"
                             ? "bg-lavender-600"
                             : "bg-white border border-gray-200"
                         }`}
                       >
                         {message.isVoiceMessage ? (
-                          // Voice Message UI
-                          <div className="flex items-center space-x-3">
+                          // Voice Message UI - Mobile Optimized
+                          <div className="flex items-center space-x-2 md:space-x-3">
                             <button
                               onClick={() => handlePlayAudio(message.id, message.audioUrl!)}
-                              className={`p-2 rounded-full transition-colors ${
+                              className={`p-1.5 md:p-2 rounded-full transition-colors ${
                                 message.role === "user"
                                   ? "bg-lavender-500 hover:bg-lavender-400 text-white"
                                   : "bg-sage-100 hover:bg-sage-200 text-sage-600"
                               }`}
                             >
                               {playingAudio === message.id ? (
-                                <Pause size={16} />
+                                <Pause size={12} className="md:w-4 md:h-4" />
                               ) : (
-                                <Play size={16} />
+                                <Play size={12} className="md:w-4 md:h-4" />
                               )}
                             </button>
-                            <div className="flex items-center space-x-2">
-                              <Volume2 size={16} className={message.role === "user" ? "text-white" : "text-gray-500"} />
-                              <div className="flex space-x-1">
-                                {[...Array(12)].map((_, i) => (
+                            <div className="flex items-center space-x-1 md:space-x-2 min-w-0">
+                              <Volume2 size={12} className={`md:w-4 md:h-4 flex-shrink-0 ${message.role === "user" ? "text-white" : "text-gray-500"}`} />
+                              <div className="flex space-x-0.5 md:space-x-1">
+                                {[...Array(8)].map((_, i) => (
                                   <div
                                     key={i}
-                                    className={`w-1 rounded-full ${
+                                    className={`w-0.5 md:w-1 rounded-full ${
                                       message.role === "user" ? "bg-white" : "bg-gray-300"
                                     }`}
                                     style={{
-                                      height: `${Math.random() * 20 + 8}px`,
+                                      height: `${Math.random() * 12 + 6}px`,
                                       animation: playingAudio === message.id ? `pulse 1s infinite ${i * 0.1}s` : 'none'
                                     }}
                                   />
                                 ))}
                               </div>
-                              <span className={`text-sm ${
+                              <span className={`text-xs ${
                                 message.role === "user" ? "text-white" : "text-gray-500"
                               }`}>
                                 {formatDuration(message.audioDuration || 0)}
@@ -368,7 +409,7 @@ const Chat = () => {
                         ) : (
                           // Regular Text Message
                           <p
-                            className={`text-sm ${
+                            className={`text-sm md:text-base ${
                               message.role === "user"
                                 ? "text-white"
                                 : "text-gray-900"
@@ -416,15 +457,15 @@ const Chat = () => {
                   className="flex justify-start"
                 >
                   <div className="flex">
-                    <div className="flex-shrink-0 mr-3">
-                      <div className="w-8 h-8 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center">
-                        <Bot size={16} />
+                    <div className="flex-shrink-0 mr-2 md:mr-3">
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-sage-100 text-sage-600 flex items-center justify-center">
+                        <Bot size={12} className="md:w-4 md:h-4" />
                       </div>
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+                    <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 md:px-4 md:py-3">
                       <div className="flex items-center space-x-2">
-                        <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
-                        <span className="text-sm text-gray-900">
+                        <Loader2 className="w-3 h-3 md:w-4 md:h-4 animate-spin text-sage-600" />
+                        <span className="text-xs md:text-sm text-gray-900">
                           MindMate AI is analyzing your mood and crafting a response...
                         </span>
                       </div>
@@ -437,22 +478,37 @@ const Chat = () => {
             </div>
           </div>
 
-          {/* Input Area */}
-          <div className="bg-white border-t border-gray-200 p-4">
+          {/* Input Area - Mobile Optimized */}
+          <div className="bg-white border-t border-gray-200 p-3 md:p-4 safe-area-bottom">
             <div className="max-w-4xl mx-auto">
               <form
                 onSubmit={handleSendMessage}
-                className="flex items-center space-x-3"
+                className="flex items-end space-x-2 md:space-x-3"
               >
                 <div className="flex-1 relative">
-                  <input
+                  <textarea
                     ref={inputRef}
-                    type="text"
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage(e);
+                      }
+                    }}
                     placeholder="Express your feelings... Try: 'I'm feeling anxious about work' or 'I'm really happy today!'"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent pr-12"
+                    className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none min-h-[44px] max-h-32"
+                    rows={1}
                     disabled={isLoading || !activeSession}
+                    style={{ 
+                      height: 'auto',
+                      minHeight: '44px'
+                    }}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = Math.min(target.scrollHeight, 128) + 'px';
+                    }}
                   />
                 </div>
 
@@ -461,15 +517,15 @@ const Chat = () => {
                   variant={isRecording ? "primary" : "outline"}
                   size="md"
                   onClick={handleVoiceToggle}
-                  className={`px-3 ${isRecording ? 'animate-pulse' : ''}`}
+                  className={`px-3 flex-shrink-0 ${isRecording ? 'animate-pulse' : ''}`}
                   disabled={isLoading || !activeSession || isProcessing}
                 >
                   {isProcessing ? (
-                    <Loader2 className="animate-spin" size={20} />
+                    <Loader2 className="animate-spin" size={18} />
                   ) : isRecording ? (
-                    <MicOff size={20} />
+                    <MicOff size={18} />
                   ) : (
-                    <Mic size={20} />
+                    <Mic size={18} />
                   )}
                 </Button>
 
@@ -480,13 +536,19 @@ const Chat = () => {
                   disabled={!inputMessage.trim() || isLoading || !activeSession}
                   leftIcon={
                     isLoading ? (
-                      <Loader2 className="animate-spin" size={20} />
+                      <Loader2 className="animate-spin" size={18} />
                     ) : (
-                      <Send size={20} />
+                      <Send size={18} />
                     )
                   }
+                  className="flex-shrink-0"
                 >
-                  {isLoading ? "Analyzing..." : "Send & Track Mood"}
+                  <span className="hidden sm:inline">
+                    {isLoading ? "Analyzing..." : "Send & Track Mood"}
+                  </span>
+                  <span className="sm:hidden">
+                    {isLoading ? "..." : "Send"}
+                  </span>
                 </Button>
               </form>
 
@@ -504,7 +566,7 @@ const Chat = () => {
         </div>
       </main>
 
-      {/* Voice Recording Modal */}
+      {/* Voice Recording Modal - Mobile Optimized */}
       <AnimatePresence>
         {showVoiceModal && (
           <motion.div
@@ -518,7 +580,7 @@ const Chat = () => {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+              className="bg-white rounded-xl shadow-xl max-w-md w-full p-4 md:p-6 mx-4"
               onClick={e => e.stopPropagation()}
             >
               <div className="text-center">
@@ -533,25 +595,25 @@ const Chat = () => {
                 </div>
 
                 <div className="mb-6">
-                  <div className={`w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
+                  <div className={`w-16 h-16 md:w-20 md:h-20 mx-auto rounded-full flex items-center justify-center mb-4 ${
                     isRecording ? 'bg-red-100 animate-pulse' : 'bg-gray-100'
                   }`}>
                     {isProcessing ? (
-                      <Loader2 className="animate-spin text-gray-600" size={32} />
+                      <Loader2 className="animate-spin text-gray-600" size={24} />
                     ) : isRecording ? (
-                      <Volume2 className="text-red-600" size={32} />
+                      <Volume2 className="text-red-600" size={24} />
                     ) : (
-                      <Mic className="text-gray-600" size={32} />
+                      <Mic className="text-gray-600" size={24} />
                     )}
                   </div>
 
                   {isRecording && (
-                    <div className="text-2xl font-mono text-red-600 mb-2">
+                    <div className="text-xl md:text-2xl font-mono text-red-600 mb-2">
                       {formatDuration(recordingDuration)}
                     </div>
                   )}
 
-                  <p className="text-sm text-gray-600 mb-2">
+                  <p className="text-sm text-gray-600 mb-2 px-2">
                     {isProcessing 
                       ? "Initializing microphone..." 
                       : isRecording 
@@ -563,7 +625,7 @@ const Chat = () => {
                   </p>
 
                   {audioUrl && !isRecording && (
-                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                    <div className="bg-gray-50 rounded-lg p-3 md:p-4 mt-4">
                       <div className="flex items-center justify-center space-x-3">
                         <button
                           onClick={() => handlePlayAudio('preview', audioUrl)}
@@ -588,7 +650,7 @@ const Chat = () => {
                   )}
                 </div>
 
-                <div className="flex space-x-3">
+                <div className="flex flex-col space-y-3">
                   {isRecording ? (
                     <Button
                       variant="primary"
@@ -602,7 +664,7 @@ const Chat = () => {
                       Stop Recording
                     </Button>
                   ) : audioUrl ? (
-                    <>
+                    <div className="flex space-x-3">
                       <Button
                         variant="outline"
                         fullWidth
@@ -621,7 +683,7 @@ const Chat = () => {
                       >
                         Send & Track Mood
                       </Button>
-                    </>
+                    </div>
                   ) : (
                     <Button
                       variant="primary"
@@ -644,6 +706,10 @@ const Chat = () => {
         @keyframes pulse {
           0%, 100% { transform: scaleY(1); }
           50% { transform: scaleY(1.5); }
+        }
+        
+        .safe-area-bottom {
+          padding-bottom: max(12px, env(safe-area-inset-bottom));
         }
       `}</style>
     </div>
