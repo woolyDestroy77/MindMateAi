@@ -1,7 +1,30 @@
 import React from 'react';
 import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
 import { format, parseISO, isToday, isYesterday } from 'date-fns';
 import { MoodDataPoint, WeeklyTrend } from '../../hooks/useMoodTrends';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 interface MoodTrendsChartProps {
   data: MoodDataPoint[];
@@ -129,6 +152,7 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
     },
     scales: {
       x: {
+        type: 'category' as const,
         grid: {
           display: false,
         },
