@@ -26,6 +26,35 @@ export const useTextToSpeech = () => {
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Enhanced text cleaning function to remove emojis and improve speech
+  const cleanTextForSpeech = useCallback((text: string): string => {
+    return text
+      // Remove all emojis (comprehensive emoji regex)
+      .replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
+      // Remove other Unicode symbols and pictographs
+      .replace(/[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{2B50}]|[\u{2B55}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]/gu, '')
+      // Remove markdown formatting
+      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
+      .replace(/\*(.*?)\*/g, '$1') // Remove italic markdown
+      .replace(/`(.*?)`/g, '$1') // Remove code markdown
+      .replace(/#{1,6}\s/g, '') // Remove heading markdown
+      .replace(/[-•*]\s/g, '') // Remove bullet points
+      .replace(/\d+\.\s/g, '') // Remove numbered lists
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links
+      // Improve sentence flow
+      .replace(/\n+/g, '. ') // Replace line breaks with pauses
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/([.!?])\s*([A-Z])/g, '$1 $2') // Add pauses between sentences
+      // Remove common text artifacts
+      .replace(/\s*\.\s*\.\s*\./g, '.') // Remove multiple dots
+      .replace(/\s*,\s*,/g, ',') // Remove multiple commas
+      .replace(/\s*;\s*;/g, ';') // Remove multiple semicolons
+      // Clean up extra spaces and punctuation
+      .replace(/\s+([.!?,:;])/g, '$1') // Remove spaces before punctuation
+      .replace(/([.!?])\s*([.!?])/g, '$1') // Remove duplicate punctuation
+      .trim();
+  }, []);
+
   // Enhanced initialization with better browser support detection
   const initializeSpeech = useCallback(() => {
     console.log('🎵 Initializing speech synthesis...');
@@ -114,7 +143,7 @@ export const useTextToSpeech = () => {
     initializeSpeech();
   }, [initializeSpeech]);
 
-  // Enhanced speak function with better error handling
+  // Enhanced speak function with better error handling and emoji filtering
   const speak = useCallback((text: string, messageId: string) => {
     console.log('🎵 Attempting to speak:', { messageId, textLength: text.length, isSupported, isInitialized });
 
@@ -139,19 +168,8 @@ export const useTextToSpeech = () => {
       }
     }
 
-    // Enhanced text cleaning for better speech
-    const cleanText = text
-      .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
-      .replace(/\*(.*?)\*/g, '$1') // Remove italic markdown
-      .replace(/`(.*?)`/g, '$1') // Remove code markdown
-      .replace(/#{1,6}\s/g, '') // Remove heading markdown
-      .replace(/[-•*]\s/g, '') // Remove bullet points
-      .replace(/\d+\.\s/g, '') // Remove numbered lists
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links
-      .replace(/\n+/g, '. ') // Replace line breaks with pauses
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/([.!?])\s*([A-Z])/g, '$1 $2') // Add pauses between sentences
-      .trim();
+    // Enhanced text cleaning with emoji removal
+    const cleanText = cleanTextForSpeech(text);
 
     if (!cleanText || cleanText.length < 2) {
       toast.error('No text to speak');
@@ -163,6 +181,9 @@ export const useTextToSpeech = () => {
     const finalText = cleanText.length > maxLength 
       ? cleanText.substring(0, maxLength) + '...' 
       : cleanText;
+
+    console.log('🎵 Original text:', text);
+    console.log('🎵 Cleaned text:', finalText);
 
     try {
       // Cancel any existing speech
@@ -276,7 +297,7 @@ export const useTextToSpeech = () => {
       setIsPlaying(false);
       setCurrentMessageId(null);
     }
-  }, [isSupported, isInitialized, isPlaying, voiceSettings, currentMessageId]);
+  }, [isSupported, isInitialized, isPlaying, voiceSettings, currentMessageId, cleanTextForSpeech]);
 
   // Stop current speech
   const stop = useCallback(() => {
@@ -292,6 +313,13 @@ export const useTextToSpeech = () => {
       timeoutRef.current = null;
     }
   }, []);
+
+  // Stop all audio (alias for stop for clarity)
+  const stopAudio = useCallback(() => {
+    console.log('🔇 Stopping all audio');
+    stop();
+    toast.success('Audio stopped', { duration: 1500 });
+  }, [stop]);
 
   // Pause current speech
   const pause = useCallback(() => {
@@ -347,7 +375,7 @@ export const useTextToSpeech = () => {
     return categories;
   }, [voices]);
 
-  // Test voice with sample text
+  // Test voice with sample text (emoji-free)
   const testVoice = useCallback(() => {
     const testText = "Hello! I'm your AI wellness companion. I'm here to support your mental health journey with personalized insights and encouragement.";
     speak(testText, 'voice-test');
@@ -377,6 +405,7 @@ export const useTextToSpeech = () => {
     // Actions
     speak,
     stop,
+    stopAudio, // New dedicated stop audio function
     pause,
     resume,
     updateVoiceSettings,
@@ -384,6 +413,7 @@ export const useTextToSpeech = () => {
     testVoice,
     
     // Utilities
-    getVoiceCategories
+    getVoiceCategories,
+    cleanTextForSpeech // Expose for testing
   };
 };
