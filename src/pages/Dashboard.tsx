@@ -140,7 +140,23 @@ const Dashboard = () => {
 
   const [goalPointsMap, setGoalPointsMap] = useState<Map<string, number>>(() => {
     const saved = localStorage.getItem(`goalPointsMap_${today}`);
-    return saved ? new Map(JSON.parse(saved)) : new Map();
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Check if parsed data is a plain object (not an array)
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          // Convert plain object to array of [key, value] pairs for Map constructor
+          return new Map(Object.entries(parsed));
+        } else {
+          // Assume it's already in the correct format (array of [key, value] pairs)
+          return new Map(parsed);
+        }
+      } catch (error) {
+        console.error('Error parsing goalPointsMap from localStorage:', error);
+        return new Map();
+      }
+    }
+    return new Map();
   });
 
   const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(() => {
