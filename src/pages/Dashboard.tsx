@@ -1,19 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Line } from 'react-chartjs-2';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
-import { 
   RefreshCcw,
   PenSquare,
   Calendar,
@@ -31,76 +19,22 @@ import {
   X,
   CheckCircle,
   RotateCcw,
-  Settings
+  Settings,
+  LineChart,
+  Users,
+  Lightbulb
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import AddGoalModal from '../components/dashboard/AddGoalModal';
+import MoodTrendsChart from '../components/dashboard/MoodTrendsChart';
+import InsightsPanel from '../components/dashboard/InsightsPanel';
+import WeeklyStatsGrid from '../components/dashboard/WeeklyStatsGrid';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
-
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-const moodData = {
-  labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  datasets: [
-    {
-      label: 'Mood Level',
-      data: [7, 6, 8, 5, 7, 8, 9],
-      borderColor: 'rgb(157, 138, 199)',
-      backgroundColor: 'rgba(157, 138, 199, 0.1)',
-      fill: true,
-      tension: 0.4,
-    },
-  ],
-};
-
-const chartOptions = {
-  responsive: true,
-  plugins: {
-    legend: {
-      display: false,
-    },
-    tooltip: {
-      mode: 'index',
-      intersect: false,
-    },
-  },
-  scales: {
-    y: {
-      min: 0,
-      max: 10,
-      ticks: {
-        stepSize: 2,
-      },
-      grid: {
-        display: true,
-        color: 'rgba(0, 0, 0, 0.05)',
-      },
-    },
-    x: {
-      grid: {
-        display: false,
-      },
-    },
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false,
-  },
-};
+import { useMoodTrends } from '../hooks/useMoodTrends';
 
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
@@ -111,6 +45,16 @@ const Dashboard = () => {
     triggerManualReset,
     isLoading: resetLoading 
   } = useDailyReset();
+  
+  const {
+    moodData,
+    weeklyTrends,
+    insights,
+    isLoading: trendsLoading,
+    selectedTimeRange,
+    setSelectedTimeRange,
+    refreshTrends
+  } = useMoodTrends();
   
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -349,6 +293,15 @@ const Dashboard = () => {
           <p className="text-gray-600 max-w-2xl mx-auto">
             Track your daily emotional wellness journey with AI-powered insights from your continuous chat conversations.
           </p>
+        </div>
+
+        {/* Weekly Stats Grid */}
+        <div className="mb-8">
+          <WeeklyStatsGrid 
+            weeklyTrends={weeklyTrends} 
+            moodData={moodData} 
+            isLoading={trendsLoading} 
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -635,7 +588,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Mood Tracker Graph */}
+          {/* Enhanced Mood Tracker Graph with Real Data */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -645,25 +598,103 @@ const Dashboard = () => {
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Weekly Mood Trends</h2>
                   <div className="flex items-center space-x-2">
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm">Week</Button>
-                      <Button variant="ghost" size="sm">Month</Button>
-                      <Button variant="ghost" size="sm">Year</Button>
+                    <LineChart size={20} className="text-lavender-600" />
+                    <h2 className="text-xl font-semibold text-gray-900">Mood Trends & Progress</h2>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex space-x-1">
+                      {(['week', 'month', 'quarter'] as const).map((range) => (
+                        <button
+                          key={range}
+                          onClick={() => setSelectedTimeRange(range)}
+                          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                            selectedTimeRange === range
+                              ? 'bg-lavender-100 text-lavender-700'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {range === 'week' ? '4 Weeks' : range === 'month' ? '3 Months' : '6 Months'}
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex items-center text-xs text-lavender-600">
-                      <BarChart3 size={12} className="mr-1" />
-                      Daily Chat Data
+                    <button
+                      onClick={refreshTrends}
+                      className="p-1 text-gray-500 hover:text-lavender-600 transition-colors"
+                      title="Refresh trends"
+                    >
+                      <RefreshCcw size={16} />
+                    </button>
+                  </div>
+                </div>
+
+                {trendsLoading ? (
+                  <div className="h-80 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lavender-600 mx-auto mb-2"></div>
+                      <p className="text-sm text-gray-600">Loading mood trends...</p>
+                    </div>
+                  </div>
+                ) : moodData.length === 0 ? (
+                  <div className="h-80 flex items-center justify-center">
+                    <div className="text-center">
+                      <BarChart3 size={48} className="mx-auto text-gray-300 mb-3" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No Mood Data Yet</h3>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Start chatting with our AI to see your mood trends and progress here.
+                      </p>
+                      <Link to="/chat">
+                        <Button variant="primary" leftIcon={<MessageSquare size={16} />}>
+                          Start Tracking
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <MoodTrendsChart 
+                    data={moodData} 
+                    weeklyTrends={weeklyTrends} 
+                    timeRange={selectedTimeRange} 
+                  />
+                )}
+
+                <div className="text-xs text-gray-500 text-center border-t pt-3">
+                  <div className="flex items-center justify-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 bg-lavender-500 rounded-full"></div>
+                      <span>Wellness Score</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 bg-sage-500 rounded-full"></div>
+                      <span>Message Activity</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span>Positive</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span>Negative</span>
                     </div>
                   </div>
                 </div>
-                <div className="h-64">
-                  <Line data={moodData} options={chartOptions} />
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Insights Panel */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <Card variant="elevated" className="h-full">
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Lightbulb size={20} className="text-yellow-500" />
+                  <h2 className="text-xl font-semibold text-gray-900">Wellness Insights</h2>
                 </div>
-                <div className="text-xs text-gray-500 text-center">
-                  Mood trends automatically generated from your daily wellness conversations
-                </div>
+                <InsightsPanel insights={insights} isLoading={trendsLoading} />
               </div>
             </Card>
           </motion.div>
@@ -672,7 +703,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -697,7 +728,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
