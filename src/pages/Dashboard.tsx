@@ -32,9 +32,11 @@ import AddGoalModal from '../components/dashboard/AddGoalModal';
 import MoodTrendsChart from '../components/dashboard/MoodTrendsChart';
 import InsightsPanel from '../components/dashboard/InsightsPanel';
 import WeeklyStatsGrid from '../components/dashboard/WeeklyStatsGrid';
+import DailyStepsCard from '../components/dashboard/DailyStepsCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
+import { useAddictionSupport } from '../hooks/useAddictionSupport';
 
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
@@ -55,6 +57,9 @@ const Dashboard = () => {
     setSelectedTimeRange,
     refreshTrends
   } = useMoodTrends();
+
+  // Get addiction support data for daily steps
+  const { userAddictions, isLoading: addictionLoading } = useAddictionSupport();
   
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -257,7 +262,10 @@ const Dashboard = () => {
     }
   };
 
-  if (dashboardLoading || resetLoading) {
+  // Get primary addiction for daily steps
+  const primaryAddiction = userAddictions.length > 0 ? userAddictions[0] : null;
+
+  if (dashboardLoading || resetLoading || addictionLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
         <Navbar />
@@ -588,12 +596,27 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
+          {/* Daily Recovery Steps - Show if user has addiction tracking */}
+          {primaryAddiction && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="md:col-span-2 lg:col-span-3"
+            >
+              <DailyStepsCard 
+                addictionType={primaryAddiction.addiction_type?.category}
+                daysClean={primaryAddiction.days_clean}
+              />
+            </motion.div>
+          )}
+
           {/* Enhanced Mood Tracker Graph with Real Data */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="md:col-span-2"
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className={primaryAddiction ? "md:col-span-2 lg:col-span-3" : "md:col-span-2"}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -686,7 +709,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -703,7 +726,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -728,7 +751,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -764,14 +787,16 @@ const Dashboard = () => {
                       Write Journal
                     </Button>
                   </Link>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="flex-col h-24"
-                    leftIcon={<Brain size={24} />}
-                  >
-                    Meditate
-                  </Button>
+                  <Link to="/addiction-support">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="flex-col h-24 w-full"
+                      leftIcon={<Heart size={24} />}
+                    >
+                      Recovery Support
+                    </Button>
+                  </Link>
                 </div>
                 <div className="text-xs text-center text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50 p-3 rounded-lg">
                   💬 <strong>Daily Reset Active:</strong> Your mood, chat, and goals automatically reset every 24 hours for a fresh start!

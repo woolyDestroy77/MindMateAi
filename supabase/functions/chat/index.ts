@@ -34,11 +34,26 @@ function buildEnhancedQuery(
   message: string,
   context?: ChatContextMessage[],
 ): string {
-  // Add instruction for shorter responses
+  // Enhanced instruction with addiction support guidance
   const responseInstruction = `
 IMPORTANT: Keep your response SHORT and conversational (2-3 sentences max). 
 Use bullet points ONLY when giving specific advice or steps.
 Be warm but concise. Focus on the main point.
+
+ADDICTION SUPPORT GUIDANCE:
+If the user mentions addiction, recovery, cravings, relapse, or substance use:
+- Provide supportive, non-judgmental responses
+- Suggest practical coping strategies (breathing exercises, calling support, distraction techniques)
+- Remind them that recovery is a journey and setbacks are normal
+- Encourage them to reach out to their support network
+- Suggest daily recovery steps like hydration, exercise, mindfulness
+- If they mention crisis or emergency, remind them to call emergency services or crisis hotlines
+
+DAILY RECOVERY STEPS TO SUGGEST:
+- Morning: Start with positive affirmations and set daily intentions
+- Afternoon: Practice mindful breathing and check in with triggers
+- Evening: Reflect on the day and practice gratitude
+- Anytime: Connect with support network, use HALT method (Hungry, Angry, Lonely, Tired)
 
 `;
 
@@ -68,7 +83,7 @@ function enhancedSentimentAnalysis(text: string): string {
   
   console.log('🔍 SENTIMENT ANALYSIS - Analyzing text:', lowerText);
   
-  // Enhanced sentiment analysis with more comprehensive patterns
+  // Enhanced sentiment analysis with addiction-specific keywords
   const sentimentIndicators = {
     positive: {
       keywords: [
@@ -76,22 +91,30 @@ function enhancedSentimentAnalysis(text: string): string {
         'grateful', 'optimistic', 'pleased', 'satisfied', 'content', 'delighted', 'thrilled', 'cheerful',
         'glad', 'blessed', 'lucky', 'awesome', 'brilliant', 'perfect', 'beautiful', 'smile', 'laugh',
         'fun', 'enjoy', 'celebration', 'success', 'achievement', 'proud', 'confident', 'hopeful', 'elated',
-        'ecstatic', 'blissful', 'joyful', 'upbeat', 'positive', 'energetic', 'motivated', 'inspired'
+        'ecstatic', 'blissful', 'joyful', 'upbeat', 'positive', 'energetic', 'motivated', 'inspired',
+        // Recovery-specific positive terms
+        'clean', 'sober', 'recovery', 'healing', 'progress', 'milestone', 'strength', 'courage', 'hope'
       ],
       phrases: [
         'feeling good', 'feeling great', 'feeling happy', 'feeling amazing', 'feeling wonderful',
         'in a good mood', 'having a great day', 'things are good', 'life is good', 'doing well',
         'feeling positive', 'feeling blessed', 'feeling grateful', 'feeling lucky', 'love it',
         'really enjoy', 'makes me happy', 'so excited', 'cant wait', 'feeling fantastic',
-        'really good', 'super happy', 'absolutely love', 'feeling awesome', 'really pleased'
+        'really good', 'super happy', 'absolutely love', 'feeling awesome', 'really pleased',
+        // Recovery-specific positive phrases
+        'staying clean', 'feeling strong', 'making progress', 'proud of myself', 'getting better',
+        'recovery journey', 'feeling hopeful', 'staying sober', 'clean and sober', 'healing process'
       ],
       patterns: [
-        /i feel (good|great|happy|amazing|wonderful|fantastic|awesome|brilliant|perfect)/,
-        /i am (happy|excited|thrilled|delighted|pleased|glad|grateful|blessed|lucky)/,
-        /feeling (good|great|happy|amazing|wonderful|fantastic|awesome|positive|upbeat)/,
-        /really (happy|excited|good|great|pleased|glad)/,
-        /so (happy|excited|good|great|pleased|glad)/,
-        /absolutely (love|amazing|wonderful|fantastic|brilliant)/
+        /i feel (good|great|happy|amazing|wonderful|fantastic|awesome|brilliant|perfect|strong|hopeful|proud)/,
+        /i am (happy|excited|thrilled|delighted|pleased|glad|grateful|blessed|lucky|clean|sober|strong)/,
+        /feeling (good|great|happy|amazing|wonderful|fantastic|awesome|positive|upbeat|strong|hopeful|clean)/,
+        /really (happy|excited|good|great|pleased|glad|proud|strong)/,
+        /so (happy|excited|good|great|pleased|glad|proud|grateful)/,
+        /absolutely (love|amazing|wonderful|fantastic|brilliant)/,
+        /(staying|been) (clean|sober)/,
+        /making (progress|headway)/,
+        /(recovery|healing) (journey|process)/
       ],
       weight: 1
     },
@@ -102,7 +125,9 @@ function enhancedSentimentAnalysis(text: string): string {
         'devastated', 'heartbroken', 'furious', 'mad', 'annoyed', 'irritated', 'scared', 'afraid',
         'nervous', 'overwhelmed', 'exhausted', 'tired', 'drained', 'hopeless', 'lost', 'broken',
         'panicked', 'panicking', 'terrified', 'fearful', 'distressed', 'troubled', 'concerned',
-        'uneasy', 'restless', 'tense', 'agitated', 'distraught', 'despondent', 'melancholy'
+        'uneasy', 'restless', 'tense', 'agitated', 'distraught', 'despondent', 'melancholy',
+        // Addiction-specific negative terms
+        'craving', 'relapse', 'relapsed', 'using', 'drinking', 'high', 'withdrawal', 'tempted', 'triggered'
       ],
       phrases: [
         'feeling sad', 'feeling bad', 'feeling down', 'feeling depressed', 'feeling angry', 'feeling frustrated',
@@ -110,7 +135,10 @@ function enhancedSentimentAnalysis(text: string): string {
         'not doing well', 'having a bad day', 'things are bad', 'life is hard', 'struggling with',
         'cant stand', 'hate it when', 'makes me sad', 'makes me angry', 'really upset',
         'feeling awful', 'feeling terrible', 'really anxious', 'super stressed', 'really worried',
-        'feeling overwhelmed', 'feeling lost', 'feeling broken', 'feeling empty', 'really scared'
+        'feeling overwhelmed', 'feeling lost', 'feeling broken', 'feeling empty', 'really scared',
+        // Addiction-specific negative phrases
+        'want to use', 'thinking about drinking', 'having cravings', 'feeling triggered', 'want to relapse',
+        'struggling with addiction', 'cant stop thinking about', 'withdrawal symptoms', 'feeling tempted'
       ],
       patterns: [
         /i feel (sad|bad|terrible|awful|depressed|anxious|worried|stressed|upset|hurt|angry|frustrated)/,
@@ -118,7 +146,11 @@ function enhancedSentimentAnalysis(text: string): string {
         /feeling (sad|bad|down|depressed|anxious|worried|stressed|upset|angry|frustrated|awful|terrible)/,
         /really (sad|anxious|worried|stressed|upset|angry|frustrated|scared|afraid)/,
         /so (sad|anxious|worried|stressed|upset|angry|frustrated|scared|afraid)/,
-        /im (anxious|worried|stressed|depressed|sad|upset|angry|frustrated|scared|afraid)/
+        /im (anxious|worried|stressed|depressed|sad|upset|angry|frustrated|scared|afraid)/,
+        /(want to|thinking about) (use|drink|relapse)/,
+        /having (cravings|urges)/,
+        /(struggling with|battling) (addiction|cravings)/,
+        /feeling (triggered|tempted)/
       ],
       weight: 1
     }
@@ -248,7 +280,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare enhanced query with context
+    // Prepare enhanced query with context and addiction support
     const enhancedQuery = buildEnhancedQuery(message, context);
 
     const requestPayload: DappierRequest = { query: enhancedQuery };
