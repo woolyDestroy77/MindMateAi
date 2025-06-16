@@ -34,6 +34,7 @@ import MoodTrendsChart from '../components/dashboard/MoodTrendsChart';
 import InsightsPanel from '../components/dashboard/InsightsPanel';
 import WeeklyStatsGrid from '../components/dashboard/WeeklyStatsGrid';
 import DailyStepsCard from '../components/dashboard/DailyStepsCard';
+import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
@@ -496,11 +497,20 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Enhanced Daily Goals with Addiction Integration */}
+          {/* Suicide Prevention Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <SuicidePreventionCard />
+          </motion.div>
+
+          {/* Enhanced Daily Goals with Addiction Integration */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -646,7 +656,7 @@ const Dashboard = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
               className="md:col-span-2 lg:col-span-3"
             >
               <DailyStepsCard 
@@ -660,7 +670,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
             className={primaryAddiction ? "md:col-span-2 lg:col-span-3" : "md:col-span-2"}
           >
             <Card variant="elevated" className="h-full">
@@ -754,7 +764,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -771,7 +781,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -796,7 +806,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.7 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
