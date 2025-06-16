@@ -6,11 +6,14 @@ interface DailyGoal {
   id: string;
   text: string;
   completed: boolean;
-  type: 'base' | 'ai' | 'general' | 'custom';
+  type: 'base' | 'ai' | 'general' | 'custom' | 'addiction';
   priority?: 'high' | 'medium' | 'low';
   pointsValue: number;
   isCustom?: boolean;
   createdAt?: string;
+  addictionId?: string;
+  addictionName?: string;
+  addictionCategory?: string;
 }
 
 export const useDailyReset = () => {
@@ -146,6 +149,136 @@ export const useDailyReset = () => {
     }
   }, []);
 
+  // Generate addiction-specific daily goals
+  const generateAddictionGoals = useCallback((userAddictions: any[]) => {
+    if (!userAddictions || userAddictions.length === 0) return [];
+
+    const addictionGoals: DailyGoal[] = [];
+
+    userAddictions.forEach((addiction, index) => {
+      const daysClean = addiction.days_clean || 0;
+      const addictionName = addiction.addiction_type?.name || 'Addiction';
+      const category = addiction.addiction_type?.category || 'substance';
+
+      // Generate goals based on recovery stage and addiction type
+      let goals: Omit<DailyGoal, 'addictionId' | 'addictionName' | 'addictionCategory'>[] = [];
+
+      if (daysClean < 7) {
+        // Early recovery goals (0-7 days)
+        goals = [
+          {
+            id: `addiction_${addiction.id}_affirmation`,
+            text: 'Start day with recovery affirmation',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 8,
+            priority: 'high'
+          },
+          {
+            id: `addiction_${addiction.id}_hydration`,
+            text: 'Drink water to support healing',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 5,
+            priority: 'medium'
+          },
+          {
+            id: `addiction_${addiction.id}_support_check`,
+            text: 'Connect with support person',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 10,
+            priority: 'high'
+          }
+        ];
+      } else if (daysClean < 30) {
+        // Building habits (7-30 days)
+        goals = [
+          {
+            id: `addiction_${addiction.id}_morning_routine`,
+            text: 'Complete healthy morning routine',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 7,
+            priority: 'high'
+          },
+          {
+            id: `addiction_${addiction.id}_trigger_awareness`,
+            text: 'Identify and manage triggers',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 8,
+            priority: 'high'
+          },
+          {
+            id: `addiction_${addiction.id}_physical_activity`,
+            text: 'Engage in physical exercise',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 6,
+            priority: 'medium'
+          },
+          {
+            id: `addiction_${addiction.id}_gratitude`,
+            text: 'Practice gratitude for recovery',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 5,
+            priority: 'medium'
+          }
+        ];
+      } else {
+        // Established recovery (30+ days)
+        goals = [
+          {
+            id: `addiction_${addiction.id}_mindfulness`,
+            text: 'Practice mindfulness meditation',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 7,
+            priority: 'high'
+          },
+          {
+            id: `addiction_${addiction.id}_help_others`,
+            text: 'Support someone else in recovery',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 10,
+            priority: 'medium'
+          },
+          {
+            id: `addiction_${addiction.id}_skill_building`,
+            text: 'Learn new healthy coping skill',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 8,
+            priority: 'medium'
+          },
+          {
+            id: `addiction_${addiction.id}_reflection`,
+            text: 'Reflect on recovery progress',
+            completed: false,
+            type: 'addiction',
+            pointsValue: 6,
+            priority: 'low'
+          }
+        ];
+      }
+
+      // Add addiction-specific information to each goal
+      const enrichedGoals = goals.map(goal => ({
+        ...goal,
+        addictionId: addiction.id,
+        addictionName,
+        addictionCategory: category
+      }));
+
+      addictionGoals.push(...enrichedGoals);
+    });
+
+    return addictionGoals;
+  }, []);
+
   // Add a new custom goal
   const addCustomGoal = useCallback(async (goalText: string, pointsValue: number = 5) => {
     try {
@@ -241,6 +374,7 @@ export const useDailyReset = () => {
     removeCustomGoal,
     checkForDailyReset,
     performDailyReset,
-    triggerManualReset
+    triggerManualReset,
+    generateAddictionGoals
   };
 };

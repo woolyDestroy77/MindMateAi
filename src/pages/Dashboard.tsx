@@ -22,7 +22,8 @@ import {
   Settings,
   LineChart,
   Users,
-  Lightbulb
+  Lightbulb,
+  Shield
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -45,6 +46,7 @@ const Dashboard = () => {
     addCustomGoal, 
     removeCustomGoal, 
     triggerManualReset,
+    generateAddictionGoals,
     isLoading: resetLoading 
   } = useDailyReset();
   
@@ -77,8 +79,11 @@ const Dashboard = () => {
     { id: 'gratitude-practice', text: 'Gratitude practice', completed: false, type: 'general' as const, pointsValue: 4 },
   ];
 
+  // Generate addiction-specific goals
+  const addictionGoals = generateAddictionGoals(userAddictions);
+
   // Combine all goals
-  const allGoals = [...baseGoals, ...generalGoals, ...customGoals];
+  const allGoals = [...baseGoals, ...generalGoals, ...addictionGoals, ...customGoals];
 
   // Goal completion state management
   const today = new Date().toDateString();
@@ -213,6 +218,36 @@ const Dashboard = () => {
     console.log('Dashboard data updated:', dashboardData);
     console.log('Update trigger:', updateTrigger);
   }, [dashboardData, updateTrigger]);
+
+  // Get primary addiction for daily steps
+  const primaryAddiction = userAddictions.length > 0 ? userAddictions[0] : null;
+
+  // Helper function to get addiction tag info
+  const getAddictionTagInfo = (goal: any) => {
+    if (goal.type !== 'addiction') return null;
+    
+    const colors = {
+      substance: 'bg-red-100 text-red-700 border-red-300',
+      behavioral: 'bg-blue-100 text-blue-700 border-blue-300',
+      other: 'bg-purple-100 text-purple-700 border-purple-300'
+    };
+
+    const icons = {
+      substance: Shield,
+      behavioral: Brain,
+      other: Heart
+    };
+
+    const category = goal.addictionCategory || 'other';
+    const IconComponent = icons[category as keyof typeof icons];
+
+    return {
+      name: goal.addictionName,
+      category,
+      color: colors[category as keyof typeof colors],
+      icon: IconComponent
+    };
+  };
   
   const journalEntries = [
     {
@@ -261,9 +296,6 @@ const Dashboard = () => {
       return 'Recently';
     }
   };
-
-  // Get primary addiction for daily steps
-  const primaryAddiction = userAddictions.length > 0 ? userAddictions[0] : null;
 
   if (dashboardLoading || resetLoading || addictionLoading) {
     return (
@@ -464,7 +496,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Enhanced Daily Goals with 24-hour reset */}
+          {/* Enhanced Daily Goals with Addiction Integration */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -519,53 +551,66 @@ const Dashboard = () => {
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {allGoals.map((goal) => (
-                      <motion.div
-                        key={goal.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center flex-1">
-                          <input
-                            type="checkbox"
-                            checked={completedGoals.has(goal.id)}
-                            onChange={() => toggleGoalCompletion(goal.id, goal.pointsValue)}
-                            className="rounded text-lavender-600 mr-3"
-                            disabled={goal.type === 'ai' && !completedGoals.has(goal.id)}
-                          />
-                          <div className="flex-1">
-                            <span className={`text-sm ${completedGoals.has(goal.id) ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                              {goal.text}
-                            </span>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <span className="text-xs text-gray-500">
-                                {goal.pointsValue} pts
-                              </span>
-                              {goal.type === 'ai' && (
-                                <span className="text-xs bg-lavender-100 text-lavender-700 px-1.5 py-0.5 rounded-full">
-                                  Auto
+                    {allGoals.map((goal) => {
+                      const addictionInfo = getAddictionTagInfo(goal);
+                      
+                      return (
+                        <motion.div
+                          key={goal.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="relative p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center flex-1">
+                              <input
+                                type="checkbox"
+                                checked={completedGoals.has(goal.id)}
+                                onChange={() => toggleGoalCompletion(goal.id, goal.pointsValue)}
+                                className="rounded text-lavender-600 mr-3"
+                                disabled={goal.type === 'ai' && !completedGoals.has(goal.id)}
+                              />
+                              <div className="flex-1">
+                                <span className={`text-sm ${completedGoals.has(goal.id) ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                                  {goal.text}
                                 </span>
-                              )}
-                              {goal.type === 'custom' && (
-                                <span className="text-xs bg-sage-100 text-sage-700 px-1.5 py-0.5 rounded-full">
-                                  Custom
-                                </span>
-                              )}
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className="text-xs text-gray-500">
+                                    {goal.pointsValue} pts
+                                  </span>
+                                  {goal.type === 'ai' && (
+                                    <span className="text-xs bg-lavender-100 text-lavender-700 px-1.5 py-0.5 rounded-full">
+                                      Auto
+                                    </span>
+                                  )}
+                                  {goal.type === 'custom' && (
+                                    <span className="text-xs bg-sage-100 text-sage-700 px-1.5 py-0.5 rounded-full">
+                                      Custom
+                                    </span>
+                                  )}
+                                  {goal.type === 'addiction' && addictionInfo && (
+                                    <span className={`text-xs px-1.5 py-0.5 rounded-full border flex items-center space-x-1 ${addictionInfo.color}`}>
+                                      <addictionInfo.icon size={10} />
+                                      <span>{addictionInfo.name}</span>
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
+                            {(goal.type === 'custom' || goal.type === 'addiction') && (
+                              <button
+                                onClick={() => goal.type === 'custom' ? removeCustomGoal(goal.id) : null}
+                                className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                                title={goal.type === 'custom' ? "Remove custom goal" : "Addiction goal"}
+                                disabled={goal.type === 'addiction'}
+                              >
+                                {goal.type === 'custom' ? <X size={14} /> : <Shield size={14} />}
+                              </button>
+                            )}
                           </div>
-                        </div>
-                        {goal.type === 'custom' && (
-                          <button
-                            onClick={() => removeCustomGoal(goal.id)}
-                            className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
-                            title="Remove custom goal"
-                          >
-                            <X size={14} />
-                          </button>
-                        )}
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
 
