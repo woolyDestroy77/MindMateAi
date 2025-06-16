@@ -176,16 +176,16 @@ const EmergencySupport: React.FC<EmergencySupportProps> = ({ isOpen, onClose, re
                     <h3 className="font-semibold text-blue-900 mb-2">Support Groups & Communities</h3>
                     <div className="space-y-2 text-sm">
                       <div>
-                        <strong>Alcoholics Anonymous:</strong> <a href="https://www.aa.org" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-800">aa.org</a>
+                        <strong>Alcoholics Anonymous:</strong> <a href="https://www.aa.org" target=\"_blank" rel="noopener noreferrer\" className="text-blue-700 hover:text-blue-800">aa.org</a>
                       </div>
                       <div>
-                        <strong>Narcotics Anonymous:</strong> <a href="https://www.na.org" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-800">na.org</a>
+                        <strong>Narcotics Anonymous:</strong> <a href="https://www.na.org" target=\"_blank" rel="noopener noreferrer\" className="text-blue-700 hover:text-blue-800">na.org</a>
                       </div>
                       <div>
-                        <strong>SMART Recovery:</strong> <a href="https://www.smartrecovery.org" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-800">smartrecovery.org</a>
+                        <strong>SMART Recovery:</strong> <a href="https://www.smartrecovery.org" target=\"_blank" rel="noopener noreferrer\" className="text-blue-700 hover:text-blue-800">smartrecovery.org</a>
                       </div>
                       <div>
-                        <strong>Gamblers Anonymous:</strong> <a href="https://www.gamblersanonymous.org" target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:text-blue-800">gamblersanonymous.org</a>
+                        <strong>Gamblers Anonymous:</strong> <a href="https://www.gamblersanonymous.org" target=\"_blank" rel="noopener noreferrer\" className="text-blue-700 hover:text-blue-800">gamblersanonymous.org</a>
                       </div>
                     </div>
                   </div>
