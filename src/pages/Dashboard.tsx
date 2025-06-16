@@ -39,13 +39,17 @@ import {
   ThumbsDown,
   Plus,
   Trophy,
+  X,
+  Trash2,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import AddGoalModal from '../components/dashboard/AddGoalModal';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { useDailyReset } from '../hooks/useDailyReset';
 import { supabase } from '../lib/supabase';
 
 ChartJS.register(
@@ -113,13 +117,16 @@ interface DailyGoal {
   id: string;
   text: string;
   completed: boolean;
-  type: 'base' | 'ai' | 'general';
+  type: 'base' | 'ai' | 'general' | 'custom';
   priority?: 'high' | 'medium' | 'low';
   pointsValue: number;
+  isCustom?: boolean;
 }
 
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger, updateMoodFromAI } = useDashboardData();
+  const { customGoals, addCustomGoal, removeCustomGoal, isLoading: resetLoading } = useDailyReset();
+  
   const [completedGoals, setCompletedGoals] = useState<string[]>([]);
   const [showCongrats, setShowCongrats] = useState(false);
   const [showFeelBetterPopup, setShowFeelBetterPopup] = useState(false);
@@ -127,6 +134,7 @@ const Dashboard = () => {
   const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(false);
   const [goalPointsMap, setGoalPointsMap] = useState<{ [key: string]: number }>({});
   const [allGoalsFinished, setAllGoalsFinished] = useState(false);
+  const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   
   // Load persisted state from localStorage on component mount
   useEffect(() => {
@@ -239,6 +247,7 @@ const Dashboard = () => {
   // Check if user has shared their mood yet (not default state)
   const hasSharedMood = dashboardData.lastMessage && 
     dashboardData.lastMessage.trim() !== '' &&
+    !dashboardData.moodInterpretation.includes('Welcome to a new day') &&
     !dashboardData.moodInterpretation.includes('Welcome to PureMind AI');
 
   // Extract AI recommendations from the last AI response
@@ -327,25 +336,30 @@ const Dashboard = () => {
       goals.push(...aiRecommendations);
     }
 
-    // Add some general wellness goals
-    const generalGoals: DailyGoal[] = [
-      { 
-        id: 'evening-reflection', 
-        text: 'Evening reflection practice', 
-        completed: false, 
-        type: 'general',
-        pointsValue: 6
-      },
-      { 
-        id: 'gratitude-practice', 
-        text: 'Write down 3 things you\'re grateful for', 
-        completed: false, 
-        type: 'general',
-        pointsValue: 5
-      }
-    ];
+    // Add custom goals
+    goals.push(...customGoals);
 
-    goals.push(...generalGoals);
+    // Add some general wellness goals if we don't have many
+    if (goals.length < 6) {
+      const generalGoals: DailyGoal[] = [
+        { 
+          id: 'evening-reflection', 
+          text: 'Evening reflection practice', 
+          completed: false, 
+          type: 'general',
+          pointsValue: 6
+        },
+        { 
+          id: 'gratitude-practice', 
+          text: 'Write down 3 things you\'re grateful for', 
+          completed: false, 
+          type: 'general',
+          pointsValue: 5
+        }
+      ];
+
+      goals.push(...generalGoals);
+    }
 
     // Mark completed goals based on state
     return goals.map(goal => ({
@@ -501,6 +515,37 @@ const Dashboard = () => {
     }, 1000);
   };
 
+  // Handle adding custom goal
+  const handleAddCustomGoal = async (goalText: string, pointsValue: number) => {
+    try {
+      await addCustomGoal(goalText, pointsValue);
+    } catch (error) {
+      console.error('Error adding custom goal:', error);
+      throw error;
+    }
+  };
+
+  // Handle removing custom goal
+  const handleRemoveCustomGoal = async (goalId: string) => {
+    try {
+      // If the goal was completed, remove its completion and points
+      if (completedGoals.includes(goalId)) {
+        const pointsToRemove = goalPointsMap[goalId] || 5;
+        setCompletedGoals(prev => prev.filter(id => id !== goalId));
+        setGoalPointsMap(prev => {
+          const newMap = { ...prev };
+          delete newMap[goalId];
+          return newMap;
+        });
+        await updateWellnessScore(-pointsToRemove);
+      }
+      
+      await removeCustomGoal(goalId);
+    } catch (error) {
+      console.error('Error removing custom goal:', error);
+    }
+  };
+
   // Check when all goals are completed to show congratulations
   useEffect(() => {
     if (allGoalsCompleted && completedGoalsCount > 0 && !showCongrats && !hasShownFeelBetterToday && !allGoalsFinished) {
@@ -517,7 +562,7 @@ const Dashboard = () => {
     }
   }, [allGoalsCompleted, completedGoalsCount, showCongrats, hasShownFeelBetterToday, dailyGoals, allGoalsFinished]);
 
-  if (dashboardLoading) {
+  if (dashboardLoading || resetLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
         <Navbar />
@@ -935,68 +980,123 @@ const Dashboard = () => {
                       <Star className="text-yellow-500" size={16} />
                     </div>
                     
-                    <div className="text-xs text-green-600 bg-green-50 rounded-full px-3 py-1 inline-block">
-                      We can add more daily goals later
-                    </div>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowAddGoalModal(true)}
+                      leftIcon={<Plus size={16} />}
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                    >
+                      Add More Goals
+                    </Button>
                   </motion.div>
                 ) : (
                   // Regular goals list
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {dailyGoals.map((goal, index) => (
-                      <motion.div
-                        key={goal.id}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
-                        className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
-                          goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
-                          goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
-                        } ${goal.type === 'base' ? 'opacity-75' : ''}`}
-                        onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
+                  <>
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {dailyGoals.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                          <p className="text-gray-600 text-sm mb-4">No goals set for today</p>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setShowAddGoalModal(true)}
+                            leftIcon={<Plus size={16} />}
+                          >
+                            Add Your First Goal
+                          </Button>
+                        </div>
+                      ) : (
+                        dailyGoals.map((goal, index) => (
+                          <motion.div
+                            key={goal.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.1 }}
+                            className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
+                              goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
+                              goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
+                            } ${goal.type === 'base' ? 'opacity-75' : ''}`}
+                            onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
+                          >
+                            <div className="flex-shrink-0 mt-0.5">
+                              {goal.completed ? (
+                                <CheckCircle size={20} className="text-green-600" />
+                              ) : (
+                                <Circle size={20} className={`${
+                                  goal.type === 'ai' ? 'text-blue-500' : 
+                                  goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
+                                }`} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className={`text-sm ${
+                                  goal.completed ? 'text-green-700 line-through' : 
+                                  goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
+                                }`}>
+                                  {goal.text}
+                                </span>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs text-gray-500">
+                                    +{goal.pointsValue}pts
+                                  </span>
+                                  {goal.isCustom && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveCustomGoal(goal.id);
+                                      }}
+                                      className="text-red-400 hover:text-red-600 transition-colors"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              {goal.type === 'ai' && goal.priority === 'high' && (
+                                <div className="flex items-center mt-1">
+                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                    High Priority
+                                  </span>
+                                </div>
+                              )}
+                              {goal.type === 'ai' && !goal.completed && (
+                                <div className="text-xs text-blue-600 mt-1 italic">
+                                  AI recommendation from your chat
+                                </div>
+                              )}
+                              {goal.type === 'base' && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Completed automatically through chat
+                                </div>
+                              )}
+                              {goal.isCustom && (
+                                <div className="text-xs text-purple-600 mt-1 italic">
+                                  Custom goal
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Add Goal Button */}
+                    {!allGoalsFinished && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        fullWidth
+                        onClick={() => setShowAddGoalModal(true)}
+                        leftIcon={<Plus size={16} />}
+                        className="border-dashed border-2 border-gray-300 hover:border-lavender-400 hover:bg-lavender-50 text-gray-600 hover:text-lavender-700"
                       >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {goal.completed ? (
-                            <CheckCircle size={20} className="text-green-600" />
-                          ) : (
-                            <Circle size={20} className={`${
-                              goal.type === 'ai' ? 'text-blue-500' : 
-                              goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
-                            }`} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-sm ${
-                              goal.completed ? 'text-green-700 line-through' : 
-                              goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
-                            }`}>
-                              {goal.text}
-                            </span>
-                            <span className="text-xs text-gray-500 ml-2">
-                              +{goal.pointsValue}pts
-                            </span>
-                          </div>
-                          {goal.type === 'ai' && goal.priority === 'high' && (
-                            <div className="flex items-center mt-1">
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                                High Priority
-                              </span>
-                            </div>
-                          )}
-                          {goal.type === 'ai' && !goal.completed && (
-                            <div className="text-xs text-blue-600 mt-1 italic">
-                              AI recommendation from your chat
-                            </div>
-                          )}
-                          {goal.type === 'base' && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Completed automatically through chat
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                        Add More Goals
+                      </Button>
+                    )}
+                  </>
                 )}
 
                 {hasSharedMood && !allGoalsFinished && (
@@ -1104,8 +1204,9 @@ const Dashboard = () => {
                     size="lg"
                     className="flex-col h-24"
                     leftIcon={<Target size={24} />}
+                    onClick={() => setShowAddGoalModal(true)}
                   >
-                    Set Goals
+                    Add Goals
                   </Button>
                   <Link to="/journal">
                     <Button
@@ -1142,6 +1243,13 @@ const Dashboard = () => {
           </motion.div>
         </div>
       </main>
+
+      {/* Add Goal Modal */}
+      <AddGoalModal
+        isOpen={showAddGoalModal}
+        onClose={() => setShowAddGoalModal(false)}
+        onAddGoal={handleAddCustomGoal}
+      />
     </div>
   );
 };
