@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Volume2, Settings, Play, Pause } from 'lucide-react';
+import { X, Volume2, Settings, Play, Pause, RotateCcw } from 'lucide-react';
 import Button from '../ui/Button';
 import { VoiceSettings } from '../../hooks/useTextToSpeech';
 
@@ -11,6 +11,7 @@ interface VoiceSettingsModalProps {
   voices: SpeechSynthesisVoice[];
   onUpdateSettings: (settings: Partial<VoiceSettings>) => void;
   onTestVoice: () => void;
+  onResetSettings: () => void;
   isPlaying: boolean;
 }
 
@@ -21,6 +22,7 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
   voices,
   onUpdateSettings,
   onTestVoice,
+  onResetSettings,
   isPlaying
 }) => {
   const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
@@ -74,16 +76,46 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                     <p className="text-sm text-gray-600">Customize how AI messages sound</p>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={onResetSettings}
+                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    title="Reset to defaults"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
             </div>
 
             <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto space-y-6">
+              {/* Auto-play Setting */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium text-blue-900">Auto-play AI Responses</h4>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Automatically speak new AI messages when they arrive
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={voiceSettings.autoPlay}
+                      onChange={(e) => onUpdateSettings({ autoPlay: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
               {/* Voice Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -110,6 +142,9 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                               <div className="font-medium text-sm">{voice.name}</div>
                               <div className="text-xs text-gray-500">
                                 {voice.lang} • {voice.localService ? 'Local' : 'Network'}
+                                {voiceSettings.voice?.name === voice.name && (
+                                  <span className="ml-2 text-blue-600 font-medium">✓ Selected</span>
+                                )}
                               </div>
                             </button>
                           ))}
@@ -240,15 +275,29 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                 </div>
               </div>
 
+              {/* Settings Persistence Info */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h4 className="font-medium text-green-900 mb-2 flex items-center">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Settings Saved Automatically
+                </h4>
+                <div className="text-sm text-green-800 space-y-1">
+                  <div>• Your voice preferences are saved locally</div>
+                  <div>• Settings will be restored when you return</div>
+                  <div>• Current voice: {voiceSettings.voice?.name || 'None selected'}</div>
+                  <div>• Auto-play: {voiceSettings.autoPlay ? 'Enabled' : 'Disabled'}</div>
+                </div>
+              </div>
+
               {/* Browser Support Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-medium text-blue-900 mb-2">Voice Support Information</h4>
                 <div className="text-sm text-blue-800 space-y-1">
                   <div>• Available voices: {voices.length}</div>
                   <div>• English voices: {englishVoices.length}</div>
-                  <div>• Current voice: {voiceSettings.voice?.name || 'None selected'}</div>
                   <div className="text-xs text-blue-600 mt-2">
                     Voice quality and availability depend on your operating system and browser.
+                    For the best experience, use Chrome, Safari, or Edge.
                   </div>
                 </div>
               </div>
@@ -258,10 +307,10 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
               <div className="flex space-x-3">
                 <Button
                   variant="outline"
-                  fullWidth
-                  onClick={onClose}
+                  onClick={onResetSettings}
+                  leftIcon={<RotateCcw size={16} />}
                 >
-                  Close
+                  Reset Defaults
                 </Button>
                 <Button
                   variant="primary"
@@ -270,7 +319,7 @@ const VoiceSettingsModal: React.FC<VoiceSettingsModalProps> = ({
                   leftIcon={<Settings size={18} />}
                   className="bg-gradient-to-r from-blue-500 to-purple-500"
                 >
-                  Save Settings
+                  Save & Close
                 </Button>
               </div>
             </div>

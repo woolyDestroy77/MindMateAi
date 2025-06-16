@@ -7,7 +7,11 @@ export interface VoiceSettings {
   volume: number;
   voice: SpeechSynthesisVoice | null;
   autoPlay: boolean;
+  voiceName?: string; // Store voice name for persistence
+  voiceLang?: string; // Store voice language for persistence
 }
+
+const VOICE_SETTINGS_KEY = 'puremind_voice_settings';
 
 export const useTextToSpeech = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -15,16 +19,57 @@ export const useTextToSpeech = () => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isSupported, setIsSupported] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    rate: 0.9,
-    pitch: 1.0,
-    volume: 0.8,
-    voice: null,
-    autoPlay: false
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(() => {
+    // Load saved settings from localStorage
+    try {
+      const saved = localStorage.getItem(VOICE_SETTINGS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log('🎵 Loaded saved voice settings:', parsed);
+        return {
+          rate: parsed.rate || 0.9,
+          pitch: parsed.pitch || 1.0,
+          volume: parsed.volume || 0.8,
+          voice: null, // Will be set when voices are loaded
+          autoPlay: parsed.autoPlay || false,
+          voiceName: parsed.voiceName,
+          voiceLang: parsed.voiceLang
+        };
+      }
+    } catch (error) {
+      console.error('Error loading voice settings:', error);
+    }
+    
+    // Default settings
+    return {
+      rate: 0.9,
+      pitch: 1.0,
+      volume: 0.8,
+      voice: null,
+      autoPlay: false
+    };
   });
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save settings to localStorage whenever they change
+  const saveVoiceSettings = useCallback((settings: VoiceSettings) => {
+    try {
+      const settingsToSave = {
+        rate: settings.rate,
+        pitch: settings.pitch,
+        volume: settings.volume,
+        autoPlay: settings.autoPlay,
+        voiceName: settings.voice?.name,
+        voiceLang: settings.voice?.lang
+      };
+      localStorage.setItem(VOICE_SETTINGS_KEY, JSON.stringify(settingsToSave));
+      console.log('🎵 Voice settings saved:', settingsToSave);
+    } catch (error) {
+      console.error('Error saving voice settings:', error);
+    }
+  }, []);
 
   // Enhanced text cleaning function to remove emojis and improve speech
   const cleanTextForSpeech = useCallback((text: string): string => {
@@ -80,34 +125,61 @@ export const useTextToSpeech = () => {
 
       setVoices(availableVoices);
       
-      // Set default voice with better selection logic
-      if (!voiceSettings.voice && availableVoices.length > 0) {
-        // Priority order for voice selection
-        const voicePreferences = [
-          // High-quality female voices
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('samantha') && v.lang.startsWith('en'),
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('karen') && v.lang.startsWith('en'),
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('susan') && v.lang.startsWith('en'),
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('female') && v.lang.startsWith('en'),
-          // High-quality male voices
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('daniel') && v.lang.startsWith('en'),
-          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('alex') && v.lang.startsWith('en'),
-          // Any English voice
-          (v: SpeechSynthesisVoice) => v.lang.startsWith('en-US'),
-          (v: SpeechSynthesisVoice) => v.lang.startsWith('en'),
-          // Fallback to any voice
-          () => true
-        ];
-
+      // Restore saved voice or set default voice
+      if (availableVoices.length > 0) {
         let selectedVoice = null;
-        for (const preference of voicePreferences) {
-          selectedVoice = availableVoices.find(preference);
-          if (selectedVoice) break;
+
+        // Try to restore previously saved voice
+        if (voiceSettings.voiceName && voiceSettings.voiceLang) {
+          selectedVoice = availableVoices.find(v => 
+            v.name === voiceSettings.voiceName && v.lang === voiceSettings.voiceLang
+          );
+          
+          if (selectedVoice) {
+            console.log('🎵 Restored saved voice:', selectedVoice.name);
+          } else {
+            console.log('🎵 Saved voice not found, selecting default');
+          }
+        }
+
+        // If no saved voice or saved voice not found, select default
+        if (!selectedVoice) {
+          // Priority order for voice selection
+          const voicePreferences = [
+            // High-quality female voices
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('samantha') && v.lang.startsWith('en'),
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('karen') && v.lang.startsWith('en'),
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('susan') && v.lang.startsWith('en'),
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('female') && v.lang.startsWith('en'),
+            // High-quality male voices
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('daniel') && v.lang.startsWith('en'),
+            (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('alex') && v.lang.startsWith('en'),
+            // Any English voice
+            (v: SpeechSynthesisVoice) => v.lang.startsWith('en-US'),
+            (v: SpeechSynthesisVoice) => v.lang.startsWith('en'),
+            // Fallback to any voice
+            () => true
+          ];
+
+          for (const preference of voicePreferences) {
+            selectedVoice = availableVoices.find(preference);
+            if (selectedVoice) break;
+          }
+
+          if (selectedVoice) {
+            console.log('🎵 Selected default voice:', selectedVoice.name);
+          }
         }
 
         if (selectedVoice) {
-          console.log('🎵 Selected default voice:', selectedVoice.name);
-          setVoiceSettings(prev => ({ ...prev, voice: selectedVoice }));
+          const newSettings = { 
+            ...voiceSettings, 
+            voice: selectedVoice,
+            voiceName: selectedVoice.name,
+            voiceLang: selectedVoice.lang
+          };
+          setVoiceSettings(newSettings);
+          saveVoiceSettings(newSettings);
         }
       }
       
@@ -136,7 +208,7 @@ export const useTextToSpeech = () => {
         }
       }, 3000);
     }
-  }, [voiceSettings.voice, isInitialized]);
+  }, [voiceSettings, isInitialized, saveVoiceSettings]);
 
   // Initialize on mount
   useEffect(() => {
@@ -339,11 +411,28 @@ export const useTextToSpeech = () => {
     }
   }, []);
 
-  // Update voice settings
+  // Update voice settings with persistence
   const updateVoiceSettings = useCallback((newSettings: Partial<VoiceSettings>) => {
     console.log('🎵 Updating voice settings:', newSettings);
-    setVoiceSettings(prev => ({ ...prev, ...newSettings }));
-  }, []);
+    const updatedSettings = { ...voiceSettings, ...newSettings };
+    
+    // If voice is being updated, also update the name and lang for persistence
+    if (newSettings.voice) {
+      updatedSettings.voiceName = newSettings.voice.name;
+      updatedSettings.voiceLang = newSettings.voice.lang;
+    }
+    
+    setVoiceSettings(updatedSettings);
+    saveVoiceSettings(updatedSettings);
+    
+    // Show confirmation toast
+    if (Object.keys(newSettings).length > 0) {
+      toast.success('Voice settings saved', { 
+        duration: 2000,
+        icon: '🎵'
+      });
+    }
+  }, [voiceSettings, saveVoiceSettings]);
 
   // Get available voice categories
   const getVoiceCategories = useCallback(() => {
@@ -381,6 +470,36 @@ export const useTextToSpeech = () => {
     speak(testText, 'voice-test');
   }, [speak]);
 
+  // Reset settings to defaults
+  const resetSettings = useCallback(() => {
+    const defaultSettings: VoiceSettings = {
+      rate: 0.9,
+      pitch: 1.0,
+      volume: 0.8,
+      voice: null,
+      autoPlay: false
+    };
+    
+    setVoiceSettings(defaultSettings);
+    saveVoiceSettings(defaultSettings);
+    
+    // Clear saved settings
+    try {
+      localStorage.removeItem(VOICE_SETTINGS_KEY);
+      toast.success('Voice settings reset to defaults', { 
+        duration: 2000,
+        icon: '🔄'
+      });
+    } catch (error) {
+      console.error('Error clearing voice settings:', error);
+    }
+    
+    // Re-initialize to set default voice
+    setTimeout(() => {
+      initializeSpeech();
+    }, 100);
+  }, [saveVoiceSettings, initializeSpeech]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -411,6 +530,7 @@ export const useTextToSpeech = () => {
     updateVoiceSettings,
     initializeSpeech,
     testVoice,
+    resetSettings, // New reset function
     
     // Utilities
     getVoiceCategories,

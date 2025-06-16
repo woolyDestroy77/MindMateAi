@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
   Mic,
-  X,
-  Loader,
+  MicOff,
+  Loader2,
+  Bot,
+  User,
   Volume2,
-  VolumeX,
+  X,
   Play,
   Pause,
   TrendingUp,
@@ -21,10 +23,11 @@ import {
   MessageCircle,
   Sparkles,
   Download,
+  VolumeX,
   Settings,
-  StopCircle
+  VolumeOff
 } from "lucide-react";
-import { format, isToday, isYesterday, differenceInHours } from "date-fns";
+import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
@@ -58,19 +61,19 @@ const Chat = () => {
     formatDuration
   } = useVoiceInput();
 
-  // Text-to-Speech functionality
+  // Text-to-speech hook
   const {
     isPlaying: isSpeaking,
     currentMessageId: speakingMessageId,
     voices,
-    isSupported: isTTSSupported,
-    isInitialized: isTTSInitialized,
+    isSupported: speechSupported,
+    isInitialized: speechInitialized,
     voiceSettings,
     speak,
-    stop: stopSpeech,
     stopAudio,
     updateVoiceSettings,
-    testVoice
+    testVoice,
+    resetSettings: resetVoiceSettings
   } = useTextToSpeech();
 
   const [inputMessage, setInputMessage] = useState("");
@@ -98,18 +101,18 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-play AI responses if enabled
+  // Auto-play new AI messages if enabled
   useEffect(() => {
     if (voiceSettings.autoPlay && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant' && !isSpeaking) {
+      if (lastMessage.role === 'assistant' && !lastMessage.isVoiceMessage) {
         // Small delay to ensure message is rendered
         setTimeout(() => {
           speak(lastMessage.content, lastMessage.id);
         }, 500);
       }
     }
-  }, [messages, voiceSettings.autoPlay, speak, isSpeaking]);
+  }, [messages, voiceSettings.autoPlay, speak]);
 
   // Show welcome message for new day or first visit with proper auto-hide
   useEffect(() => {
@@ -207,15 +210,6 @@ const Chat = () => {
       setShowOptionsMenu(false);
     } catch (error) {
       console.error("Failed to delete chat history:", error);
-    }
-  };
-
-  // Handle AI message speech
-  const handleSpeakMessage = (messageId: string, content: string) => {
-    if (isSpeaking && speakingMessageId === messageId) {
-      stopSpeech();
-    } else {
-      speak(content, messageId);
     }
   };
 
@@ -340,6 +334,15 @@ const Chat = () => {
     Object.values(audioRefs.current).forEach(audio => {
       audio.volume = newMuted ? 0 : audioVolume;
     });
+  };
+
+  // Handle AI message speech
+  const handleSpeakMessage = (messageId: string, content: string) => {
+    if (speakingMessageId === messageId) {
+      stopAudio();
+    } else {
+      speak(content, messageId);
+    }
   };
 
   const getSentimentColor = (sentiment?: string) => {
@@ -502,56 +505,27 @@ const Chat = () => {
                 </div>
 
                 {/* Voice Controls */}
-                {isTTSSupported && (
+                {speechSupported && (
                   <div className="flex items-center space-x-2">
-                    {/* Stop All Audio Button */}
-                    {(isSpeaking || playingAudio) && (
+                    {/* Stop Audio Button (when speaking) */}
+                    {isSpeaking && (
                       <button
-                        onClick={() => {
-                          stopAudio();
-                          // Also stop voice message audio
-                          Object.values(audioRefs.current).forEach(audio => {
-                            audio.pause();
-                            audio.currentTime = 0;
-                          });
-                          setPlayingAudio(null);
-                          setAudioProgress({});
-                        }}
+                        onClick={stopAudio}
                         className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
-                        title="Stop all audio"
+                        title="Stop audio"
                       >
-                        <StopCircle size={18} />
+                        <VolumeOff size={16} />
                       </button>
                     )}
-
+                    
                     {/* Voice Settings */}
                     <button
                       onClick={() => setShowVoiceSettings(true)}
                       className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       title="Voice settings"
                     >
-                      <Settings size={18} />
+                      <Settings size={16} />
                     </button>
-
-                    {/* Voice Status Indicator */}
-                    <div className="flex items-center space-x-1 text-xs">
-                      {isSpeaking ? (
-                        <div className="flex items-center space-x-1 text-blue-600">
-                          <Volume2 size={14} className="animate-pulse" />
-                          <span>Speaking...</span>
-                        </div>
-                      ) : isTTSInitialized ? (
-                        <div className="flex items-center space-x-1 text-green-600">
-                          <Volume2 size={14} />
-                          <span>Voice Ready</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-1 text-gray-500">
-                          <VolumeX size={14} />
-                          <span>No Voice</span>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 )}
 
@@ -739,9 +713,9 @@ const Chat = () => {
                             }`}
                           >
                             {message.role === "user" ? (
-                              <span className="text-sm">👤</span>
+                              <User size={16} />
                             ) : (
-                              <span className="text-sm">🤖</span>
+                              <Bot size={16} />
                             )}
                           </div>
                         </div>
@@ -853,18 +827,48 @@ const Chat = () => {
                               )}
                             </div>
                           ) : (
-                            // Regular Text Message with Enhanced Formatting
-                            <div
-                              className={`${
-                                message.role === "user"
-                                  ? "text-white"
-                                  : "text-gray-900"
-                              }`}
-                            >
-                              {message.role === "assistant" 
-                                ? formatAIResponse(message.content)
-                                : <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
-                              }
+                            // Regular Text Message with Enhanced Formatting and Voice Controls
+                            <div>
+                              <div
+                                className={`${
+                                  message.role === "user"
+                                    ? "text-white"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {message.role === "assistant" 
+                                  ? formatAIResponse(message.content)
+                                  : <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
+                                }
+                              </div>
+
+                              {/* Voice Controls for AI Messages */}
+                              {message.role === "assistant" && speechSupported && speechInitialized && (
+                                <div className="mt-3 pt-2 border-t border-gray-100">
+                                  <button
+                                    onClick={() => handleSpeakMessage(message.id, message.content)}
+                                    disabled={!voiceSettings.voice}
+                                    className={`flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full transition-colors ${
+                                      speakingMessageId === message.id
+                                        ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    } ${!voiceSettings.voice ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title={speakingMessageId === message.id ? "Stop speaking" : "Listen to message"}
+                                  >
+                                    {speakingMessageId === message.id ? (
+                                      <>
+                                        <VolumeOff size={12} />
+                                        <span>Stop</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Volume2 size={12} />
+                                        <span>Listen</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                           
@@ -876,39 +880,22 @@ const Chat = () => {
                             }`}
                           >
                             <span>{format(message.timestamp, "h:mm a")}</span>
-                            <div className="flex items-center space-x-2">
-                              {message.sentiment && message.role === "user" && (
-                                <div className="flex items-center space-x-2">
-                                  <span
-                                    className={`capitalize ${
-                                      message.role === "user"
-                                        ? "text-white/80"
-                                        : getSentimentColor(message.sentiment)
-                                    }`}
-                                  >
-                                    {message.sentiment.toLowerCase()}
-                                  </span>
-                                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full" title="Mood tracked">
-                                    📊
-                                  </span>
-                                </div>
-                              )}
-                              
-                              {/* AI Voice Playback Button */}
-                              {message.role === "assistant" && isTTSSupported && isTTSInitialized && (
-                                <button
-                                  onClick={() => handleSpeakMessage(message.id, message.content)}
-                                  className="p-1 rounded hover:bg-gray-100 transition-colors"
-                                  title={isSpeaking && speakingMessageId === message.id ? "Stop speaking" : "Speak message"}
+                            {message.sentiment && message.role === "user" && (
+                              <div className="flex items-center space-x-2">
+                                <span
+                                  className={`capitalize ${
+                                    message.role === "user"
+                                      ? "text-white/80"
+                                      : getSentimentColor(message.sentiment)
+                                  }`}
                                 >
-                                  {isSpeaking && speakingMessageId === message.id ? (
-                                    <VolumeX size={14} className="text-red-500" />
-                                  ) : (
-                                    <Volume2 size={14} className="text-gray-500 hover:text-blue-500" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
+                                  {message.sentiment.toLowerCase()}
+                                </span>
+                                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full" title="Mood tracked">
+                                  📊
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -927,12 +914,12 @@ const Chat = () => {
                 <div className="flex">
                   <div className="flex-shrink-0 mr-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-sage-100 to-sage-200 text-sage-700 flex items-center justify-center">
-                      <span className="text-sm">🤖</span>
+                      <Bot size={16} />
                     </div>
                   </div>
                   <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
                     <div className="flex items-center space-x-2">
-                      <Loader className="w-4 h-4 animate-spin text-sage-600" />
+                      <Loader2 className="w-4 h-4 animate-spin text-sage-600" />
                       <span className="text-sm text-gray-900">
                         Analyzing your wellness...
                       </span>
@@ -1016,9 +1003,9 @@ const Chat = () => {
                 disabled={isLoading || isProcessing}
               >
                 {isProcessing ? (
-                  <Loader className="animate-spin" size={20} />
+                  <Loader2 className="animate-spin" size={20} />
                 ) : isRecording ? (
-                  <X size={20} />
+                  <MicOff size={20} />
                 ) : (
                   <Mic size={20} />
                 )}
@@ -1031,7 +1018,7 @@ const Chat = () => {
                 disabled={!inputMessage.trim() || isLoading}
                 leftIcon={
                   isLoading ? (
-                    <Loader className="animate-spin" size={18} />
+                    <Loader2 className="animate-spin" size={18} />
                   ) : (
                     <Send size={18} />
                   )
@@ -1061,10 +1048,10 @@ const Chat = () => {
                   <Zap size={12} className="text-blue-500" />
                   <span>Daily progress</span>
                 </div>
-                {isTTSSupported && (
+                {speechSupported && (
                   <div className="flex items-center space-x-1">
-                    <Volume2 size={12} className="text-purple-500" />
-                    <span>AI voice</span>
+                    <Volume2 size={12} className="text-green-500" />
+                    <span>AI voice responses</span>
                   </div>
                 )}
               </div>
@@ -1161,7 +1148,7 @@ const Chat = () => {
                     isRecording ? 'bg-red-100 animate-pulse' : 'bg-gray-100'
                   }`}>
                     {isProcessing ? (
-                      <Loader className="animate-spin text-gray-600" size={32} />
+                      <Loader2 className="animate-spin text-gray-600" size={32} />
                     ) : isRecording ? (
                       <Volume2 className="text-red-600" size={32} />
                     ) : (
@@ -1221,7 +1208,7 @@ const Chat = () => {
                         stopRecording(recognition);
                         setRecognition(null);
                       }}
-                      leftIcon={<StopCircle size={18} />}
+                      leftIcon={<MicOff size={18} />}
                     >
                       Stop Recording
                     </Button>
@@ -1274,6 +1261,7 @@ const Chat = () => {
         voices={voices}
         onUpdateSettings={updateVoiceSettings}
         onTestVoice={testVoice}
+        onResetSettings={resetVoiceSettings}
         isPlaying={isSpeaking}
       />
 
