@@ -1,32 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Send,
-  Mic,
-  MicOff,
-  Loader2,
-  Bot,
-  User,
-  Volume2,
-  X,
-  Play,
-  Pause,
-  TrendingUp,
-  Zap,
-  Calendar,
-  Activity,
-  Heart,
-  Clock,
-  Trash2,
-  MoreVertical,
-  AlertTriangle,
-  MessageCircle,
-  Sparkles,
-  Download,
-  VolumeX,
-  Settings,
-  VolumeOff
-} from "lucide-react";
+import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, X, Play, Pause, TrendingUp, Zap, Calendar, Activity, Heart, Clock, Trash2, MoreVertical, AlertTriangle, MessageCircle, Sparkles, Download, VolumeX, Settings, Volume as VolumeOff } from "lucide-react";
 import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
 import Navbar from "../components/layout/Navbar";
