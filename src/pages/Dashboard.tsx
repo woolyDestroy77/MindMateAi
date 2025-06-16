@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Line } from 'react-chartjs-2';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
@@ -27,30 +27,19 @@ import {
   Activity,
   Clock,
   BarChart3,
-  ArrowRight,
-  Sparkles,
-  CheckCircle,
-  Circle,
-  Lightbulb,
-  PartyPopper,
-  Star,
-  Smile,
-  ThumbsUp,
-  ThumbsDown,
   Plus,
-  Trophy,
   X,
-  Trash2,
+  CheckCircle,
+  RotateCcw,
+  Settings
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import AddGoalModal from '../components/dashboard/AddGoalModal';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
-import { supabase } from '../lib/supabase';
 
 ChartJS.register(
   CategoryScale,
@@ -113,83 +102,147 @@ const chartOptions = {
   },
 };
 
-interface DailyGoal {
-  id: string;
-  text: string;
-  completed: boolean;
-  type: 'base' | 'ai' | 'general' | 'custom';
-  priority?: 'high' | 'medium' | 'low';
-  pointsValue: number;
-  isCustom?: boolean;
-}
-
 const Dashboard = () => {
-  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger, updateMoodFromAI } = useDashboardData();
-  const { customGoals, addCustomGoal, removeCustomGoal, isLoading: resetLoading } = useDailyReset();
+  const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
+  const { 
+    customGoals, 
+    addCustomGoal, 
+    removeCustomGoal, 
+    triggerManualReset,
+    isLoading: resetLoading 
+  } = useDailyReset();
   
-  const [completedGoals, setCompletedGoals] = useState<string[]>([]);
-  const [showCongrats, setShowCongrats] = useState(false);
-  const [showFeelBetterPopup, setShowFeelBetterPopup] = useState(false);
-  const [isUpdatingWellness, setIsUpdatingWellness] = useState(false);
-  const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(false);
-  const [goalPointsMap, setGoalPointsMap] = useState<{ [key: string]: number }>({});
-  const [allGoalsFinished, setAllGoalsFinished] = useState(false);
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
-  // Load persisted state from localStorage on component mount
-  useEffect(() => {
-    const today = new Date().toDateString();
-    const savedCompletedGoals = localStorage.getItem(`completedGoals_${today}`);
-    const savedGoalPoints = localStorage.getItem(`goalPointsMap_${today}`);
-    const savedFeelBetterShown = localStorage.getItem(`hasShownFeelBetterToday_${today}`);
-    const savedAllGoalsFinished = localStorage.getItem(`allGoalsFinished_${today}`);
-    
-    if (savedCompletedGoals) {
-      try {
-        setCompletedGoals(JSON.parse(savedCompletedGoals));
-      } catch (error) {
-        console.error('Error parsing saved completed goals:', error);
-      }
-    }
-    
-    if (savedGoalPoints) {
-      try {
-        setGoalPointsMap(JSON.parse(savedGoalPoints));
-      } catch (error) {
-        console.error('Error parsing saved goal points:', error);
-      }
-    }
-    
-    if (savedFeelBetterShown) {
-      setHasShownFeelBetterToday(JSON.parse(savedFeelBetterShown));
-    }
-    
-    if (savedAllGoalsFinished) {
-      setAllGoalsFinished(JSON.parse(savedAllGoalsFinished));
-    }
-  }, []);
+  // Base daily goals that reset each day
+  const baseGoals = [
+    { id: 'daily-chat', text: 'Daily wellness chat', completed: false, type: 'ai' as const, pointsValue: 8 },
+    { id: 'mood-tracking', text: 'Mood tracking', completed: false, type: 'ai' as const, pointsValue: 6 },
+    { id: 'emotional-checkin', text: 'Emotional check-in', completed: false, type: 'ai' as const, pointsValue: 7 },
+  ];
+
+  // General goals that can be completed
+  const generalGoals = [
+    { id: 'evening-reflection', text: 'Evening reflection', completed: false, type: 'general' as const, pointsValue: 5 },
+    { id: 'gratitude-practice', text: 'Gratitude practice', completed: false, type: 'general' as const, pointsValue: 4 },
+  ];
+
+  // Combine all goals
+  const allGoals = [...baseGoals, ...generalGoals, ...customGoals];
+
+  // Goal completion state management
+  const today = new Date().toDateString();
+  const [completedGoals, setCompletedGoals] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem(`completedGoals_${today}`);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  const [goalPointsMap, setGoalPointsMap] = useState<Map<string, number>>(() => {
+    const saved = localStorage.getItem(`goalPointsMap_${today}`);
+    return saved ? new Map(JSON.parse(saved)) : new Map();
+  });
+
+  const [hasShownFeelBetterToday, setHasShownFeelBetterToday] = useState(() => {
+    return localStorage.getItem(`hasShownFeelBetterToday_${today}`) === 'true';
+  });
+
+  const [allGoalsFinished, setAllGoalsFinished] = useState(() => {
+    return localStorage.getItem(`allGoalsFinished_${today}`) === 'true';
+  });
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
-    const today = new Date().toDateString();
-    localStorage.setItem(`completedGoals_${today}`, JSON.stringify(completedGoals));
-  }, [completedGoals]);
+    localStorage.setItem(`completedGoals_${today}`, JSON.stringify([...completedGoals]));
+  }, [completedGoals, today]);
 
   useEffect(() => {
-    const today = new Date().toDateString();
-    localStorage.setItem(`goalPointsMap_${today}`, JSON.stringify(goalPointsMap));
-  }, [goalPointsMap]);
+    localStorage.setItem(`goalPointsMap_${today}`, JSON.stringify([...goalPointsMap]));
+  }, [goalPointsMap, today]);
 
   useEffect(() => {
-    const today = new Date().toDateString();
-    localStorage.setItem(`hasShownFeelBetterToday_${today}`, JSON.stringify(hasShownFeelBetterToday));
-  }, [hasShownFeelBetterToday]);
+    localStorage.setItem(`hasShownFeelBetterToday_${today}`, hasShownFeelBetterToday.toString());
+  }, [hasShownFeelBetterToday, today]);
 
   useEffect(() => {
-    const today = new Date().toDateString();
-    localStorage.setItem(`allGoalsFinished_${today}`, JSON.stringify(allGoalsFinished));
-  }, [allGoalsFinished]);
-  
+    localStorage.setItem(`allGoalsFinished_${today}`, allGoalsFinished.toString());
+  }, [allGoalsFinished, today]);
+
+  // Auto-complete AI goals based on dashboard data
+  useEffect(() => {
+    if (dashboardData.lastMessage && !completedGoals.has('daily-chat')) {
+      setCompletedGoals(prev => new Set([...prev, 'daily-chat']));
+      setGoalPointsMap(prev => new Map([...prev, ['daily-chat', 8]]));
+    }
+    if (dashboardData.currentMood !== '😌' && !completedGoals.has('mood-tracking')) {
+      setCompletedGoals(prev => new Set([...prev, 'mood-tracking']));
+      setGoalPointsMap(prev => new Map([...prev, ['mood-tracking', 6]]));
+    }
+    if (dashboardData.sentiment !== 'neutral' && !completedGoals.has('emotional-checkin')) {
+      setCompletedGoals(prev => new Set([...prev, 'emotional-checkin']));
+      setGoalPointsMap(prev => new Map([...prev, ['emotional-checkin', 7]]));
+    }
+  }, [dashboardData, completedGoals]);
+
+  // Check if all goals are completed
+  useEffect(() => {
+    const totalGoals = allGoals.length;
+    const completedCount = completedGoals.size;
+    
+    if (totalGoals > 0 && completedCount === totalGoals && !allGoalsFinished) {
+      setAllGoalsFinished(true);
+      
+      // Calculate total points earned
+      const totalPoints = Array.from(goalPointsMap.values()).reduce((sum, points) => sum + points, 0);
+      
+      // Show completion message
+      setTimeout(() => {
+        if (!hasShownFeelBetterToday) {
+          setHasShownFeelBetterToday(true);
+        }
+      }, 500);
+    }
+  }, [completedGoals, allGoals.length, goalPointsMap, allGoalsFinished, hasShownFeelBetterToday]);
+
+  const toggleGoalCompletion = (goalId: string, pointsValue: number) => {
+    setCompletedGoals(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(goalId)) {
+        newSet.delete(goalId);
+        setGoalPointsMap(prevMap => {
+          const newMap = new Map(prevMap);
+          newMap.delete(goalId);
+          return newMap;
+        });
+      } else {
+        newSet.add(goalId);
+        setGoalPointsMap(prevMap => new Map([...prevMap, [goalId, pointsValue]]));
+      }
+      return newSet;
+    });
+  };
+
+  const getTotalPointsEarned = () => {
+    return Array.from(goalPointsMap.values()).reduce((sum, points) => sum + points, 0);
+  };
+
+  const handleAddGoal = async (goalText: string, pointsValue: number) => {
+    await addCustomGoal(goalText, pointsValue);
+    setShowAddGoalModal(false);
+  };
+
+  const handleManualReset = async () => {
+    await triggerManualReset();
+    
+    // Clear local state
+    setCompletedGoals(new Set());
+    setGoalPointsMap(new Map());
+    setHasShownFeelBetterToday(false);
+    setAllGoalsFinished(false);
+    
+    setShowResetConfirm(false);
+  };
+
   // Force re-render when dashboard data changes
   useEffect(() => {
     console.log('Dashboard data updated:', dashboardData);
@@ -244,324 +297,6 @@ const Dashboard = () => {
     }
   };
 
-  // Check if user has shared their mood yet (not default state)
-  const hasSharedMood = dashboardData.lastMessage && 
-    dashboardData.lastMessage.trim() !== '' &&
-    !dashboardData.moodInterpretation.includes('Welcome to a new day') &&
-    !dashboardData.moodInterpretation.includes('Welcome to PureMind AI');
-
-  // Extract AI recommendations from the last AI response
-  const extractAIRecommendations = () => {
-    if (!dashboardData.aiResponse) return [];
-    
-    const response = dashboardData.aiResponse;
-    const recommendations: DailyGoal[] = [];
-    
-    // Look for bullet points or numbered lists in the AI response
-    const bulletRegex = /[-•*]\s*(.+?)(?=\n|$)/g;
-    const numberedRegex = /\d+\.\s*(.+?)(?=\n|$)/g;
-    
-    let match;
-    let id = 1;
-    
-    // Extract bullet points
-    while ((match = bulletRegex.exec(response)) !== null) {
-      const text = match[1].trim();
-      if (text.length > 10) { // Only meaningful recommendations
-        recommendations.push({
-          id: `ai-${id++}`,
-          text: text,
-          completed: false,
-          type: 'ai',
-          priority: 'medium',
-          pointsValue: 5
-        });
-      }
-    }
-    
-    // Extract numbered lists if no bullet points found
-    if (recommendations.length === 0) {
-      while ((match = numberedRegex.exec(response)) !== null) {
-        const text = match[1].trim();
-        if (text.length > 10) {
-          recommendations.push({
-            id: `ai-${id++}`,
-            text: text,
-            completed: false,
-            type: 'ai',
-            priority: 'medium',
-            pointsValue: 5
-          });
-        }
-      }
-    }
-    
-    return recommendations.slice(0, 3); // Limit to 3 AI recommendations
-  };
-
-  // Generate daily goals based on mood and AI recommendations
-  const getDailyGoals = (): DailyGoal[] => {
-    const goals: DailyGoal[] = [];
-    
-    // Base goals that are always present
-    const baseGoals: DailyGoal[] = [
-      { 
-        id: 'daily-chat', 
-        text: 'Complete daily wellness chat', 
-        completed: hasSharedMood, 
-        type: 'base',
-        pointsValue: 10
-      },
-      { 
-        id: 'mood-tracking', 
-        text: 'Track your current mood', 
-        completed: hasSharedMood, 
-        type: 'base',
-        pointsValue: 8
-      },
-      { 
-        id: 'emotional-checkin', 
-        text: 'Share your emotional state', 
-        completed: hasSharedMood, 
-        type: 'base',
-        pointsValue: 7
-      },
-    ];
-
-    goals.push(...baseGoals);
-
-    // Add AI-generated recommendations from the last chat
-    if (hasSharedMood) {
-      const aiRecommendations = extractAIRecommendations();
-      goals.push(...aiRecommendations);
-    }
-
-    // Add custom goals
-    goals.push(...customGoals);
-
-    // Add some general wellness goals if we don't have many
-    if (goals.length < 6) {
-      const generalGoals: DailyGoal[] = [
-        { 
-          id: 'evening-reflection', 
-          text: 'Evening reflection practice', 
-          completed: false, 
-          type: 'general',
-          pointsValue: 6
-        },
-        { 
-          id: 'gratitude-practice', 
-          text: 'Write down 3 things you\'re grateful for', 
-          completed: false, 
-          type: 'general',
-          pointsValue: 5
-        }
-      ];
-
-      goals.push(...generalGoals);
-    }
-
-    // Mark completed goals based on state
-    return goals.map(goal => ({
-      ...goal,
-      completed: completedGoals.includes(goal.id) || goal.completed
-    }));
-  };
-
-  const dailyGoals = getDailyGoals();
-  const completedGoalsCount = dailyGoals.filter(goal => goal.completed).length;
-  const totalGoals = dailyGoals.length;
-  const allGoalsCompleted = completedGoalsCount === totalGoals && totalGoals > 0;
-
-  // Handle goal completion
-  const handleGoalToggle = async (goalId: string) => {
-    if (isUpdatingWellness || allGoalsFinished) return;
-
-    const goal = dailyGoals.find(g => g.id === goalId);
-    if (!goal || goal.type === 'base') return; // Can't toggle base goals
-
-    const isCompleting = !completedGoals.includes(goalId);
-    
-    try {
-      setIsUpdatingWellness(true);
-      
-      if (isCompleting) {
-        // Mark goal as completed
-        setCompletedGoals(prev => [...prev, goalId]);
-        
-        // Store the points for this goal
-        setGoalPointsMap(prev => ({ ...prev, [goalId]: goal.pointsValue }));
-        
-        // Update wellness score
-        await updateWellnessScore(goal.pointsValue);
-        
-        toast.success(`✅ Goal completed! +${goal.pointsValue} wellness points`, {
-          icon: '🎯',
-          duration: 3000,
-        });
-
-        // Check if all goals are now completed
-        const newCompletedCount = completedGoals.length + 1;
-        if (newCompletedCount === totalGoals && !hasShownFeelBetterToday) {
-          setTimeout(() => {
-            setShowCongrats(true);
-          }, 500);
-        }
-      } else {
-        // Mark goal as incomplete
-        setCompletedGoals(prev => prev.filter(id => id !== goalId));
-        
-        // Get the exact points that were gained for this goal
-        const pointsToRemove = goalPointsMap[goalId] || goal.pointsValue;
-        
-        // Remove the stored points for this goal
-        setGoalPointsMap(prev => {
-          const newMap = { ...prev };
-          delete newMap[goalId];
-          return newMap;
-        });
-        
-        // Decrease wellness score by the exact amount gained
-        await updateWellnessScore(-pointsToRemove);
-        
-        toast.success(`Goal unmarked. -${pointsToRemove} wellness points`, {
-          icon: '↩️',
-          duration: 2000,
-        });
-      }
-    } catch (error) {
-      console.error('Error updating goal:', error);
-      toast.error('Failed to update goal');
-    } finally {
-      setIsUpdatingWellness(false);
-    }
-  };
-
-  // Update wellness score in database
-  const updateWellnessScore = async (points: number) => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) throw new Error('User not authenticated');
-
-      const newScore = Math.max(10, Math.min(100, dashboardData.wellnessScore + points));
-      
-      const { error: updateError } = await supabase
-        .from('user_mood_data')
-        .update({ 
-          wellness_score: newScore,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (updateError) throw updateError;
-
-      // Refresh dashboard data to show updated score
-      setTimeout(() => {
-        refreshDashboardData();
-      }, 500);
-
-    } catch (error) {
-      console.error('Error updating wellness score:', error);
-      throw error;
-    }
-  };
-
-  // Handle "Do you feel better?" response
-  const handleFeelBetterResponse = async (feelsBetter: boolean) => {
-    try {
-      if (feelsBetter) {
-        // Update mood to happy using the existing mood update system
-        await updateMoodFromAI(
-          'POSITIVE',
-          'I completed all my daily wellness goals and I feel much better now!',
-          'That\'s wonderful! Completing your wellness goals is a fantastic achievement. Your dedication to mental health is paying off. Keep up the amazing work! 🌟'
-        );
-        
-        toast.success('🎉 Mood updated to happy! Great job on completing your goals!', {
-          icon: '😊',
-          duration: 4000,
-        });
-      } else {
-        toast.success('That\'s okay! Every step counts in your wellness journey. Keep going! 💪', {
-          icon: '🤗',
-          duration: 3000,
-        });
-      }
-      
-      setShowFeelBetterPopup(false);
-      setHasShownFeelBetterToday(true);
-      setAllGoalsFinished(true); // Mark all goals as finished
-      
-      // Refresh dashboard to show updated mood
-      setTimeout(() => {
-        refreshDashboardData();
-      }, 1000);
-      
-    } catch (error) {
-      console.error('Error updating mood:', error);
-      toast.error('Failed to update mood');
-    }
-  };
-
-  // Handle congratulations modal close
-  const handleCongratsClose = () => {
-    setShowCongrats(false);
-    // Show the "feel better" popup after a short delay
-    setTimeout(() => {
-      if (!hasShownFeelBetterToday) {
-        setShowFeelBetterPopup(true);
-      }
-    }, 1000);
-  };
-
-  // Handle adding custom goal
-  const handleAddCustomGoal = async (goalText: string, pointsValue: number) => {
-    try {
-      await addCustomGoal(goalText, pointsValue);
-    } catch (error) {
-      console.error('Error adding custom goal:', error);
-      throw error;
-    }
-  };
-
-  // Handle removing custom goal
-  const handleRemoveCustomGoal = async (goalId: string) => {
-    try {
-      // If the goal was completed, remove its completion and points
-      if (completedGoals.includes(goalId)) {
-        const pointsToRemove = goalPointsMap[goalId] || 5;
-        setCompletedGoals(prev => prev.filter(id => id !== goalId));
-        setGoalPointsMap(prev => {
-          const newMap = { ...prev };
-          delete newMap[goalId];
-          return newMap;
-        });
-        await updateWellnessScore(-pointsToRemove);
-      }
-      
-      await removeCustomGoal(goalId);
-    } catch (error) {
-      console.error('Error removing custom goal:', error);
-    }
-  };
-
-  // Check when all goals are completed to show congratulations
-  useEffect(() => {
-    if (allGoalsCompleted && completedGoalsCount > 0 && !showCongrats && !hasShownFeelBetterToday && !allGoalsFinished) {
-      console.log('🎉 All goals completed! Showing congratulations...');
-      setShowCongrats(true);
-      
-      // Calculate total points earned
-      const totalPoints = dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0);
-      
-      toast.success(`🏆 All daily goals completed! +${totalPoints} total wellness points!`, {
-        duration: 5000,
-        icon: '🎉',
-      });
-    }
-  }, [allGoalsCompleted, completedGoalsCount, showCongrats, hasShownFeelBetterToday, dailyGoals, allGoalsFinished]);
-
   if (dashboardLoading || resetLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-lavender-50 via-white to-sage-50">
@@ -583,125 +318,22 @@ const Dashboard = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-lavender-600 to-sage-600 bg-clip-text text-transparent mb-2">
-            Your Wellness Dashboard
-          </h1>
+          <div className="flex items-center justify-center space-x-4 mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-lavender-600 to-sage-600 bg-clip-text text-transparent">
+              Your Wellness Dashboard
+            </h1>
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              className="p-2 text-gray-500 hover:text-lavender-600 hover:bg-lavender-50 rounded-lg transition-colors"
+              title="Manual Reset (for testing)"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
           <p className="text-gray-600 max-w-2xl mx-auto">
             Track your daily emotional wellness journey with AI-powered insights from your continuous chat conversations.
           </p>
         </div>
-
-        {/* Congratulations Modal */}
-        <AnimatePresence>
-          {showCongrats && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-              onClick={handleCongratsClose}
-            >
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0, y: 20 }}
-                className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
-                onClick={e => e.stopPropagation()}
-              >
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="text-6xl mb-4"
-                >
-                  🏆
-                </motion.div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  Congratulations!
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  You've completed all your daily wellness goals! Your dedication to mental health is inspiring. 
-                  Keep up the amazing work! 🌟
-                </p>
-                <div className="flex items-center justify-center space-x-2 mb-6">
-                  <PartyPopper className="text-yellow-500" size={20} />
-                  <span className="text-lg font-semibold text-green-600">
-                    +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Wellness Points!
-                  </span>
-                  <Star className="text-yellow-500" size={20} />
-                </div>
-                <Button
-                  variant="primary"
-                  onClick={handleCongratsClose}
-                  className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                >
-                  Continue Your Journey
-                </Button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Feel Better Popup */}
-        <AnimatePresence>
-          {showFeelBetterPopup && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            >
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.8, opacity: 0, y: 20 }}
-                className="bg-white rounded-xl shadow-xl max-w-md w-full p-8 text-center"
-                onClick={e => e.stopPropagation()}
-              >
-                <motion.div
-                  initial={{ scale: 0, rotate: -10 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="text-6xl mb-4"
-                >
-                  🤗
-                </motion.div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  Do you feel better now?
-                </h2>
-                <p className="text-gray-600 mb-8">
-                  You've completed all your wellness goals today! 
-                  How are you feeling after taking care of your mental health?
-                </p>
-                
-                <div className="flex space-x-4">
-                  <Button
-                    variant="primary"
-                    fullWidth
-                    onClick={() => handleFeelBetterResponse(true)}
-                    leftIcon={<ThumbsUp size={20} />}
-                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
-                  >
-                    Yes, I feel better! 😊
-                  </Button>
-                  <Button
-                    variant="outline"
-                    fullWidth
-                    onClick={() => handleFeelBetterResponse(false)}
-                    leftIcon={<ThumbsDown size={20} />}
-                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                  >
-                    Not quite yet 🤔
-                  </Button>
-                </div>
-                
-                <p className="text-xs text-gray-500 mt-4">
-                  Your response helps us better understand your wellness journey
-                </p>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Wellness Score */}
@@ -774,7 +406,7 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Current Mood - AI Updated or Prompt to Share */}
+          {/* Current Mood - AI Updated */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -786,123 +418,76 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-semibold text-gray-900">Current Mood</h2>
                   <div className="flex items-center space-x-2">
-                    {hasSharedMood ? (
-                      <>
-                        <Zap size={16} className="text-lavender-500" />
-                        <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={16} className="text-orange-500" />
-                        <span className="text-xs text-orange-600 font-medium">Not Set</span>
-                      </>
-                    )}
+                    <Zap size={16} className="text-lavender-500" />
+                    <span className="text-xs text-lavender-600 font-medium">AI-Tracked</span>
                   </div>
                 </div>
-
-                {hasSharedMood ? (
-                  // Show actual mood data
-                  <>
-                    <motion.div 
-                      className="text-6xl text-center py-4"
-                      key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
-                      initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
-                      animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                      transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
-                    >
-                      {dashboardData.currentMood}
-                    </motion.div>
-                    <motion.p 
-                      className="text-gray-600 text-center text-sm"
-                      key={`interpretation-${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}-${updateTrigger}`}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                    >
-                      {dashboardData.moodInterpretation}
-                    </motion.p>
-                    <div className="text-xs text-gray-500 text-center">
-                      Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
+                <motion.div 
+                  className="text-6xl text-center py-4"
+                  key={`emoji-${dashboardData.currentMood}-${dashboardData.moodName}-${dashboardData.lastUpdated}-${updateTrigger}`}
+                  initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                  transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                >
+                  {dashboardData.currentMood}
+                </motion.div>
+                <motion.p 
+                  className="text-gray-600 text-center text-sm"
+                  key={`interpretation-${dashboardData.moodInterpretation}-${dashboardData.lastUpdated}-${updateTrigger}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  {dashboardData.moodInterpretation}
+                </motion.p>
+                <div className="text-xs text-gray-500 text-center">
+                  Mood: {dashboardData.moodName} • Sentiment: {dashboardData.sentiment}
+                </div>
+                <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
+                  <Clock size={12} />
+                  <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
+                </div>
+                {dashboardData.lastMessage && (
+                  <motion.div 
+                    className="bg-gray-50 rounded-lg p-3 mt-3"
+                    key={`message-${dashboardData.lastMessage}-${updateTrigger}`}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
+                    <div className="text-sm text-gray-700 italic">
+                      "{dashboardData.lastMessage.length > 100 
+                        ? dashboardData.lastMessage.substring(0, 100) + '...' 
+                        : dashboardData.lastMessage}"
                     </div>
-                    <div className="flex items-center justify-center text-xs text-gray-500 space-x-1">
-                      <Clock size={12} />
-                      <span>Updated: {formatLastUpdated(dashboardData.lastUpdated)}</span>
-                    </div>
-                    {dashboardData.lastMessage && (
-                      <motion.div 
-                        className="bg-gray-50 rounded-lg p-3 mt-3"
-                        key={`message-${dashboardData.lastMessage}-${updateTrigger}`}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <div className="text-xs text-gray-500 mb-1">Last message analyzed:</div>
-                        <div className="text-sm text-gray-700 italic">
-                          "{dashboardData.lastMessage.length > 100 
-                            ? dashboardData.lastMessage.substring(0, 100) + '...' 
-                            : dashboardData.lastMessage}"
-                        </div>
-                      </motion.div>
-                    )}
-                  </>
-                ) : (
-                  // Show prompt to share mood
-                  <>
-                    <motion.div 
-                      className="text-center py-6"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <div className="text-4xl mb-4">🤔</div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Share Your Mood
-                      </h3>
-                      <p className="text-gray-600 text-sm mb-4">
-                        Start a conversation in the daily chat to automatically track your mood and get personalized wellness insights.
-                      </p>
-                      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3 mb-4">
-                        <div className="flex items-center justify-center text-orange-700 text-sm">
-                          <MessageSquare size={16} className="mr-2" />
-                          <span>Tell us how you're feeling today!</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  </>
+                  </motion.div>
                 )}
-
                 <Link to="/chat">
                   <Button
-                    variant={hasSharedMood ? "outline" : "primary"}
+                    variant="outline"
                     size="sm"
                     fullWidth
                     leftIcon={<MessageSquare size={16} />}
-                    rightIcon={!hasSharedMood ? <ArrowRight size={16} /> : undefined}
-                    className={hasSharedMood 
-                      ? "bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100" 
-                      : "bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white animate-pulse"
-                    }
+                    className="bg-gradient-to-r from-lavender-50 to-sage-50 hover:from-lavender-100 hover:to-sage-100"
                   >
-                    {hasSharedMood ? "Continue Daily Chat" : "Start Daily Chat to Check Mood"}
+                    Continue Daily Chat
                   </Button>
                 </Link>
-                
-                {hasSharedMood && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    fullWidth
-                    onClick={refreshDashboardData}
-                    leftIcon={<RefreshCcw size={16} />}
-                  >
-                    Refresh Data
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  fullWidth
+                  onClick={refreshDashboardData}
+                  leftIcon={<RefreshCcw size={16} />}
+                >
+                  Refresh Data
+                </Button>
               </div>
             </Card>
           </motion.div>
 
-          {/* Interactive Daily Goals */}
+          {/* Enhanced Daily Goals with 24-hour reset */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -911,202 +496,125 @@ const Dashboard = () => {
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
                   <div className="flex items-center space-x-2">
-                    <h2 className="text-xl font-semibold text-gray-900">Daily Goals</h2>
-                    {hasSharedMood && !allGoalsFinished && (
-                      <div className="flex items-center space-x-1">
-                        <Lightbulb size={14} className="text-yellow-500" />
-                        <span className="text-xs text-yellow-600 font-medium">AI-Enhanced</span>
-                      </div>
-                    )}
-                    {allGoalsFinished && (
-                      <div className="flex items-center space-x-1">
-                        <Trophy size={14} className="text-green-500" />
-                        <span className="text-xs text-green-600 font-medium">Completed!</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm text-gray-500">{completedGoalsCount}/{totalGoals} completed</span>
-                    {allGoalsCompleted && (
-                      <div className="text-xs text-green-600 font-medium">All Done! 🎉</div>
-                    )}
+                    <span className="text-sm text-gray-500">
+                      {completedGoals.size}/{allGoals.length} completed
+                    </span>
+                    <button
+                      onClick={() => setShowAddGoalModal(true)}
+                      className="p-1 text-lavender-600 hover:text-lavender-700 hover:bg-lavender-50 rounded transition-colors"
+                      title="Add custom goal"
+                    >
+                      <Plus size={16} />
+                    </button>
                   </div>
                 </div>
-                
-                {/* Goals Finished State */}
-                {allGoalsFinished ? (
+
+                {/* Goals completion status */}
+                {allGoalsFinished && hasShownFeelBetterToday ? (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="relative overflow-hidden rounded-lg p-6 text-center"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                      backdropFilter: 'blur(10px)',
-                      border: '1px solid rgba(34, 197, 94, 0.2)'
-                    }}
+                    className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 text-center"
                   >
-                    {/* Subtle background pattern */}
-                    <div className="absolute inset-0 opacity-5">
-                      <div className="absolute top-2 left-2 w-4 h-4 bg-green-500 rounded-full"></div>
-                      <div className="absolute top-8 right-4 w-2 h-2 bg-green-400 rounded-full"></div>
-                      <div className="absolute bottom-4 left-6 w-3 h-3 bg-green-600 rounded-full"></div>
-                      <div className="absolute bottom-2 right-2 w-2 h-2 bg-green-500 rounded-full"></div>
-                    </div>
-                    
-                    <motion.div
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                      className="text-4xl mb-3"
-                    >
-                      🏆
-                    </motion.div>
-                    
-                    <h3 className="text-lg font-bold text-green-800 mb-2">
-                      Finished Daily Goals
-                    </h3>
-                    
-                    <p className="text-sm text-green-700 mb-4">
-                      Congratulations! You've completed all your wellness goals for today. 
-                      Your dedication to mental health is inspiring! 🌟
+                    <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                    <h3 className="font-semibold text-green-800 mb-1">All Goals Complete! 🎉</h3>
+                    <p className="text-sm text-green-700 mb-2">
+                      You've earned {getTotalPointsEarned()} wellness points today!
                     </p>
-                    
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      <Star className="text-yellow-500" size={16} />
-                      <span className="text-sm font-semibold text-green-700">
-                        +{dailyGoals.reduce((sum, goal) => sum + (goal.completed ? goal.pointsValue : 0), 0)} Total Points Earned
-                      </span>
-                      <Star className="text-yellow-500" size={16} />
-                    </div>
-                    
+                    <p className="text-xs text-green-600">
+                      Goals will reset tomorrow for a fresh start
+                    </p>
+                  </motion.div>
+                ) : allGoals.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-600 text-sm mb-3">No goals set for today</p>
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => setShowAddGoalModal(true)}
                       leftIcon={<Plus size={16} />}
-                      className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                     >
-                      Add More Goals
+                      Add Your First Goal
                     </Button>
-                  </motion.div>
+                  </div>
                 ) : (
-                  // Regular goals list
-                  <>
-                    <div className="space-y-3 max-h-80 overflow-y-auto">
-                      {dailyGoals.length === 0 ? (
-                        <div className="text-center py-8">
-                          <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                          <p className="text-gray-600 text-sm mb-4">No goals set for today</p>
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setShowAddGoalModal(true)}
-                            leftIcon={<Plus size={16} />}
-                          >
-                            Add Your First Goal
-                          </Button>
-                        </div>
-                      ) : (
-                        dailyGoals.map((goal, index) => (
-                          <motion.div
-                            key={goal.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                            className={`flex items-start space-x-3 p-3 rounded-lg transition-all cursor-pointer ${
-                              goal.type === 'ai' ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200' : 
-                              goal.completed ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50 border border-gray-200'
-                            } ${goal.type === 'base' ? 'opacity-75' : ''}`}
-                            onClick={() => goal.type !== 'base' && handleGoalToggle(goal.id)}
-                          >
-                            <div className="flex-shrink-0 mt-0.5">
-                              {goal.completed ? (
-                                <CheckCircle size={20} className="text-green-600" />
-                              ) : (
-                                <Circle size={20} className={`${
-                                  goal.type === 'ai' ? 'text-blue-500' : 
-                                  goal.type === 'base' ? 'text-gray-400' : 'text-gray-500'
-                                }`} />
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className={`text-sm ${
-                                  goal.completed ? 'text-green-700 line-through' : 
-                                  goal.type === 'ai' ? 'text-blue-800 font-medium' : 'text-gray-700'
-                                }`}>
-                                  {goal.text}
-                                </span>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs text-gray-500">
-                                    +{goal.pointsValue}pts
-                                  </span>
-                                  {goal.isCustom && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRemoveCustomGoal(goal.id);
-                                      }}
-                                      className="text-red-400 hover:text-red-600 transition-colors"
-                                    >
-                                      <X size={14} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              {goal.type === 'ai' && goal.priority === 'high' && (
-                                <div className="flex items-center mt-1">
-                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                                    High Priority
-                                  </span>
-                                </div>
-                              )}
-                              {goal.type === 'ai' && !goal.completed && (
-                                <div className="text-xs text-blue-600 mt-1 italic">
-                                  AI recommendation from your chat
-                                </div>
-                              )}
-                              {goal.type === 'base' && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Completed automatically through chat
-                                </div>
-                              )}
-                              {goal.isCustom && (
-                                <div className="text-xs text-purple-600 mt-1 italic">
-                                  Custom goal
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Add Goal Button */}
-                    {!allGoalsFinished && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        fullWidth
-                        onClick={() => setShowAddGoalModal(true)}
-                        leftIcon={<Plus size={16} />}
-                        className="border-dashed border-2 border-gray-300 hover:border-lavender-400 hover:bg-lavender-50 text-gray-600 hover:text-lavender-700"
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {allGoals.map((goal) => (
+                      <motion.div
+                        key={goal.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
                       >
-                        Add More Goals
-                      </Button>
-                    )}
-                  </>
+                        <div className="flex items-center flex-1">
+                          <input
+                            type="checkbox"
+                            checked={completedGoals.has(goal.id)}
+                            onChange={() => toggleGoalCompletion(goal.id, goal.pointsValue)}
+                            className="rounded text-lavender-600 mr-3"
+                            disabled={goal.type === 'ai' && !completedGoals.has(goal.id)}
+                          />
+                          <div className="flex-1">
+                            <span className={`text-sm ${completedGoals.has(goal.id) ? 'line-through text-gray-500' : 'text-gray-700'}`}>
+                              {goal.text}
+                            </span>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-xs text-gray-500">
+                                {goal.pointsValue} pts
+                              </span>
+                              {goal.type === 'ai' && (
+                                <span className="text-xs bg-lavender-100 text-lavender-700 px-1.5 py-0.5 rounded-full">
+                                  Auto
+                                </span>
+                              )}
+                              {goal.type === 'custom' && (
+                                <span className="text-xs bg-sage-100 text-sage-700 px-1.5 py-0.5 rounded-full">
+                                  Custom
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        {goal.type === 'custom' && (
+                          <button
+                            onClick={() => removeCustomGoal(goal.id)}
+                            className="ml-2 p-1 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Remove custom goal"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
                 )}
 
-                {hasSharedMood && !allGoalsFinished && (
-                  <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center text-blue-700 text-sm">
-                      <Lightbulb size={16} className="mr-2 text-yellow-500" />
-                      <span className="font-medium">Complete goals to boost your wellness score!</span>
+                {/* Points summary */}
+                {completedGoals.size > 0 && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Points earned today:</span>
+                      <span className="font-semibold text-lavender-600">
+                        {getTotalPointsEarned()} pts
+                      </span>
                     </div>
                   </div>
                 )}
+
+                {/* Add goal button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  fullWidth
+                  onClick={() => setShowAddGoalModal(true)}
+                  leftIcon={<Plus size={16} />}
+                  className="mt-3"
+                >
+                  Add More Goals
+                </Button>
               </div>
             </Card>
           </motion.div>
@@ -1183,20 +691,11 @@ const Dashboard = () => {
                     <Button
                       variant="primary"
                       size="lg"
-                      className={`flex-col h-24 w-full relative ${
-                        hasSharedMood 
-                          ? "bg-gradient-to-br from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
-                          : "bg-gradient-to-br from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 animate-pulse"
-                      }`}
+                      className="flex-col h-24 w-full relative bg-gradient-to-br from-lavender-500 to-sage-500 hover:from-lavender-600 hover:to-sage-600"
                       leftIcon={<MessageSquare size={24} />}
                     >
-                      {hasSharedMood ? "Daily Chat" : "Share Mood"}
-                      {!hasSharedMood && (
-                        <span className="absolute top-1 right-1 w-3 h-3 bg-red-400 rounded-full animate-ping"></span>
-                      )}
-                      {hasSharedMood && (
-                        <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                      )}
+                      Daily Chat
+                      <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                     </Button>
                   </Link>
                   <Button
@@ -1227,16 +726,8 @@ const Dashboard = () => {
                     Meditate
                   </Button>
                 </div>
-                <div className={`text-xs text-center p-3 rounded-lg ${
-                  hasSharedMood 
-                    ? "text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50"
-                    : "text-orange-600 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200"
-                }`}>
-                  {hasSharedMood ? (
-                    <>💬 <strong>Daily Chat Active:</strong> Your conversations automatically update all wellness metrics and provide continuous emotional support!</>
-                  ) : (
-                    <>🎯 <strong>Get Started:</strong> Share your mood in the daily chat to unlock personalized wellness tracking and AI insights!</>
-                  )}
+                <div className="text-xs text-center text-lavender-600 bg-gradient-to-r from-lavender-50 to-sage-50 p-3 rounded-lg">
+                  💬 <strong>Daily Reset Active:</strong> Your mood, chat, and goals automatically reset every 24 hours for a fresh start!
                 </div>
               </div>
             </Card>
@@ -1248,8 +739,59 @@ const Dashboard = () => {
       <AddGoalModal
         isOpen={showAddGoalModal}
         onClose={() => setShowAddGoalModal(false)}
-        onAddGoal={handleAddCustomGoal}
+        onAddGoal={handleAddGoal}
       />
+
+      {/* Manual Reset Confirmation Modal */}
+      {showResetConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowResetConfirm(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white rounded-xl shadow-xl max-w-md w-full p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-orange-100 rounded-full">
+                <RotateCcw className="w-6 h-6 text-orange-600" />
+              </div>
+              
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Manual Reset
+              </h3>
+              
+              <p className="text-sm text-gray-600 mb-6">
+                This will reset your mood, clear chat history, and reset daily goals. 
+                This is primarily for testing purposes. Are you sure?
+              </p>
+              
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  fullWidth
+                  onClick={() => setShowResetConfirm(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={handleManualReset}
+                  leftIcon={<RotateCcw size={16} />}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  Reset Now
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };

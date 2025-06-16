@@ -48,9 +48,9 @@ export const useDailyReset = () => {
       if (userError) throw userError;
       if (!user) return;
 
-      console.log('🔄 Performing daily reset for user:', user.id);
+      console.log('🔄 Performing comprehensive daily reset for user:', user.id);
 
-      // Reset mood to default state
+      // 1. Reset mood to default state
       const { error: moodResetError } = await supabase
         .from('user_mood_data')
         .upsert([{
@@ -69,21 +69,50 @@ export const useDailyReset = () => {
 
       if (moodResetError) {
         console.error('Error resetting mood data:', moodResetError);
+      } else {
+        console.log('✅ Mood data reset to default state');
       }
 
-      // Clear daily goal completion state
+      // 2. Reset chat history for new day
+      const { error: chatResetError } = await supabase
+        .from("dappier_chat_history")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (chatResetError) {
+        console.error('Error resetting chat history:', chatResetError);
+      } else {
+        console.log('✅ Chat history cleared for new day');
+      }
+
+      // 3. Clear daily goal completion state
       const today = new Date().toDateString();
       localStorage.removeItem(`completedGoals_${today}`);
       localStorage.removeItem(`goalPointsMap_${today}`);
       localStorage.removeItem(`hasShownFeelBetterToday_${today}`);
       localStorage.removeItem(`allGoalsFinished_${today}`);
+      
+      // Also clear yesterday's data to prevent conflicts
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toDateString();
+      localStorage.removeItem(`completedGoals_${yesterdayStr}`);
+      localStorage.removeItem(`goalPointsMap_${yesterdayStr}`);
+      localStorage.removeItem(`hasShownFeelBetterToday_${yesterdayStr}`);
+      localStorage.removeItem(`allGoalsFinished_${yesterdayStr}`);
 
-      // Load custom goals that should persist
+      console.log('✅ Daily goal states cleared');
+
+      // 4. Update chat date tracker
+      localStorage.setItem('lastChatDate', today);
+      console.log('✅ Chat date tracker updated');
+
+      // 5. Load custom goals that should persist
       await loadCustomGoals();
 
-      console.log('✅ Daily reset completed successfully');
-      toast.success('🌅 New day, fresh start! Your daily goals have been reset.', {
-        duration: 4000,
+      console.log('✅ Comprehensive daily reset completed successfully');
+      toast.success('🌅 New day, fresh start! Your mood, chat, and daily goals have been reset.', {
+        duration: 5000,
         icon: '🆕'
       });
 
@@ -177,6 +206,27 @@ export const useDailyReset = () => {
     }
   }, [customGoals]);
 
+  // Manual reset function for testing
+  const triggerManualReset = useCallback(async () => {
+    try {
+      console.log('🔄 Manual reset triggered');
+      await performDailyReset();
+      
+      // Update the reset date to today
+      const today = new Date().toDateString();
+      localStorage.setItem('lastResetDate', today);
+      setLastResetDate(today);
+      
+      toast.success('🔄 Manual reset complete! Everything has been refreshed.', {
+        duration: 4000,
+        icon: '🆕'
+      });
+    } catch (error) {
+      console.error('Error in manual reset:', error);
+      toast.error('Failed to perform manual reset');
+    }
+  }, [performDailyReset]);
+
   // Initialize on mount
   useEffect(() => {
     checkForDailyReset();
@@ -190,6 +240,7 @@ export const useDailyReset = () => {
     addCustomGoal,
     removeCustomGoal,
     checkForDailyReset,
-    performDailyReset
+    performDailyReset,
+    triggerManualReset
   };
 };

@@ -22,6 +22,74 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
   // For single daily chat, we use a consistent session approach
   const DAILY_SESSION_ID = sessionId || "daily-health-chat";
 
+  // Check if we need to reset chat for a new day
+  const checkForDailyChatReset = useCallback(async () => {
+    try {
+      const today = new Date().toDateString();
+      const lastChatDate = localStorage.getItem('lastChatDate');
+      
+      console.log('🔄 Checking for daily chat reset:', { today, lastChatDate });
+      
+      if (lastChatDate !== today) {
+        console.log('🆕 Performing daily chat reset...');
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) {
+          await supabase.auth.signOut();
+          throw new Error("Your session has expired or is invalid. Please sign in again.");
+        }
+
+        // Clear chat history from database for new day
+        const { error: deleteError } = await supabase
+          .from("dappier_chat_history")
+          .delete()
+          .eq("user_id", user.id);
+
+        if (deleteError) {
+          console.error('Error clearing daily chat history:', deleteError);
+        } else {
+          console.log('✅ Daily chat history cleared from database');
+        }
+
+        // Set new welcome message for the new day
+        const welcomeMessages = [
+          "🌅 **Good morning!** Welcome to a new day of wellness tracking. How are you feeling as you start this fresh day?",
+          "🆕 **New day, new possibilities!** Your chat has been refreshed for today. Share your current mood and what's on your mind.",
+          "☀️ **Rise and shine!** It's a brand new day for your wellness journey. Tell me how you're feeling right now.",
+          "🌟 **Fresh start!** Your daily chat is ready. How would you describe your emotional state this morning?",
+          "🌈 **New day energy!** Let's begin today's wellness tracking. What's your current mood and mindset?"
+        ];
+
+        const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+
+        setMessages([
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: randomWelcome,
+            timestamp: new Date(),
+          },
+        ]);
+
+        // Update last chat date
+        localStorage.setItem('lastChatDate', today);
+        
+        toast.success('🌅 New day, fresh chat! Your conversation has been reset for today.', {
+          duration: 4000,
+          icon: '🆕'
+        });
+
+        return true; // Indicates reset occurred
+      }
+      
+      return false; // No reset needed
+    } catch (error) {
+      console.error('Error checking for daily chat reset:', error);
+      return false;
+    }
+  }, []);
+
   // Fetch messages for the daily chat session
   useEffect(() => {
     const initChat = async () => {
@@ -29,6 +97,17 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
 
       try {
         setIsLoading(true);
+        
+        // First check if we need to reset for new day
+        const wasReset = await checkForDailyChatReset();
+        
+        // If reset occurred, don't fetch old messages
+        if (wasReset) {
+          isInitialized.current = DAILY_SESSION_ID;
+          setIsLoading(false);
+          return;
+        }
+
         const { data: { user }, error: userError } = await supabase.auth
           .getUser();
         if (userError) throw userError;
@@ -72,13 +151,20 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           setMessages(formattedMessages);
           console.log(`Loaded ${formattedMessages.length} messages from chat history`);
         } else {
-          // Show welcome message for new users
+          // Show welcome message for new users or after reset
+          const welcomeMessages = [
+            "Welcome to your daily wellness chat! 🌟 I'm here to support your mental health journey. Share how you're feeling today, any thoughts on your mind, or simply check in with your emotional state. Every message helps me understand your wellness patterns better and provide personalized support. How are you doing today?",
+            "Hello! 👋 Ready to start your wellness journey for today? I'm here to listen, understand, and help track your emotional wellbeing. Feel free to share anything that's on your mind - your mood, thoughts, experiences, or just how your day is going. What would you like to talk about?",
+            "Hi there! 🌸 Welcome to your personal wellness space. I'm designed to help you track and understand your emotional patterns through our conversations. Whether you're feeling great, struggling, or somewhere in between - I'm here to support you. How are you feeling right now?"
+          ];
+
+          const randomWelcome = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+
           setMessages([
             {
               id: crypto.randomUUID(),
               role: "assistant",
-              content:
-                "Welcome to your daily wellness chat! 🌟 I'm here to support your mental health journey. Share how you're feeling today, any thoughts on your mind, or simply check in with your emotional state. Every message helps me understand your wellness patterns better and provide personalized support. How are you doing today?",
+              content: randomWelcome,
               timestamp: new Date(),
             },
           ]);
@@ -102,7 +188,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
     }
 
     initChat();
-  }, [DAILY_SESSION_ID]);
+  }, [DAILY_SESSION_ID, checkForDailyChatReset]);
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -392,11 +478,65 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
     }
   }, []);
 
+  // Manual reset function for testing or user-triggered resets
+  const resetDailyChat = useCallback(async () => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) {
+        await supabase.auth.signOut();
+        throw new Error("Your session has expired or is invalid. Please sign in again.");
+      }
+
+      console.log('🔄 Manual daily chat reset triggered');
+
+      // Clear chat history from database
+      const { error: deleteError } = await supabase
+        .from("dappier_chat_history")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (deleteError) throw deleteError;
+
+      // Set fresh welcome message
+      const welcomeMessage = "🔄 **Chat Reset Complete!** Your conversation has been refreshed. This is a clean slate for your wellness journey today. How are you feeling right now? Share your current mood, thoughts, or anything that's on your mind.";
+
+      setMessages([
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: welcomeMessage,
+          timestamp: new Date(),
+        },
+      ]);
+
+      // Update last chat date to today
+      const today = new Date().toDateString();
+      localStorage.setItem('lastChatDate', today);
+
+      console.log('✅ Manual chat reset completed');
+      toast.success('🔄 Chat reset complete! Fresh start ready.', {
+        duration: 3000,
+        icon: '🆕'
+      });
+
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error
+        ? error.message
+        : "Failed to reset daily chat";
+      console.error('Error resetting daily chat:', error);
+      toast.error(errorMsg);
+      throw error;
+    }
+  }, []);
+
   return {
     messages,
     isLoading,
     sendMessage,
     sendVoiceMessage,
     deleteChatHistory,
+    resetDailyChat,
+    checkForDailyChatReset,
   };
 };
