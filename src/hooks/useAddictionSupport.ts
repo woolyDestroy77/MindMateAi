@@ -1,3 +1,4 @@
+// Enhanced addiction support with AI-generated daily tips and recovery steps
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -178,7 +179,7 @@ export const useAddictionSupport = () => {
     const daysClean = primaryAddiction.days_clean;
     const category = primaryAddiction.addiction_type?.category || 'substance';
 
-    // Daily tips database organized by category and recovery stage
+    // AI-generated daily tips database organized by category and recovery stage
     const tipDatabase: { [key: string]: DailyTip[] } = {
       substance: [
         // Early recovery (0-30 days)
