@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   RefreshCcw,
@@ -35,10 +35,13 @@ import InsightsPanel from '../components/dashboard/InsightsPanel';
 import WeeklyStatsGrid from '../components/dashboard/WeeklyStatsGrid';
 import DailyStepsCard from '../components/dashboard/DailyStepsCard';
 import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard';
+import AchievementsCard from '../components/dashboard/AchievementsCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
 import { useAddictionSupport } from '../hooks/useAddictionSupport';
+import { useJournal } from '../hooks/useJournal';
+import { useAnxietySupport } from '../hooks/useAnxietySupport';
 
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
@@ -63,6 +66,12 @@ const Dashboard = () => {
 
   // Get addiction support data for daily steps
   const { userAddictions, isLoading: addictionLoading } = useAddictionSupport();
+  
+  // Get journal entries for achievements
+  const { entries: journalEntries, isLoading: journalLoading } = useJournal();
+  
+  // Get anxiety sessions for achievements
+  const { todaysSessions: anxietySessions, isLoading: anxietyLoading } = useAnxietySupport();
   
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -219,7 +228,7 @@ const Dashboard = () => {
     console.log('Dashboard data updated:', dashboardData);
     console.log('Update trigger:', updateTrigger);
   }, [dashboardData, updateTrigger]);
-
+  
   // Get primary addiction for daily steps
   const primaryAddiction = userAddictions.length > 0 ? userAddictions[0] : null;
 
@@ -269,13 +278,6 @@ const Dashboard = () => {
       sentiment: 'positive',
       mood: '😌'
     }
-  ];
-
-  const achievements = [
-    { title: '7-Day Streak', icon: Calendar, description: 'Daily wellness check-ins for a week' },
-    { title: 'Mindfulness Master', icon: Brain, description: '10 meditation sessions completed' },
-    { title: 'Emotion Explorer', icon: Heart, description: 'Tracked 5 different emotions' },
-    { title: 'Progress Pioneer', icon: TrendingUp, description: 'Improved mood trend for 3 days' }
   ];
 
   // Helper function to format the last updated time
@@ -783,23 +785,13 @@ const Dashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.7 }}
           >
-            <Card variant="elevated" className="h-full">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-gray-900">Achievements</h2>
-                  <Award className="text-lavender-500" size={20} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  {achievements.map((achievement, index) => (
-                    <div key={index} className="p-3 bg-gradient-to-br from-lavender-50 to-sage-50 rounded-lg text-center">
-                      <achievement.icon className="w-6 h-6 mx-auto text-lavender-500 mb-2" />
-                      <h3 className="text-sm font-medium text-gray-900">{achievement.title}</h3>
-                      <p className="text-xs text-gray-500 mt-1">{achievement.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
+            <AchievementsCard 
+              moodData={moodData}
+              journalEntries={journalEntries}
+              anxietySessions={anxietySessions || []}
+              addictionData={{ userAddictions }}
+              completedGoals={completedGoals}
+            />
           </motion.div>
 
           {/* Quick Actions */}
