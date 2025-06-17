@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, ChevronLeft, ChevronRight, Plus, Clock, Target, Brain, Wind } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Plus, Clock, Target, Brain, Wind, X } from 'lucide-react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday } from 'date-fns';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
