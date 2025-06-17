@@ -8,6 +8,8 @@ import {
   LogIn,
   UserPlus,
   LogOut,
+  Heart,
+  Brain,
   // MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -35,6 +37,8 @@ const Navbar: React.FC<NavbarProps> = ({
   >(null);
   const isDashboard = location.pathname === "/dashboard";
   const isChat = location.pathname === "/chat";
+  const isAddictionSupport = location.pathname === "/addiction-support";
+  const isAnxietySupport = location.pathname === "/anxiety-support";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -73,16 +77,6 @@ const Navbar: React.FC<NavbarProps> = ({
     if (user) {
       return (
         <div className="flex items-center space-x-2">
-          {/* <Link to="/chat">
-            <Button 
-              variant="ghost"
-              size="sm"
-              className="text-sm px-3 py-1.5 transition-all duration-300"
-              leftIcon={<MessageSquare size={16} />}
-            >
-              AI Chat
-            </Button>
-          </Link> */}
           <Button
             variant="primary"
             size="sm"
@@ -96,7 +90,7 @@ const Navbar: React.FC<NavbarProps> = ({
       );
     }
 
-    if (!isDashboard && !isChat) {
+    if (!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport) {
       return (
         <div className="flex items-center space-x-2">
           <Button
@@ -128,15 +122,15 @@ const Navbar: React.FC<NavbarProps> = ({
     <>
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled || isDashboard || isChat
+          isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport
             ? "bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur-lg shadow-sm"
             : "bg-transparent"
         }`}
         style={{
           WebkitBackdropFilter:
-            isScrolled || isDashboard || isChat ? "blur(8px)" : "none",
+            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport ? "blur(8px)" : "none",
           backdropFilter:
-            isScrolled || isDashboard || isChat ? "blur(8px)" : "none",
+            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport ? "blur(8px)" : "none",
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -154,7 +148,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
             <div className="hidden md:block">
               <div className="ml-10 flex items-center space-x-3">
-                {!isDashboard && !isChat && !user ? (
+                {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !user ? (
                   <>
                     <a
                       href="#features"
@@ -233,6 +227,46 @@ const Navbar: React.FC<NavbarProps> = ({
                           }`}
                         ></span>
                       </Link>
+                      <Link
+                        to="/addiction-support"
+                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                          isAddictionSupport
+                            ? "text-lavender-600"
+                            : "text-gray-700 hover:text-lavender-600"
+                        }`}
+                      >
+                        <span className="relative z-10 flex items-center space-x-1">
+                          <Heart size={16} />
+                          <span>Recovery</span>
+                        </span>
+                        <span
+                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                            isAddictionSupport
+                              ? "scale-100"
+                              : "scale-0 group-hover:scale-100"
+                          }`}
+                        ></span>
+                      </Link>
+                      <Link
+                        to="/anxiety-support"
+                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                          isAnxietySupport
+                            ? "text-lavender-600"
+                            : "text-gray-700 hover:text-lavender-600"
+                        }`}
+                      >
+                        <span className="relative z-10 flex items-center space-x-1">
+                          <Brain size={16} />
+                          <span>Anxiety</span>
+                        </span>
+                        <span
+                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                            isAnxietySupport
+                              ? "scale-100"
+                              : "scale-0 group-hover:scale-100"
+                          }`}
+                        ></span>
+                      </Link>
                     </>
                   )
                 )}
@@ -281,7 +315,7 @@ const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/95 supports-[backdrop-filter]:bg-white/80 backdrop-blur-lg shadow-lg">
-            {!isDashboard && !isChat && !user ? (
+            {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !user ? (
               <>
                 <a
                   href="#features"
@@ -336,6 +370,22 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     AI Chat
                   </Link>
+                  <Link
+                    to="/addiction-support"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Heart size={16} />
+                    <span>Recovery Support</span>
+                  </Link>
+                  <Link
+                    to="/anxiety-support"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Brain size={16} />
+                    <span>Anxiety Support</span>
+                  </Link>
                 </>
               )
             )}
@@ -353,7 +403,9 @@ const Navbar: React.FC<NavbarProps> = ({
               </Button>
             ) : (
               !isDashboard &&
-              !isChat && (
+              !isChat &&
+              !isAddictionSupport &&
+              !isAnxietySupport && (
                 <div className="flex flex-col space-y-2 pt-2">
                   <Button
                     variant="ghost"

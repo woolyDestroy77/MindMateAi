@@ -6,6 +6,8 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import Journal from './pages/Journal';
 import Chat from './pages/Chat';
+import AddictionSupport from './pages/AddictionSupport';
+import AnxietySupport from './pages/AnxietySupport';
 
 function App() {
   const { user, isInitialized } = useAuth();
@@ -28,6 +30,12 @@ function App() {
         } />
         <Route path="/chat" element={
           user ? <Chat /> : <Navigate to="/" replace />
+        } />
+        <Route path="/addiction-support" element={
+          user ? <AddictionSupport /> : <Navigate to="/" replace />
+        } />
+        <Route path="/anxiety-support" element={
+          user ? <AnxietySupport /> : <Navigate to="/" replace />
         } />
       </Routes>
       <Toaster position="top-right" />
