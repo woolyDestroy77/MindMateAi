@@ -10,6 +10,7 @@ import {
   LogOut,
   Heart,
   Brain,
+  Flame,
   // MessageSquare,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
@@ -39,6 +40,46 @@ const Navbar: React.FC<NavbarProps> = ({
   const isChat = location.pathname === "/chat";
   const isAddictionSupport = location.pathname === "/addiction-support";
   const isAnxietySupport = location.pathname === "/anxiety-support";
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    // Load streak from localStorage or calculate it
+    const calculateStreak = () => {
+      const today = new Date().toDateString();
+      const lastLogin = localStorage.getItem('lastLoginDate');
+      let currentStreak = parseInt(localStorage.getItem('dailyStreak') || '0');
+      
+      if (lastLogin !== today) {
+        // New day login
+        if (lastLogin) {
+          const lastDate = new Date(lastLogin);
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          
+          if (lastDate.toDateString() === yesterday.toDateString()) {
+            // Consecutive day
+            currentStreak += 1;
+          } else {
+            // Streak broken
+            currentStreak = 1;
+          }
+        } else {
+          // First login
+          currentStreak = 1;
+        }
+        
+        // Save updated streak and login date
+        localStorage.setItem('dailyStreak', currentStreak.toString());
+        localStorage.setItem('lastLoginDate', today);
+      }
+      
+      setStreak(currentStreak);
+    };
+    
+    if (user) {
+      calculateStreak();
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -271,6 +312,14 @@ const Navbar: React.FC<NavbarProps> = ({
                   )
                 )}
 
+                {/* Streak Indicator */}
+                {user && streak > 0 && (
+                  <div className="flex items-center px-2 py-1 bg-gradient-to-r from-orange-100 to-red-100 rounded-md border border-orange-200">
+                    <Flame size={16} className="text-orange-500 mr-1" />
+                    <span className="text-sm font-medium text-orange-700">{streak}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center ml-3 space-x-2">
                   <button
                     onClick={onThemeToggle}
@@ -293,7 +342,15 @@ const Navbar: React.FC<NavbarProps> = ({
               </div>
             </div>
 
-            <div className="md:hidden">
+            <div className="md:hidden flex items-center space-x-3">
+              {/* Mobile Streak Indicator */}
+              {user && streak > 0 && (
+                <div className="flex items-center px-2 py-1 bg-gradient-to-r from-orange-100 to-red-100 rounded-md border border-orange-200">
+                  <Flame size={14} className="text-orange-500 mr-1" />
+                  <span className="text-xs font-medium text-orange-700">{streak}</span>
+                </div>
+              )}
+              
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
