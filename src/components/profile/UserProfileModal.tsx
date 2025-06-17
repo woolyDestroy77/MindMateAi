@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Calendar, MapPin, Edit, Upload, Trash2, Save, Image } from 'lucide-react';
 import { format } from 'date-fns';
 import Button from '../ui/Button';
 import { useAuth, UserProfile } from '../../hooks/useAuth';
+import { toast } from 'react-hot-toast';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -11,7 +12,7 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
-  const { userProfile, updateProfile, updateAvatar } = useAuth();
+  const { userProfile, updateProfile, updateAvatar, refreshProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +21,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize form data when profile loads or edit mode changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (userProfile) {
       setFormData({
         full_name: userProfile.full_name || '',
@@ -42,7 +43,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
+        toast.error('Image size must be less than 5MB');
         return;
       }
       
@@ -73,18 +74,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
     setIsLoading(true);
     try {
       // Update profile data
-      await updateProfile(formData);
+      const profileUpdated = await updateProfile(formData);
       
       // Update avatar if changed
       if (newProfileImage) {
-        await updateAvatar(newProfileImage);
+        const avatarUrl = await updateAvatar(newProfileImage);
+        if (avatarUrl) {
+          toast.success('Profile picture updated successfully');
+        }
         setNewProfileImage(null);
         setImagePreview(null);
       }
       
-      setIsEditing(false);
+      if (profileUpdated) {
+        // Refresh profile data to ensure we have the latest
+        await refreshProfile();
+        toast.success('Profile updated successfully');
+        setIsEditing(false);
+      }
     } catch (error) {
       console.error('Error saving profile:', error);
+      toast.error('Failed to update profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
