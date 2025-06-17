@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
@@ -8,9 +8,16 @@ import Journal from './pages/Journal';
 import Chat from './pages/Chat';
 import AddictionSupport from './pages/AddictionSupport';
 import AnxietySupport from './pages/AnxietySupport';
+import { useLanguageContext } from './context/LanguageContext';
 
 function App() {
   const { user, isInitialized } = useAuth();
+  const { currentLanguage } = useLanguageContext();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   if (!isInitialized) {
     return null; // Or a loading spinner
