@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, X, Play, Pause, Settings } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, X, Play, Pause, Settings, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { useAIChat } from '../../hooks/useAIChat';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
@@ -104,6 +105,15 @@ const AnxietyChat: React.FC = () => {
     }
   };
 
+  // Anxiety-specific prompts
+  const anxietyPrompts = [
+    "I'm feeling anxious right now and need help calming down",
+    "Can you teach me a quick grounding technique?",
+    "I'm worried about an upcoming event",
+    "I'm having trouble sleeping due to anxiety",
+    "How can I manage panic attack symptoms?"
+  ];
+
   return (
     <div className="flex flex-col h-[calc(100vh-300px)] min-h-[500px] border border-gray-200 rounded-lg overflow-hidden bg-white">
       <div className="p-4 border-b bg-blue-50 flex justify-between items-center">
@@ -121,6 +131,14 @@ const AnxietyChat: React.FC = () => {
           >
             <Settings size={18} />
           </button>
+          <Link
+            to="/chat"
+            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors flex items-center space-x-1"
+            title="Go to main chat"
+          >
+            <span className="text-sm">Main Chat</span>
+            <ArrowRight size={16} />
+          </Link>
         </div>
       </div>
 
@@ -136,24 +154,15 @@ const AnxietyChat: React.FC = () => {
                 I'm here to help with anxiety management techniques, grounding exercises, and emotional support. What are you experiencing right now?
               </p>
               <div className="grid grid-cols-1 gap-2 text-sm">
-                <button
-                  onClick={() => setInput("I'm feeling anxious right now and need help calming down")}
-                  className="text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
-                >
-                  "I'm feeling anxious right now and need help calming down"
-                </button>
-                <button
-                  onClick={() => setInput("Can you teach me a quick grounding technique?")}
-                  className="text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
-                >
-                  "Can you teach me a quick grounding technique?"
-                </button>
-                <button
-                  onClick={() => setInput("I'm worried about an upcoming event")}
-                  className="text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
-                >
-                  "I'm worried about an upcoming event"
-                </button>
+                {anxietyPrompts.map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setInput(prompt)}
+                    className="text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors"
+                  >
+                    "{prompt}"
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Brain } from 'lucide-react';
+import { Play, Pause, RotateCcw, Volume2, VolumeX, Clock, Brain, Settings } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 
@@ -19,17 +19,53 @@ interface MeditationSession {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
+// Local storage key for saving settings
+const MEDITATION_SETTINGS_KEY = 'puremind_meditation_settings';
+
 const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onComplete }) => {
+  // Load saved settings from localStorage
+  const loadSavedSettings = () => {
+    try {
+      const savedSettings = localStorage.getItem(MEDITATION_SETTINGS_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        return {
+          volume: parsed.volume || 0.7,
+          isMuted: parsed.isMuted || false
+        };
+      }
+    } catch (error) {
+      console.error('Error loading meditation settings:', error);
+    }
+    return { volume: 0.7, isMuted: false }; // Default settings
+  };
+
+  const savedSettings = loadSavedSettings();
+  
   const [selectedSession, setSelectedSession] = useState<MeditationSession | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(savedSettings.volume);
+  const [isMuted, setIsMuted] = useState(savedSettings.isMuted);
   const [currentScriptIndex, setCurrentScriptIndex] = useState(0);
+  const [showSettings, setShowSettings] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const scriptIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(MEDITATION_SETTINGS_KEY, JSON.stringify({
+        volume,
+        isMuted
+      }));
+      console.log('Meditation settings saved:', { volume, isMuted });
+    } catch (error) {
+      console.error('Error saving meditation settings:', error);
+    }
+  }, [volume, isMuted]);
 
   const sessions: MeditationSession[] = [
     {
@@ -212,6 +248,15 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onComplete }) => {
     return selectedSession.script[currentScriptIndex] || '';
   };
 
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (isMuted) setIsMuted(false);
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
   if (selectedSession) {
     return (
       <div className="max-w-2xl mx-auto">
@@ -298,7 +343,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onComplete }) => {
             {/* Volume Control */}
             <div className="flex items-center justify-center space-x-4">
               <button
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={toggleMute}
                 className="text-gray-600 hover:text-gray-800"
               >
                 {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -309,7 +354,7 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onComplete }) => {
                 max="1"
                 step="0.1"
                 value={isMuted ? 0 : volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
+                onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
                 className="w-24 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer"
               />
             </div>
@@ -321,6 +366,57 @@ const MeditationPlayer: React.FC<MeditationPlayerProps> = ({ onComplete }) => {
 
   return (
     <div className="space-y-6">
+      {/* Settings */}
+      <Card className="bg-purple-50 border-purple-200">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-purple-900">Meditation Settings</h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettings(!showSettings)}
+            leftIcon={<Settings size={16} />}
+          >
+            Customize
+          </Button>
+        </div>
+        
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-4 pt-4 border-t border-purple-200">
+                <div>
+                  <label className="block text-sm font-medium text-purple-800 mb-2">
+                    Volume: {Math.round(volume * 100)}%
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={toggleMute}
+                      className="text-purple-700 hover:text-purple-900"
+                    >
+                      {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={isMuted ? 0 : volume}
+                      onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                      className="flex-1 h-2 bg-purple-200 rounded-lg appearance-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Choose a Meditation</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

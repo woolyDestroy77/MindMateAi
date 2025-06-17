@@ -18,17 +18,46 @@ interface BreathingTechnique {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
 }
 
+// Local storage key for saving settings
+const BREATHING_SETTINGS_KEY = 'puremind_breathing_settings';
+
 const BreathingExercise: React.FC<BreathingExerciseProps> = ({ onComplete }) => {
+  // Load saved settings from localStorage
+  const loadSavedSettings = () => {
+    try {
+      const savedSettings = localStorage.getItem(BREATHING_SETTINGS_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        return parsed.customDuration || 5;
+      }
+    } catch (error) {
+      console.error('Error loading breathing settings:', error);
+    }
+    return 5; // Default duration
+  };
+
   const [selectedTechnique, setSelectedTechnique] = useState<BreathingTechnique | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [currentPhase, setCurrentPhase] = useState(0);
   const [cycleCount, setCycleCount] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
-  const [customDuration, setCustomDuration] = useState(5);
+  const [customDuration, setCustomDuration] = useState(loadSavedSettings);
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const phaseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(BREATHING_SETTINGS_KEY, JSON.stringify({
+        customDuration
+      }));
+      console.log('Breathing settings saved:', { customDuration });
+    } catch (error) {
+      console.error('Error saving breathing settings:', error);
+    }
+  }, [customDuration]);
 
   const techniques: BreathingTechnique[] = [
     {

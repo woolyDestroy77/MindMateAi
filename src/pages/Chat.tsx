@@ -1,15 +1,42 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, X, Play, Pause, TrendingUp, Zap, Calendar, Activity, Heart, Clock, Trash2, MoreVertical, AlertTriangle, MessageCircle, Sparkles, Download, VolumeX, Settings, Volume as VolumeOff } from "lucide-react";
+import {
+  Send,
+  Mic,
+  MicOff,
+  Loader2,
+  Bot,
+  User,
+  Volume2,
+  X,
+  Play,
+  Pause,
+  TrendingUp,
+  Zap,
+  Calendar,
+  Activity,
+  Heart,
+  Clock,
+  Trash2,
+  MoreVertical,
+  AlertTriangle,
+  MessageCircle,
+  Sparkles,
+  Download,
+  VolumeX,
+  Settings,
+  Brain
+} from "lucide-react";
 import { format, isToday, startOfDay, differenceInHours } from "date-fns";
 import { toast } from "react-hot-toast";
+import { Link } from "react-router-dom";
 import Navbar from "../components/layout/Navbar";
 import Button from "../components/ui/Button";
-import VoiceSettingsModal from "../components/chat/VoiceSettingsModal";
 import { useAIChat } from "../hooks/useAIChat";
 import { useVoiceInput } from "../hooks/useVoiceInput";
 import { useDashboardData } from "../hooks/useDashboardData";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
+import VoiceSettingsModal from "../components/chat/VoiceSettingsModal";
 
 const Chat = () => {
   const { dashboardData, updateMoodFromAI } = useDashboardData();
@@ -35,29 +62,26 @@ const Chat = () => {
     formatDuration
   } = useVoiceInput();
 
-  // Text-to-speech hook
   const {
-    isPlaying: isSpeaking,
-    currentMessageId: speakingMessageId,
-    voices,
-    isSupported: speechSupported,
-    isInitialized: speechInitialized,
-    voiceSettings,
     speak,
-    stopAudio,
+    stop,
+    isPlaying,
+    currentMessageId,
+    voiceSettings,
     updateVoiceSettings,
+    voices,
     testVoice,
-    resetSettings: resetVoiceSettings
+    resetSettings
   } = useTextToSpeech();
 
   const [inputMessage, setInputMessage] = useState("");
   const [recognition, setRecognition] = useState<any>(null);
   const [showVoiceModal, setShowVoiceModal] = useState(false);
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
   const [audioDurations, setAudioDurations] = useState<{ [key: string]: number }>({});
   const [audioVolume, setAudioVolume] = useState(0.8);
@@ -75,18 +99,15 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Auto-play new AI messages if enabled
+  // Auto-play AI responses if enabled
   useEffect(() => {
     if (voiceSettings.autoPlay && messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.role === 'assistant' && !lastMessage.isVoiceMessage) {
-        // Small delay to ensure message is rendered
-        setTimeout(() => {
-          speak(lastMessage.content, lastMessage.id);
-        }, 500);
+      if (lastMessage.role === 'assistant' && lastMessage.id !== currentMessageId) {
+        speak(lastMessage.content, lastMessage.id);
       }
     }
-  }, [messages, voiceSettings.autoPlay, speak]);
+  }, [messages, voiceSettings.autoPlay, speak, currentMessageId]);
 
   // Show welcome message for new day or first visit with proper auto-hide
   useEffect(() => {
@@ -310,12 +331,11 @@ const Chat = () => {
     });
   };
 
-  // Handle AI message speech
-  const handleSpeakMessage = (messageId: string, content: string) => {
-    if (speakingMessageId === messageId) {
-      stopAudio();
+  const handlePlayMessage = (message: any) => {
+    if (isPlaying && currentMessageId === message.id) {
+      stop();
     } else {
-      speak(content, messageId);
+      speak(message.content, message.id);
     }
   };
 
@@ -448,7 +468,7 @@ const Chat = () => {
       </AnimatePresence>
 
       <main className="flex flex-col h-screen pt-16">
-        {/* Enhanced Header with Daily Stats and Voice Controls */}
+        {/* Enhanced Header with Daily Stats */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 p-4">
           <div className="max-w-4xl mx-auto">
             <div className="flex flex-col md:flex-row md:items-center justify-between space-y-3 md:space-y-0">
@@ -478,31 +498,6 @@ const Chat = () => {
                   </span>
                 </div>
 
-                {/* Voice Controls */}
-                {speechSupported && (
-                  <div className="flex items-center space-x-2">
-                    {/* Stop Audio Button (when speaking) */}
-                    {isSpeaking && (
-                      <button
-                        onClick={stopAudio}
-                        className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors"
-                        title="Stop audio"
-                      >
-                        <VolumeOff size={16} />
-                      </button>
-                    )}
-                    
-                    {/* Voice Settings */}
-                    <button
-                      onClick={() => setShowVoiceSettings(true)}
-                      className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="Voice settings"
-                    >
-                      <Settings size={16} />
-                    </button>
-                  </div>
-                )}
-
                 {/* Options Menu */}
                 <div className="relative">
                   <button
@@ -520,6 +515,24 @@ const Chat = () => {
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                         className="absolute right-0 top-12 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 min-w-[180px]"
                       >
+                        <button
+                          onClick={() => {
+                            setShowVoiceSettings(true);
+                            setShowOptionsMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
+                        >
+                          <Settings size={14} className="mr-2" />
+                          Voice Settings
+                        </button>
+                        <Link
+                          to="/anxiety-support"
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
+                          onClick={() => setShowOptionsMenu(false)}
+                        >
+                          <Brain size={14} className="mr-2" />
+                          Anxiety Support
+                        </Link>
                         <button
                           onClick={() => {
                             setShowDeleteConfirm(true);
@@ -801,47 +814,32 @@ const Chat = () => {
                               )}
                             </div>
                           ) : (
-                            // Regular Text Message with Enhanced Formatting and Voice Controls
-                            <div>
-                              <div
-                                className={`${
-                                  message.role === "user"
-                                    ? "text-white"
-                                    : "text-gray-900"
-                                }`}
-                              >
-                                {message.role === "assistant" 
-                                  ? formatAIResponse(message.content)
-                                  : <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
-                                }
-                              </div>
-
-                              {/* Voice Controls for AI Messages */}
-                              {message.role === "assistant" && speechSupported && speechInitialized && (
-                                <div className="mt-3 pt-2 border-t border-gray-100">
+                            // Regular Text Message with Enhanced Formatting
+                            <div
+                              className={`${
+                                message.role === "user"
+                                  ? "text-white"
+                                  : "text-gray-900"
+                              }`}
+                            >
+                              {message.role === "assistant" ? (
+                                <div className="relative">
+                                  {formatAIResponse(message.content)}
+                                  {/* Play button for text-to-speech */}
                                   <button
-                                    onClick={() => handleSpeakMessage(message.id, message.content)}
-                                    disabled={!voiceSettings.voice}
-                                    className={`flex items-center space-x-2 text-xs px-3 py-1.5 rounded-full transition-colors ${
-                                      speakingMessageId === message.id
-                                        ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    } ${!voiceSettings.voice ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    title={speakingMessageId === message.id ? "Stop speaking" : "Listen to message"}
+                                    onClick={() => handlePlayMessage(message)}
+                                    className="absolute top-0 right-0 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                    title={isPlaying && currentMessageId === message.id ? "Stop" : "Play"}
                                   >
-                                    {speakingMessageId === message.id ? (
-                                      <>
-                                        <VolumeOff size={12} />
-                                        <span>Stop</span>
-                                      </>
+                                    {isPlaying && currentMessageId === message.id ? (
+                                      <Pause size={16} className="text-gray-700" />
                                     ) : (
-                                      <>
-                                        <Volume2 size={12} />
-                                        <span>Listen</span>
-                                      </>
+                                      <Play size={16} className="text-gray-700" />
                                     )}
                                   </button>
                                 </div>
+                              ) : (
+                                <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
                               )}
                             </div>
                           )}
@@ -1022,12 +1020,6 @@ const Chat = () => {
                   <Zap size={12} className="text-blue-500" />
                   <span>Daily progress</span>
                 </div>
-                {speechSupported && (
-                  <div className="flex items-center space-x-1">
-                    <Volume2 size={12} className="text-green-500" />
-                    <span>AI voice responses</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1235,8 +1227,8 @@ const Chat = () => {
         voices={voices}
         onUpdateSettings={updateVoiceSettings}
         onTestVoice={testVoice}
-        onResetSettings={resetVoiceSettings}
-        isPlaying={isSpeaking}
+        onResetSettings={resetSettings}
+        isPlaying={isPlaying}
       />
 
       <style jsx>{`
