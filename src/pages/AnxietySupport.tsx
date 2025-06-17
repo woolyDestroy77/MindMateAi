@@ -38,6 +38,9 @@ import AnxietyCalendar from '../components/anxiety/AnxietyCalendar';
 import AnxietyStats from '../components/anxiety/AnxietyStats';
 import { useAnxietySupport } from '../hooks/useAnxietySupport';
 
+// Local storage key for saving active tab
+const ANXIETY_TAB_KEY = 'puremind_anxiety_active_tab';
+
 const AnxietySupport = () => {
   const {
     anxietyLevel,
@@ -49,9 +52,39 @@ const AnxietySupport = () => {
     getAnxietyInsights
   } = useAnxietySupport();
 
-  const [activeTab, setActiveTab] = useState<'breathing' | 'meditation' | 'journal' | 'cbt' | 'chat' | 'calendar'>('breathing');
+  // Load saved active tab from localStorage
+  const loadSavedTab = () => {
+    try {
+      const savedTab = localStorage.getItem(ANXIETY_TAB_KEY);
+      if (savedTab) {
+        return savedTab as 'breathing' | 'meditation' | 'journal' | 'cbt' | 'chat' | 'calendar';
+      }
+    } catch (error) {
+      console.error('Error loading anxiety tab:', error);
+    }
+    return 'breathing'; // Default tab
+  };
+
+  const [activeTab, setActiveTab] = useState<'breathing' | 'meditation' | 'journal' | 'cbt' | 'chat' | 'calendar'>(loadSavedTab);
   const [showPanicMode, setShowPanicMode] = useState(false);
-  const [currentAnxietyLevel, setCurrentAnxietyLevel] = useState(5);
+  const [currentAnxietyLevel, setCurrentAnxietyLevel] = useState(anxietyLevel || 5);
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(ANXIETY_TAB_KEY, activeTab);
+      console.log('Anxiety tab saved:', activeTab);
+    } catch (error) {
+      console.error('Error saving anxiety tab:', error);
+    }
+  }, [activeTab]);
+
+  // Update anxiety level when it changes from the hook
+  useEffect(() => {
+    if (anxietyLevel) {
+      setCurrentAnxietyLevel(anxietyLevel);
+    }
+  }, [anxietyLevel]);
 
   const tabs = [
     { id: 'breathing', name: 'Breathing', icon: Wind, color: 'text-blue-600' },
