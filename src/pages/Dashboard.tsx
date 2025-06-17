@@ -258,27 +258,6 @@ const Dashboard = () => {
       icon: IconComponent
     };
   };
-  
-  const journalEntries = [
-    {
-      date: format(new Date(), 'yyyy-MM-dd'),
-      content: 'Today was productive. Made progress on my goals and practiced mindfulness for 15 minutes.',
-      sentiment: 'positive',
-      mood: '😊'
-    },
-    {
-      date: format(new Date(Date.now() - 86400000), 'yyyy-MM-dd'),
-      content: 'Felt some anxiety about upcoming deadlines but managed it well with breathing exercises.',
-      sentiment: 'neutral',
-      mood: '😐'
-    },
-    {
-      date: format(new Date(Date.now() - 172800000), 'yyyy-MM-dd'),
-      content: 'Great meditation session this morning. Feeling centered and focused.',
-      sentiment: 'positive',
-      mood: '😌'
-    }
-  ];
 
   // Helper function to format the last updated time
   const formatLastUpdated = (timestamp: string) => {
