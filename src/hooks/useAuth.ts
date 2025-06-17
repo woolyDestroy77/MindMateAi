@@ -29,6 +29,8 @@ export const useAuth = () => {
       if (userError) throw userError;
       if (!userData.user) return null;
       
+      console.log('Fetched user data:', userData.user);
+      
       // Create profile object from user metadata
       const profile: UserProfile = {
         id: userData.user.id,
@@ -40,6 +42,7 @@ export const useAuth = () => {
         created_at: userData.user.created_at
       };
       
+      console.log('Created profile object:', profile);
       setUserProfile(profile);
       return profile;
     } catch (error) {
@@ -91,8 +94,21 @@ export const useAuth = () => {
     try {
       console.log('Updating profile with:', updates);
       
+      if (!user) {
+        console.error('No user found for profile update');
+        toast.error('You must be logged in to update your profile');
+        return false;
+      }
+      
+      // Filter out undefined values and empty strings
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, v]) => v !== undefined && v !== '')
+      );
+      
+      console.log('Filtered updates:', filteredUpdates);
+      
       const { data, error } = await supabase.auth.updateUser({
-        data: updates
+        data: filteredUpdates
       });
 
       if (error) {
@@ -102,8 +118,14 @@ export const useAuth = () => {
       
       console.log('Profile update response:', data);
       
+      // Update local state with the new profile data
       if (userProfile) {
-        setUserProfile({ ...userProfile, ...updates });
+        const updatedProfile = {
+          ...userProfile,
+          ...filteredUpdates
+        };
+        console.log('Setting updated profile:', updatedProfile);
+        setUserProfile(updatedProfile);
       }
       
       return true;

@@ -72,26 +72,35 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
   const handleSave = async () => {
     setIsLoading(true);
+    
     try {
-      // Update profile data
+      console.log('Saving profile with data:', formData);
+      
+      // First update profile data
       const profileUpdated = await updateProfile(formData);
       
-      // Update avatar if changed
+      if (!profileUpdated) {
+        throw new Error('Failed to update profile data');
+      }
+      
+      // Then update avatar if changed
       if (newProfileImage) {
         const avatarUrl = await updateAvatar(newProfileImage);
-        if (avatarUrl) {
-          toast.success('Profile picture updated successfully');
+        if (!avatarUrl) {
+          toast.error('Profile updated but image upload failed');
+        } else {
+          console.log('Avatar updated successfully:', avatarUrl);
         }
+        
         setNewProfileImage(null);
         setImagePreview(null);
       }
       
-      if (profileUpdated) {
-        // Refresh profile data to ensure we have the latest
-        await refreshProfile();
-        toast.success('Profile updated successfully');
-        setIsEditing(false);
-      }
+      // Refresh profile data to ensure we have the latest
+      await refreshProfile();
+      
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
     } catch (error) {
       console.error('Error saving profile:', error);
       toast.error('Failed to update profile. Please try again.');
