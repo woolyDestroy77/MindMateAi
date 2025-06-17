@@ -87,19 +87,25 @@ export const useAuth = () => {
     initialize();
   }, [initialize]);
 
-  const updateProfile = async (updates: Partial<UserProfile>) => {
+  const updateProfile = async (updates: Partial<UserProfile>): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.updateUser({
+      console.log('Updating profile with:', updates);
+      
+      const { data, error } = await supabase.auth.updateUser({
         data: updates
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in updateUser:', error);
+        throw error;
+      }
+      
+      console.log('Profile update response:', data);
       
       if (userProfile) {
         setUserProfile({ ...userProfile, ...updates });
       }
       
-      toast.success('Profile updated successfully');
       return true;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -108,7 +114,7 @@ export const useAuth = () => {
     }
   };
 
-  const updateAvatar = async (file: File) => {
+  const updateAvatar = async (file: File): Promise<string | null> => {
     try {
       if (!user) throw new Error('User not authenticated');
       
@@ -121,17 +127,26 @@ export const useAuth = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
+      console.log('Uploading file:', fileName);
+      
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('profile_images')
         .upload(fileName, file);
         
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+      
+      console.log('Upload successful:', uploadData);
       
       // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('profile_images')
         .getPublicUrl(fileName);
         
+      console.log('Public URL:', publicUrlData.publicUrl);
+      
       // Update user profile with image URL
       const { error: updateError } = await supabase.auth.updateUser({
         data: { 
@@ -139,14 +154,16 @@ export const useAuth = () => {
         }
       });
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
+      }
       
       // Update local state
       if (userProfile) {
         setUserProfile({ ...userProfile, avatar_url: publicUrlData.publicUrl });
       }
       
-      toast.success('Profile picture updated');
       return publicUrlData.publicUrl;
     } catch (error) {
       console.error('Error updating avatar:', error);
