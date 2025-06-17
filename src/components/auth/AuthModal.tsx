@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
@@ -14,7 +14,62 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [birthdate, setBirthdate] = useState('');
+  const [location, setLocation] = useState('');
+  const [bio, setBio] = useState('');
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB');
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.match('image.*')) {
+        toast.error('Please select an image file');
+        return;
+      }
+      
+      setProfileImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setProfileImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleNextStep = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentStep < 2) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleSubmit(e);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,17 +77,52 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
 
     try {
       if (mode === 'signup') {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
               full_name: name,
+              birthdate,
+              location,
+              bio
             },
           },
         });
 
         if (signUpError) throw signUpError;
+
+        // If profile image was uploaded, store it
+        if (profileImage && signUpData.user) {
+          const userId = signUpData.user.id;
+          const fileExt = profileImage.name.split('.').pop();
+          const fileName = `${userId}-${Date.now()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('profile_images')
+            .upload(fileName, profileImage);
+            
+          if (uploadError) {
+            console.error('Error uploading profile image:', uploadError);
+            toast.error('Profile created but image upload failed');
+          } else {
+            // Get public URL
+            const { data: publicUrlData } = supabase.storage
+              .from('profile_images')
+              .getPublicUrl(fileName);
+              
+            // Update user profile with image URL
+            const { error: updateError } = await supabase.auth.updateUser({
+              data: { 
+                avatar_url: publicUrlData.publicUrl
+              }
+            });
+            
+            if (updateError) {
+              console.error('Error updating profile with image:', updateError);
+            }
+          }
+        }
 
         toast.success('Check your email to confirm your account!');
       } else {
@@ -87,63 +177,229 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 : 'Join PureMind AI to start your wellness journey'}
             </p>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleNextStep} className="space-y-4">
               {mode === 'signup' && (
-                <div>
-                  <label htmlFor="name\" className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name
-                  </label>
-                  <div className="relative">
-                    <User size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-                </div>
-              )}
-              
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                    placeholder="you@example.com"
-                    required
-                  />
-                </div>
-              </div>
+                <>
+                  {currentStep === 1 && (
+                    <>
+                      <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                          Full Name
+                        </label>
+                        <div className="relative">
+                          <User size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                            placeholder="John Doe"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                          Email
+                        </label>
+                        <div className="relative">
+                          <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="email"
+                            id="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                            placeholder="you@example.com"
+                            required
+                          />
+                        </div>
+                      </div>
 
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                    placeholder="••••••••"
-                    minLength={6}
-                    required
-                  />
-                </div>
-              </div>
+                      <div>
+                        <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                          Password
+                        </label>
+                        <div className="relative">
+                          <Lock size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                            placeholder="••••••••"
+                            minLength={6}
+                            required
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Password must be at least 6 characters long
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {currentStep === 2 && (
+                    <>
+                      <div>
+                        <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700 mb-1">
+                          Date of Birth (Optional)
+                        </label>
+                        <div className="relative">
+                          <Calendar size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="date"
+                            id="birthdate"
+                            value={birthdate}
+                            onChange={(e) => setBirthdate(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                          Location (Optional)
+                        </label>
+                        <div className="relative">
+                          <MapPin size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                          <input
+                            type="text"
+                            id="location"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                            placeholder="City, Country"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+                          About You (Optional)
+                        </label>
+                        <textarea
+                          id="bio"
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
+                          className="block w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                          placeholder="Tell us a bit about yourself..."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Profile Picture (Optional)
+                        </label>
+                        <div className="mt-1 flex items-center space-x-4">
+                          <div 
+                            className="w-16 h-16 rounded-full border-2 border-gray-300 flex items-center justify-center overflow-hidden bg-gray-100"
+                          >
+                            {imagePreview ? (
+                              <img 
+                                src={imagePreview} 
+                                alt="Profile preview" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User size={24} className="text-gray-400" />
+                            )}
+                          </div>
+                          <div className="flex flex-col space-y-2">
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleFileChange}
+                              accept="image/*"
+                              className="hidden"
+                            />
+                            {!imagePreview ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={triggerFileInput}
+                                leftIcon={<Upload size={16} />}
+                              >
+                                Upload Photo
+                              </Button>
+                            ) : (
+                              <div className="flex space-x-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={triggerFileInput}
+                                  leftIcon={<Image size={16} />}
+                                >
+                                  Change
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleRemoveImage}
+                                  leftIcon={<Trash2 size={16} />}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Max file size: 5MB. Recommended: square image.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {mode === 'signin' && (
+                <>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="email"
+                        id="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                        placeholder="you@example.com"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="password"
+                        id="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                        placeholder="••••••••"
+                        minLength={6}
+                        required
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
 
               <Button
                 type="submit"
@@ -154,7 +410,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 rightIcon={<ArrowRight size={18} />}
                 className="mt-6"
               >
-                {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                {mode === 'signin' 
+                  ? 'Sign In' 
+                  : currentStep === 1 
+                    ? 'Next: Profile Details' 
+                    : 'Create Account'}
               </Button>
             </form>
 

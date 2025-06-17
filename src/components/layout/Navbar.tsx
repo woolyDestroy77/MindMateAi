@@ -11,11 +11,12 @@ import {
   Heart,
   Brain,
   Flame,
-  // MessageSquare,
+  User,
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
 import AuthModal from "../auth/AuthModal";
+import UserProfileModal from "../profile/UserProfileModal";
 import { useAuth } from "../../hooks/useAuth";
 
 interface NavbarProps {
@@ -29,13 +30,14 @@ const Navbar: React.FC<NavbarProps> = ({
   onThemeToggle,
   isDarkMode = false,
 }) => {
-  const { user, signOut } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState<
     "signin" | "signup" | null
   >(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const isDashboard = location.pathname === "/dashboard";
   const isChat = location.pathname === "/chat";
   const isAddictionSupport = location.pathname === "/addiction-support";
@@ -118,6 +120,22 @@ const Navbar: React.FC<NavbarProps> = ({
     if (user) {
       return (
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex items-center space-x-2 p-1 rounded-full border border-gray-200 hover:bg-lavender-50 transition-colors"
+          >
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-lavender-100 flex items-center justify-center">
+              {userProfile?.avatar_url ? (
+                <img 
+                  src={userProfile.avatar_url} 
+                  alt={userProfile.full_name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User size={16} className="text-lavender-600" />
+              )}
+            </div>
+          </button>
           <Button
             variant="primary"
             size="sm"
@@ -351,6 +369,26 @@ const Navbar: React.FC<NavbarProps> = ({
                 </div>
               )}
               
+              {/* Mobile Profile Button */}
+              {user && (
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="p-1 rounded-full border border-gray-200 overflow-hidden"
+                >
+                  <div className="w-7 h-7 rounded-full overflow-hidden bg-lavender-100 flex items-center justify-center">
+                    {userProfile?.avatar_url ? (
+                      <img 
+                        src={userProfile.avatar_url} 
+                        alt={userProfile.full_name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User size={14} className="text-lavender-600" />
+                    )}
+                  </div>
+                </button>
+              )}
+              
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
@@ -498,6 +536,12 @@ const Navbar: React.FC<NavbarProps> = ({
           onClose={() => setShowAuthModal(null)}
         />
       )}
+
+      {/* Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
     </>
   );
 };
