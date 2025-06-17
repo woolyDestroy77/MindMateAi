@@ -2,11 +2,8 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, PenTool, BarChart, Mic } from 'lucide-react';
 import Button from '../ui/Button';
-import { useLanguageContext } from '../../context/LanguageContext';
 
 const Hero: React.FC = () => {
-  const { translate } = useLanguageContext();
-  
   return (
     <div className="relative bg-gradient-to-b from-white to-lavender-50 overflow-hidden">
       {/* Animation elements */}
@@ -44,7 +41,7 @@ const Hero: React.FC = () => {
                 transition={{ duration: 0.5 }}
                 className="block text-sm font-semibold uppercase tracking-wide text-lavender-600"
               >
-                {translate('Introducing PureMind AI')}
+                Introducing PureMind AI
               </motion.span>
               <span className="mt-1 block text-4xl tracking-tight font-extrabold sm:text-5xl xl:text-6xl">
                 <motion.span
@@ -53,7 +50,7 @@ const Hero: React.FC = () => {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="block text-gray-900"
                 >
-                  {translate('Your Digital')}
+                  Your Digital
                 </motion.span>
                 <motion.span
                   initial={{ opacity: 0, y: 20 }}
@@ -61,7 +58,7 @@ const Hero: React.FC = () => {
                   transition={{ duration: 0.5, delay: 0.4 }}
                   className="block bg-gradient-to-r from-lavender-600 to-sage-500 bg-clip-text text-transparent"
                 >
-                  {translate('Mental Wellness Companion')}
+                  Mental Wellness Companion
                 </motion.span>
               </span>
             </h1>
@@ -71,7 +68,7 @@ const Hero: React.FC = () => {
               transition={{ duration: 0.5, delay: 0.6 }}
               className="mt-3 text-base text-gray-600 sm:mt-5 sm:text-xl lg:text-lg xl:text-xl"
             >
-              {translate('PureMind AI helps you track your emotional journey through intelligent journaling, mood analysis, and personalized wellness insights.')}
+              PureMind AI helps you track your emotional journey through intelligent journaling, mood analysis, and personalized wellness insights.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -86,7 +83,7 @@ const Hero: React.FC = () => {
                     size="lg"
                     rightIcon={<ArrowRight size={18} />}
                   >
-                    {translate('Start Your Journey')}
+                    Start Your Journey
                   </Button>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -94,13 +91,13 @@ const Hero: React.FC = () => {
                     variant="outline" 
                     size="lg"
                   >
-                    {translate('Learn More')}
+                    Learn More
                   </Button>
                 </motion.div>
               </div>
               
               <p className="mt-5 text-sm text-gray-500">
-                {translate('Your data is secure and private. No credit card required.')}
+                Your data is secure and private. No credit card required.
               </p>
             </motion.div>
           </motion.div>
@@ -132,8 +129,8 @@ const Hero: React.FC = () => {
                         </span>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-gray-900">{translate('Digital Journaling')}</h3>
-                        <p className="text-sm text-gray-500">{translate('Express your thoughts and feelings')}</p>
+                        <h3 className="text-lg font-medium text-gray-900">Digital Journaling</h3>
+                        <p className="text-sm text-gray-500">Express your thoughts and feelings</p>
                       </div>
                     </motion.div>
                     
@@ -149,8 +146,8 @@ const Hero: React.FC = () => {
                         </span>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-gray-900">{translate('Voice Check-ins')}</h3>
-                        <p className="text-sm text-gray-500">{translate('Record your emotional state')}</p>
+                        <h3 className="text-lg font-medium text-gray-900">Voice Check-ins</h3>
+                        <p className="text-sm text-gray-500">Record your emotional state</p>
                       </div>
                     </motion.div>
                     
@@ -166,8 +163,8 @@ const Hero: React.FC = () => {
                         </span>
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-lg font-medium text-gray-900">{translate('Mood Tracking')}</h3>
-                        <p className="text-sm text-gray-500">{translate('Visualize your emotional progress')}</p>
+                        <h3 className="text-lg font-medium text-gray-900">Mood Tracking</h3>
+                        <p className="text-sm text-gray-500">Visualize your emotional progress</p>
                       </div>
                     </motion.div>
                   </div>

@@ -17,9 +17,7 @@ import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
 import AuthModal from "../auth/AuthModal";
 import UserProfileModal from "../profile/UserProfileModal";
-import LanguageSelector from "./LanguageSelector";
 import { useAuth } from "../../hooks/useAuth";
-import { useLanguageContext } from "../../context/LanguageContext";
 
 interface NavbarProps {
   onLanguageChange?: (language: string) => void;
@@ -33,7 +31,6 @@ const Navbar: React.FC<NavbarProps> = ({
   isDarkMode = false,
 }) => {
   const { user, userProfile, signOut } = useAuth();
-  const { translate, changeLanguage } = useLanguageContext();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -119,13 +116,6 @@ const Navbar: React.FC<NavbarProps> = ({
     setIsMenuOpen(false);
   };
 
-  const handleLanguageChange = (language: string) => {
-    changeLanguage(language);
-    if (onLanguageChange) {
-      onLanguageChange(language);
-    }
-  };
-
   const renderAuthButtons = () => {
     if (user) {
       return (
@@ -153,7 +143,7 @@ const Navbar: React.FC<NavbarProps> = ({
             onClick={handleSignOut}
             leftIcon={<LogOut size={16} />}
           >
-            {translate('Sign Out')}
+            Sign Out
           </Button>
         </div>
       );
@@ -169,7 +159,7 @@ const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setShowAuthModal("signin")}
             leftIcon={<LogIn size={16} />}
           >
-            {translate('Sign In')}
+            Sign In
           </Button>
           <Button
             variant="primary"
@@ -178,7 +168,7 @@ const Navbar: React.FC<NavbarProps> = ({
             onClick={() => setShowAuthModal("signup")}
             leftIcon={<UserPlus size={16} />}
           >
-            {translate('Sign Up')}
+            Sign Up
           </Button>
         </div>
       );
@@ -224,7 +214,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       onClick={(e) => scrollToSection(e, "features")}
                       className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                     >
-                      <span className="relative z-10">{translate('Features')}</span>
+                      <span className="relative z-10">Features</span>
                       <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                     </a>
                     <a
@@ -232,7 +222,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       onClick={(e) => scrollToSection(e, "how-it-works")}
                       className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                     >
-                      <span className="relative z-10">{translate('How It Works')}</span>
+                      <span className="relative z-10">How It Works</span>
                       <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                     </a>
                     <a
@@ -240,7 +230,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       onClick={(e) => scrollToSection(e, "testimonials")}
                       className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                     >
-                      <span className="relative z-10">{translate('Testimonials')}</span>
+                      <span className="relative z-10">Testimonials</span>
                       <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                     </a>
                     <a
@@ -248,7 +238,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       onClick={(e) => scrollToSection(e, "faq")}
                       className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                     >
-                      <span className="relative z-10">{translate('FAQ')}</span>
+                      <span className="relative z-10">FAQ</span>
                       <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                     </a>
                   </>
@@ -263,7 +253,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             : "text-gray-700 hover:text-lavender-600"
                         }`}
                       >
-                        <span className="relative z-10">{translate('Dashboard')}</span>
+                        <span className="relative z-10">Dashboard</span>
                         <span
                           className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
                             isDashboard
@@ -276,7 +266,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         to="/journal"
                         className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                       >
-                        <span className="relative z-10">{translate('Journal')}</span>
+                        <span className="relative z-10">Journal</span>
                         <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                       </Link>
                       <Link
@@ -287,7 +277,7 @@ const Navbar: React.FC<NavbarProps> = ({
                             : "text-gray-700 hover:text-lavender-600"
                         }`}
                       >
-                        <span className="relative z-10">{translate('AI Chat')}</span>
+                        <span className="relative z-10">AI Chat</span>
                         <span
                           className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
                             isChat
@@ -306,7 +296,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       >
                         <span className="relative z-10 flex items-center space-x-1">
                           <Heart size={16} />
-                          <span>{translate('Recovery')}</span>
+                          <span>Recovery</span>
                         </span>
                         <span
                           className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
@@ -326,7 +316,7 @@ const Navbar: React.FC<NavbarProps> = ({
                       >
                         <span className="relative z-10 flex items-center space-x-1">
                           <Brain size={16} />
-                          <span>{translate('Anxiety')}</span>
+                          <span>Anxiety</span>
                         </span>
                         <span
                           className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
@@ -357,7 +347,13 @@ const Navbar: React.FC<NavbarProps> = ({
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
 
-                  <LanguageSelector variant="dropdown" size="md" />
+                  <button
+                    onClick={() => onLanguageChange && onLanguageChange("en")}
+                    className="p-2 rounded-full text-gray-600 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none flex items-center"
+                    aria-label="Change language"
+                  >
+                    <Globe size={20} />
+                  </button>
                 </div>
 
                 {renderAuthButtons()}
@@ -393,9 +389,6 @@ const Navbar: React.FC<NavbarProps> = ({
                 </button>
               )}
               
-              {/* Mobile Language Selector */}
-              <LanguageSelector variant="dropdown" size="sm" />
-              
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
@@ -424,28 +417,28 @@ const Navbar: React.FC<NavbarProps> = ({
                   onClick={(e) => scrollToSection(e, "features")}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                 >
-                  {translate('Features')}
+                  Features
                 </a>
                 <a
                   href="#how-it-works"
                   onClick={(e) => scrollToSection(e, "how-it-works")}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                 >
-                  {translate('How It Works')}
+                  How It Works
                 </a>
                 <a
                   href="#testimonials"
                   onClick={(e) => scrollToSection(e, "testimonials")}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                 >
-                  {translate('Testimonials')}
+                  Testimonials
                 </a>
                 <a
                   href="#faq"
                   onClick={(e) => scrollToSection(e, "faq")}
                   className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                 >
-                  {translate('FAQ')}
+                  FAQ
                 </a>
               </>
             ) : (
@@ -456,21 +449,21 @@ const Navbar: React.FC<NavbarProps> = ({
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    {translate('Dashboard')}
+                    Dashboard
                   </Link>
                   <Link
                     to="/journal"
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    {translate('Journal')}
+                    Journal
                   </Link>
                   <Link
                     to="/chat"
                     className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    {translate('AI Chat')}
+                    AI Chat
                   </Link>
                   <Link
                     to="/addiction-support"
@@ -478,7 +471,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Heart size={16} />
-                    <span>{translate('Recovery Support')}</span>
+                    <span>Recovery Support</span>
                   </Link>
                   <Link
                     to="/anxiety-support"
@@ -486,7 +479,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <Brain size={16} />
-                    <span>{translate('Anxiety Support')}</span>
+                    <span>Anxiety Support</span>
                   </Link>
                 </>
               )
@@ -501,7 +494,7 @@ const Navbar: React.FC<NavbarProps> = ({
                 onClick={handleSignOut}
                 leftIcon={<LogOut size={16} />}
               >
-                {translate('Sign Out')}
+                Sign Out
               </Button>
             ) : (
               !isDashboard &&
@@ -517,7 +510,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setShowAuthModal("signin")}
                     leftIcon={<LogIn size={16} />}
                   >
-                    {translate('Sign In')}
+                    Sign In
                   </Button>
                   <Button
                     variant="primary"
@@ -527,7 +520,7 @@ const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setShowAuthModal("signup")}
                     leftIcon={<UserPlus size={16} />}
                   >
-                    {translate('Sign Up')}
+                    Sign Up
                   </Button>
                 </div>
               )
