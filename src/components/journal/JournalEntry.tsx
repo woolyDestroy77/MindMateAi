@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Pencil, Trash2, ChevronDown, ChevronUp, MapPin, Cloud, Zap, Clock, Tag, Calendar } from 'lucide-react';
+import { Pencil, Trash2, ChevronDown, ChevronUp, MapPin, Cloud, Zap, Clock, Tag, Calendar, Image, X, Lock, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { JournalEntry as JournalEntryType } from '../../hooks/useJournal';
 import Button from '../ui/Button';
@@ -14,6 +14,7 @@ interface JournalEntryProps {
 const JournalEntry: React.FC<JournalEntryProps> = ({ entry, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [showPhotos, setShowPhotos] = useState(false);
 
   const getSentimentColor = (sentiment?: string) => {
     switch (sentiment?.toLowerCase()) {
@@ -57,6 +58,7 @@ const JournalEntry: React.FC<JournalEntryProps> = ({ entry, onEdit, onDelete }) 
   };
 
   const hasMetadata = entry.metadata && Object.keys(entry.metadata).length > 0;
+  const hasPhotos = entry.metadata?.photos && entry.metadata.photos.length > 0;
 
   return (
     <motion.div
@@ -89,6 +91,12 @@ const JournalEntry: React.FC<JournalEntryProps> = ({ entry, onEdit, onDelete }) 
               <Clock size={12} className="mr-1" />
               {getReadingTime(entry.content)}
             </div>
+            {hasPhotos && (
+              <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center">
+                <Image size={12} className="mr-1" />
+                {entry.metadata.photos.length} photo{entry.metadata.photos.length !== 1 ? 's' : ''}
+              </div>
+            )}
           </div>
         </div>
 
@@ -114,6 +122,61 @@ const JournalEntry: React.FC<JournalEntryProps> = ({ entry, onEdit, onDelete }) 
             </button>
           )}
         </div>
+
+        {/* Photos Preview */}
+        {hasPhotos && (
+          <div className="mt-4">
+            <button
+              onClick={() => setShowPhotos(!showPhotos)}
+              className="text-lavender-600 hover:text-lavender-800 text-sm font-medium flex items-center"
+            >
+              {showPhotos ? (
+                <>
+                  Hide photos <ChevronUp size={16} className="ml-1" />
+                </>
+              ) : (
+                <>
+                  Show {entry.metadata.photos.length} photo{entry.metadata.photos.length !== 1 ? 's' : ''} <ChevronDown size={16} className="ml-1" />
+                </>
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {showPhotos && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden mt-3"
+                >
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {entry.metadata.photos.map((photo: any) => (
+                      <div key={photo.id} className="relative group">
+                        <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden bg-gray-200">
+                          <img 
+                            src={photo.url} 
+                            alt={photo.title} 
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="mt-1 flex justify-between items-center">
+                          <p className="text-xs font-medium truncate">{photo.title}</p>
+                          <span className="text-xs text-gray-500 flex items-center">
+                            {photo.privacy === 'private' ? (
+                              <Lock size={10} className="ml-1" />
+                            ) : (
+                              <Globe size={10} className="ml-1" />
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {entry.tags && entry.tags.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">

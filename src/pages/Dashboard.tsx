@@ -23,7 +23,8 @@ import {
   LineChart,
   Users,
   Lightbulb,
-  Shield
+  Shield,
+  Image
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
@@ -36,6 +37,8 @@ import WeeklyStatsGrid from '../components/dashboard/WeeklyStatsGrid';
 import DailyStepsCard from '../components/dashboard/DailyStepsCard';
 import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard';
 import AchievementsCard from '../components/dashboard/AchievementsCard';
+import PhotoMemoriesCard from '../components/dashboard/PhotoMemoriesCard';
+import PhotoTimelineCard from '../components/dashboard/PhotoTimelineCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
@@ -67,7 +70,7 @@ const Dashboard = () => {
   // Get addiction support data for daily steps
   const { userAddictions, isLoading: addictionLoading } = useAddictionSupport();
   
-  // Get journal entries for achievements
+  // Get journal entries for achievements and photos
   const { entries: journalEntries, isLoading: journalLoading } = useJournal();
   
   // Get anxiety sessions for achievements
@@ -75,6 +78,7 @@ const Dashboard = () => {
   
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showPhotoMemories, setShowPhotoMemories] = useState(true);
   
   // Base daily goals that reset each day
   const baseGoals = [
@@ -130,6 +134,27 @@ const Dashboard = () => {
   const [allGoalsFinished, setAllGoalsFinished] = useState(() => {
     return localStorage.getItem(`allGoalsFinished_${today}`) === 'true';
   });
+
+  // Extract photos from journal entries
+  const getAllPhotos = () => {
+    const photos: any[] = [];
+    
+    journalEntries.forEach(entry => {
+      if (entry.metadata?.photos && Array.isArray(entry.metadata.photos)) {
+        entry.metadata.photos.forEach((photo: any) => {
+          photos.push({
+            ...photo,
+            entryId: entry.id,
+            entryDate: entry.created_at
+          });
+        });
+      }
+    });
+    
+    return photos;
+  };
+  
+  const allPhotos = getAllPhotos();
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -478,14 +503,27 @@ const Dashboard = () => {
             </Card>
           </motion.div>
 
-          {/* Suicide Prevention Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <SuicidePreventionCard />
-          </motion.div>
+          {/* Photo Memories Card */}
+          {allPhotos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <PhotoMemoriesCard photos={allPhotos} />
+            </motion.div>
+          )}
+
+          {/* Suicide Prevention Card (show if no photos) */}
+          {allPhotos.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <SuicidePreventionCard />
+            </motion.div>
+          )}
 
           {/* Enhanced Daily Goals with Addiction Integration */}
           <motion.div
@@ -644,6 +682,18 @@ const Dashboard = () => {
                 addictionType={primaryAddiction.addiction_type?.category}
                 daysClean={primaryAddiction.days_clean}
               />
+            </motion.div>
+          )}
+
+          {/* Photo Timeline Card */}
+          {allPhotos.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="md:col-span-2"
+            >
+              <PhotoTimelineCard photos={allPhotos} />
             </motion.div>
           )}
 

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calendar, Tag, Smile, Clock, Lightbulb, AlertTriangle, Heart, Brain, Shield } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Calendar, Tag, Smile, Clock, Lightbulb, AlertTriangle, Heart, Brain, Shield, Image, Upload, Trash2, Camera, MapPin, Cloud, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import { format } from 'date-fns';
@@ -92,10 +92,15 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
     energy_level: 5,
     sleep_hours: 7,
     activities: [],
+    photos: [],
     ...initialMetadata
   });
   const [activityInput, setActivityInput] = useState('');
   const [showMetadata, setShowMetadata] = useState(false);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoTitle, setPhotoTitle] = useState('');
+  const [photoPrivacy, setPhotoPrivacy] = useState('private');
 
   // Update word and character count when content changes
   useEffect(() => {
@@ -158,6 +163,54 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
     }
     setSelectedPrompt(prompt);
     setShowPrompts(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB');
+        return;
+      }
+      
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const newPhoto = {
+          id: Date.now().toString(),
+          url: reader.result as string,
+          title: photoTitle || 'Memory',
+          date: new Date().toISOString(),
+          privacy: photoPrivacy,
+          tags: [...tags]
+        };
+        
+        setMetadata({
+          ...metadata,
+          photos: [...metadata.photos, newPhoto]
+        });
+        
+        // Reset photo form
+        setPhotoTitle('');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removePhoto = (photoId: string) => {
+    setMetadata({
+      ...metadata,
+      photos: metadata.photos.filter((photo: any) => photo.id !== photoId)
+    });
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const commonTags = [
@@ -317,6 +370,142 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                       <span>{wordCount} words</span>
                       <span>{characterCount} characters</span>
                     </div>
+                  </div>
+
+                  {/* Photo Upload Section */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-sm font-medium text-gray-700 flex items-center">
+                        <Image size={16} className="mr-2" />
+                        Photos & Memories
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                        className="text-xs text-lavender-600 hover:text-lavender-800 font-medium"
+                      >
+                        {showPhotoUpload ? 'Hide photo upload' : 'Add photos'}
+                      </button>
+                    </div>
+                    
+                    <AnimatePresence>
+                      {showPhotoUpload && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden mb-4"
+                        >
+                          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div>
+                                <label htmlFor="photoTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                                  Photo Title/Caption
+                                </label>
+                                <input
+                                  type="text"
+                                  id="photoTitle"
+                                  value={photoTitle}
+                                  onChange={(e) => setPhotoTitle(e.target.value)}
+                                  placeholder="e.g., Graduation Day, Beach Sunset..."
+                                  className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Privacy Setting
+                                </label>
+                                <div className="flex space-x-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPhotoPrivacy('private')}
+                                    className={`flex-1 text-xs px-3 py-2 rounded-lg ${
+                                      photoPrivacy === 'private'
+                                        ? 'bg-lavender-100 text-lavender-800 border-lavender-300 border'
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                                  >
+                                    Private
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPhotoPrivacy('shared')}
+                                    className={`flex-1 text-xs px-3 py-2 rounded-lg ${
+                                      photoPrivacy === 'shared'
+                                        ? 'bg-green-100 text-green-800 border-green-300 border'
+                                        : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                                  >
+                                    Shared
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4">
+                              <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileChange}
+                                accept="image/*"
+                                className="hidden"
+                              />
+                              <div className="text-center">
+                                <Camera className="mx-auto h-12 w-12 text-gray-400" />
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={triggerFileInput}
+                                    className="px-4 py-2 bg-lavender-600 text-white rounded-lg hover:bg-lavender-700 text-sm font-medium"
+                                  >
+                                    Upload Photo
+                                  </button>
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  PNG, JPG, GIF up to 5MB
+                                </p>
+                              </div>
+                            </div>
+                            
+                            {/* Photo Gallery */}
+                            {metadata.photos && metadata.photos.length > 0 && (
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">Attached Photos</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {metadata.photos.map((photo: any) => (
+                                    <div key={photo.id} className="relative group">
+                                      <div className="aspect-w-1 aspect-h-1 rounded-lg overflow-hidden bg-gray-200">
+                                        <img 
+                                          src={photo.url} 
+                                          alt={photo.title} 
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <button
+                                          type="button"
+                                          onClick={() => removePhoto(photo.id)}
+                                          className="p-1 bg-red-600 text-white rounded-full"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                      <div className="mt-1">
+                                        <p className="text-xs font-medium truncate">{photo.title}</p>
+                                        <p className="text-xs text-gray-500">
+                                          {photo.privacy === 'private' ? 'Private' : 'Shared'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Tags */}
