@@ -36,6 +36,7 @@ import CBTWorksheet from '../components/anxiety/CBTWorksheet';
 import AnxietyChat from '../components/anxiety/AnxietyChat';
 import AnxietyCalendar from '../components/anxiety/AnxietyCalendar';
 import AnxietyStats from '../components/anxiety/AnxietyStats';
+import UpcomingEventsCard from '../components/anxiety/UpcomingEventsCard';
 import { useAnxietySupport } from '../hooks/useAnxietySupport';
 
 // Local storage key for saving active tab
@@ -210,30 +211,41 @@ const AnxietySupport = () => {
           </Card>
         </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Relief Tools</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {quickActions.map((action, index) => (
-              <motion.button
-                key={action.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                onClick={action.action}
-                className={`p-4 rounded-lg border-2 border-transparent hover:border-current transition-all ${action.color} hover:shadow-md`}
-              >
-                <action.icon className="w-8 h-8 mx-auto mb-2" />
-                <div className="font-medium text-sm">{action.title}</div>
-                <div className="text-xs opacity-80 mt-1">{action.description}</div>
-              </motion.button>
-            ))}
-          </div>
-        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Quick Actions */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:col-span-2"
+          >
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Relief Tools</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {quickActions.map((action, index) => (
+                <motion.button
+                  key={action.title}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  onClick={action.action}
+                  className={`p-4 rounded-lg border-2 border-transparent hover:border-current transition-all ${action.color} hover:shadow-md`}
+                >
+                  <action.icon className="w-8 h-8 mx-auto mb-2" />
+                  <div className="font-medium text-sm">{action.title}</div>
+                  <div className="text-xs opacity-80 mt-1">{action.description}</div>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Upcoming Events Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <UpcomingEventsCard />
+          </motion.div>
+        </div>
 
         {/* Stats Overview */}
         <AnxietyStats 

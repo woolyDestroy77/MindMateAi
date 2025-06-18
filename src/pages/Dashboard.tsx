@@ -38,6 +38,7 @@ import DailyStepsCard from '../components/dashboard/DailyStepsCard';
 import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard';
 import AchievementsCard from '../components/dashboard/AchievementsCard';
 import PhotoMemoriesCard from '../components/dashboard/PhotoMemoriesCard';
+import UpcomingEventsCard from '../components/anxiety/UpcomingEventsCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
@@ -133,27 +134,6 @@ const Dashboard = () => {
   const [allGoalsFinished, setAllGoalsFinished] = useState(() => {
     return localStorage.getItem(`allGoalsFinished_${today}`) === 'true';
   });
-
-  // Extract photos from journal entries
-  const getAllPhotos = () => {
-    const photos: any[] = [];
-    
-    journalEntries.forEach(entry => {
-      if (entry.metadata?.photos && Array.isArray(entry.metadata.photos)) {
-        entry.metadata.photos.forEach((photo: any) => {
-          photos.push({
-            ...photo,
-            entryId: entry.id,
-            entryDate: entry.created_at
-          });
-        });
-      }
-    });
-    
-    return photos;
-  };
-  
-  const allPhotos = getAllPhotos();
 
   // Save state to localStorage whenever it changes
   useEffect(() => {
@@ -302,6 +282,27 @@ const Dashboard = () => {
       return 'Recently';
     }
   };
+
+  // Extract photos from journal entries
+  const getAllPhotos = () => {
+    const photos: any[] = [];
+    
+    journalEntries.forEach(entry => {
+      if (entry.metadata?.photos && Array.isArray(entry.metadata.photos)) {
+        entry.metadata.photos.forEach((photo: any) => {
+          photos.push({
+            ...photo,
+            entryId: entry.id,
+            entryDate: entry.created_at
+          });
+        });
+      }
+    });
+    
+    return photos;
+  };
+  
+  const allPhotos = getAllPhotos();
 
   if (dashboardLoading || resetLoading || addictionLoading) {
     return (
@@ -667,6 +668,15 @@ const Dashboard = () => {
                 </Button>
               </div>
             </Card>
+          </motion.div>
+
+          {/* Upcoming Events Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+          >
+            <UpcomingEventsCard />
           </motion.div>
 
           {/* Daily Recovery Steps - Show if user has addiction tracking */}
