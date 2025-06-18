@@ -102,7 +102,6 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
   const [photoTitle, setPhotoTitle] = useState('');
   const [photoPrivacy, setPhotoPrivacy] = useState('private');
   const modalRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   // Update word and character count when content changes
   useEffect(() => {
@@ -239,7 +238,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col my-8"
+            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
@@ -265,7 +264,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
               </div>
 
               {/* Content - Scrollable */}
-              <div ref={contentRef} className="p-4 overflow-y-auto flex-1">
+              <div className="p-4 overflow-y-auto flex-1">
                 <div className="space-y-4">
                   {/* Mood Selection */}
                   <div>
