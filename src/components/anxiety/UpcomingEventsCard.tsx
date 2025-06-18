@@ -20,95 +20,104 @@ const UpcomingEventsCard: React.FC = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Define all special events for the year
-    const allEvents: Event[] = [
-      // Holidays
-      {
-        id: `christmas-${currentYear}`,
-        title: 'Christmas Day',
-        date: new Date(currentYear, 11, 25), // December 25
-        type: 'holiday',
-        description: 'Take time to relax and enjoy the holiday season.'
-      },
-      {
-        id: `newyear-${currentYear + 1}`,
-        title: 'New Year\'s Day',
-        date: new Date(currentYear + 1, 0, 1), // January 1
-        type: 'holiday',
-        description: 'A fresh start and new beginnings.'
-      },
-      {
-        id: `easter-${currentYear}`,
-        title: 'Easter Sunday',
-        date: getEasterDate(currentYear),
-        type: 'holiday',
-        description: 'A day of renewal and hope.'
-      },
-      {
-        id: `valentine-${currentYear}`,
-        title: 'Valentine\'s Day',
-        date: new Date(currentYear, 1, 14), // February 14
-        type: 'holiday',
-        description: 'A day to celebrate love and connection.'
-      },
-      {
-        id: `thanksgiving-${currentYear}`,
-        title: 'Thanksgiving',
-        date: getThanksgivingDate(currentYear),
-        type: 'holiday',
-        description: 'A day for gratitude and reflection.'
-      },
-      
-      // Mental Health Awareness Days
-      {
-        id: `world-mental-health-day-${currentYear}`,
-        title: 'World Mental Health Day',
-        date: new Date(currentYear, 9, 10), // October 10
-        type: 'awareness',
-        description: 'Raising awareness about mental health issues around the world.'
-      },
-      {
-        id: `mens-mental-health-month-${currentYear}`,
-        title: 'Men\'s Mental Health Month',
-        date: new Date(currentYear, 5, 1), // June 1
-        type: 'awareness',
-        description: 'Dedicated to raising awareness about mental health challenges affecting men.'
-      },
-      {
-        id: `mental-health-awareness-month-${currentYear}`,
-        title: 'Mental Health Awareness Month',
-        date: new Date(currentYear, 4, 1), // May 1
-        type: 'awareness',
-        description: 'A month dedicated to raising awareness about mental health.'
-      },
-      {
-        id: `suicide-prevention-day-${currentYear}`,
-        title: 'World Suicide Prevention Day',
-        date: new Date(currentYear, 8, 10), // September 10
-        type: 'awareness',
-        description: 'Raising awareness about suicide prevention.'
-      },
-      {
-        id: `stress-awareness-day-${currentYear}`,
-        title: 'Stress Awareness Day',
-        date: new Date(currentYear, 10, 3), // First Wednesday of November
-        type: 'awareness',
-        description: 'Raising awareness about the impact of stress on mental health.'
-      },
-      {
-        id: `anxiety-awareness-day-${currentYear}`,
-        title: 'National Anxiety Disorders Screening Day',
-        date: new Date(currentYear, 4, 3), // First Wednesday of May
-        type: 'awareness',
-        description: 'Raising awareness about anxiety disorders and available treatments.'
-      }
-    ];
+    // Define all special events for multiple years
+    const years = [currentYear, currentYear + 1, currentYear + 2]; // Current and next two years
     
-    // Filter for upcoming events (within the next 60 days)
-    const sixtyDaysFromNow = addDays(today, 60);
+    let allEvents: Event[] = [];
+    
+    // Generate events for each year
+    years.forEach(year => {
+      const yearEvents: Event[] = [
+        // Holidays
+        {
+          id: `christmas-${year}`,
+          title: 'Christmas Day',
+          date: new Date(year, 11, 25), // December 25
+          type: 'holiday',
+          description: 'Take time to relax and enjoy the holiday season.'
+        },
+        {
+          id: `newyear-${year + 1}`,
+          title: 'New Year\'s Day',
+          date: new Date(year + 1, 0, 1), // January 1
+          type: 'holiday',
+          description: 'A fresh start and new beginnings.'
+        },
+        {
+          id: `easter-${year}`,
+          title: 'Easter Sunday',
+          date: getEasterDate(year),
+          type: 'holiday',
+          description: 'A day of renewal and hope.'
+        },
+        {
+          id: `valentine-${year}`,
+          title: 'Valentine\'s Day',
+          date: new Date(year, 1, 14), // February 14
+          type: 'holiday',
+          description: 'A day to celebrate love and connection.'
+        },
+        {
+          id: `thanksgiving-${year}`,
+          title: 'Thanksgiving',
+          date: getThanksgivingDate(year),
+          type: 'holiday',
+          description: 'A day for gratitude and reflection.'
+        },
+        
+        // Mental Health Awareness Days
+        {
+          id: `world-mental-health-day-${year}`,
+          title: 'World Mental Health Day',
+          date: new Date(year, 9, 10), // October 10
+          type: 'awareness',
+          description: 'Raising awareness about mental health issues around the world.'
+        },
+        {
+          id: `mens-mental-health-month-${year}`,
+          title: 'Men\'s Mental Health Month',
+          date: new Date(year, 5, 1), // June 1
+          type: 'awareness',
+          description: 'Dedicated to raising awareness about mental health challenges affecting men.'
+        },
+        {
+          id: `mental-health-awareness-month-${year}`,
+          title: 'Mental Health Awareness Month',
+          date: new Date(year, 4, 1), // May 1
+          type: 'awareness',
+          description: 'A month dedicated to raising awareness about mental health.'
+        },
+        {
+          id: `suicide-prevention-day-${year}`,
+          title: 'World Suicide Prevention Day',
+          date: new Date(year, 8, 10), // September 10
+          type: 'awareness',
+          description: 'Raising awareness about suicide prevention.'
+        },
+        {
+          id: `stress-awareness-day-${year}`,
+          title: 'Stress Awareness Day',
+          date: new Date(year, 10, 3), // First Wednesday of November
+          type: 'awareness',
+          description: 'Raising awareness about the impact of stress on mental health.'
+        },
+        {
+          id: `anxiety-awareness-day-${year}`,
+          title: 'National Anxiety Disorders Screening Day',
+          date: new Date(year, 4, 3), // First Wednesday of May
+          type: 'awareness',
+          description: 'Raising awareness about anxiety disorders and available treatments.'
+        }
+      ];
+      
+      allEvents = [...allEvents, ...yearEvents];
+    });
+    
+    // Filter for upcoming events (within the next 365 days)
+    const oneYearFromNow = addDays(today, 365);
     
     return allEvents
-      .filter(event => isAfter(event.date, today) && isBefore(event.date, sixtyDaysFromNow))
+      .filter(event => isAfter(event.date, today) && isBefore(event.date, oneYearFromNow))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .slice(0, 4); // Get the next 4 upcoming events
   };
@@ -136,7 +145,7 @@ const UpcomingEventsCard: React.FC = () => {
   function getThanksgivingDate(year: number): Date {
     const firstDay = new Date(year, 10, 1); // November 1
     const dayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysUntilFirstThursday = (11 - dayOfWeek) % 7; // Days until first Thursday
+    const daysUntilFirstThursday = (11 - dayOfWeek) % 7; // Days until first Thursday (4 is Thursday)
     const firstThursday = new Date(year, 10, 1 + daysUntilFirstThursday);
     const fourthThursday = new Date(year, 10, 1 + daysUntilFirstThursday + 21); // Add 3 weeks
     return fourthThursday;
