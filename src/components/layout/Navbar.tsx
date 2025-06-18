@@ -18,7 +18,6 @@ import Button from "../ui/Button";
 import AuthModal from "../auth/AuthModal";
 import UserProfileModal from "../profile/UserProfileModal";
 import { useAuth } from "../../hooks/useAuth";
-import { FcGoogle } from "react-icons/fc";
 
 interface NavbarProps {
   onLanguageChange?: (language: string) => void;
@@ -117,14 +116,6 @@ const Navbar: React.FC<NavbarProps> = ({
     setIsMenuOpen(false);
   };
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error('Google sign-in error:', error);
-    }
-  };
-
   const renderAuthButtons = () => {
     if (user) {
       return (
@@ -178,15 +169,6 @@ const Navbar: React.FC<NavbarProps> = ({
             leftIcon={<UserPlus size={16} />}
           >
             Sign Up
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-sm px-3 py-1.5 transition-all duration-300 flex items-center"
-            onClick={handleGoogleSignIn}
-          >
-            <FcGoogle size={16} className="mr-1" />
-            Google
           </Button>
         </div>
       );
@@ -539,16 +521,6 @@ const Navbar: React.FC<NavbarProps> = ({
                     leftIcon={<UserPlus size={16} />}
                   >
                     Sign Up
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    fullWidth
-                    className="text-sm transition-all duration-300 flex items-center justify-center"
-                    onClick={handleGoogleSignIn}
-                  >
-                    <FcGoogle size={16} className="mr-2" />
-                    Sign in with Google
                   </Button>
                 </div>
               )
