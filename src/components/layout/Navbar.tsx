@@ -68,7 +68,6 @@ const Navbar: React.FC<NavbarProps> = ({
         
         // Calculate streak
         let currentStreak = 1; // Start with today
-        let maxStreak = 1;
         
         // Start from the most recent date (excluding today) and work backwards
         for (let i = loginHistory.length - 2; i >= 0; i--) {
