@@ -101,6 +101,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoTitle, setPhotoTitle] = useState('');
   const [photoPrivacy, setPhotoPrivacy] = useState('private');
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Update word and character count when content changes
   useEffect(() => {
@@ -229,22 +230,23 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
           onClick={onClose}
         >
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col"
+            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] flex flex-col my-8"
             onClick={e => e.stopPropagation()}
           >
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
               {/* Header - Fixed */}
-              <div className="p-6 border-b border-gray-200 flex-shrink-0">
+              <div className="p-4 border-b border-gray-200 flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-xl font-bold text-gray-900">
                       {initialContent ? 'Edit Journal Entry' : 'New Journal Entry'}
                     </h2>
                     <p className="text-sm text-gray-600">
@@ -262,8 +264,8 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
               </div>
 
               {/* Content - Scrollable */}
-              <div className="p-6 overflow-y-auto flex-1">
-                <div className="space-y-6">
+              <div className="p-4 overflow-y-auto flex-1">
+                <div className="space-y-4">
                   {/* Mood Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
@@ -363,12 +365,72 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                       id="content"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
-                      className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                      className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                       placeholder="How was your day? What's on your mind? What are you feeling right now?"
                     />
                     <div className="flex justify-between text-xs text-gray-500 mt-1">
                       <span>{wordCount} words</span>
                       <span>{characterCount} characters</span>
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                      <Tag size={16} className="mr-2" />
+                      Tags (press Enter to add)
+                    </label>
+                    <input
+                      type="text"
+                      id="tags"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleAddTag}
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                      placeholder="Add tags..."
+                    />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {tags.map(tag => (
+                        <span
+                          key={tag}
+                          className="bg-lavender-100 text-lavender-800 px-2 py-1 rounded-full text-sm flex items-center"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => removeTag(tag)}
+                            className="ml-1 text-lavender-600 hover:text-lavender-800"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    
+                    {/* Common Tags */}
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-600 mb-1">Common tags:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {commonTags.map(tag => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => {
+                              if (!tags.includes(tag)) {
+                                setTags([...tags, tag]);
+                              }
+                            }}
+                            disabled={tags.includes(tag)}
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              tags.includes(tag)
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
@@ -443,7 +505,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                               </div>
                             </div>
                             
-                            <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 mb-4">
+                            <div className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4">
                               <input
                                 type="file"
                                 ref={fileInputRef}
@@ -452,7 +514,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                                 className="hidden"
                               />
                               <div className="text-center">
-                                <Camera className="mx-auto h-12 w-12 text-gray-400" />
+                                <Camera className="mx-auto h-10 w-10 text-gray-400" />
                                 <div className="mt-2">
                                   <button
                                     type="button"
@@ -506,66 +568,6 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
-
-                  {/* Tags */}
-                  <div>
-                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
-                      <Tag size={16} className="mr-2" />
-                      Tags (press Enter to add)
-                    </label>
-                    <input
-                      type="text"
-                      id="tags"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={handleAddTag}
-                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                      placeholder="Add tags..."
-                    />
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {tags.map(tag => (
-                        <span
-                          key={tag}
-                          className="bg-lavender-100 text-lavender-800 px-2 py-1 rounded-full text-sm flex items-center"
-                        >
-                          {tag}
-                          <button
-                            type="button"
-                            onClick={() => removeTag(tag)}
-                            className="ml-1 text-lavender-600 hover:text-lavender-800"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                    
-                    {/* Common Tags */}
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-600 mb-1">Common tags:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {commonTags.map(tag => (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => {
-                              if (!tags.includes(tag)) {
-                                setTags([...tags, tag]);
-                              }
-                            }}
-                            disabled={tags.includes(tag)}
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              tags.includes(tag)
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            {tag}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </div>
 
                   {/* Additional Metadata Toggle */}
