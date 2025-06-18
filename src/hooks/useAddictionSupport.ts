@@ -72,6 +72,10 @@ export interface DailyTip {
   day_number: number; // Day in recovery journey
 }
 
+// Key for storing the daily tip in localStorage
+const DAILY_TIP_STORAGE_KEY = 'addiction_daily_tip';
+const DAILY_TIP_DATE_KEY = 'addiction_daily_tip_date';
+
 export const useAddictionSupport = () => {
   const [addictionTypes, setAddictionTypes] = useState<AddictionType[]>([]);
   const [userAddictions, setUserAddictions] = useState<UserAddiction[]>([]);
@@ -325,6 +329,50 @@ export const useAddictionSupport = () => {
 
     return selectedTip;
   }, []);
+
+  // Check if we need to generate a new daily tip
+  const checkAndUpdateDailyTip = useCallback((userAddictions: UserAddiction[]) => {
+    try {
+      // Get today's date as a string
+      const today = new Date().toDateString();
+      
+      // Get the date when the last tip was generated
+      const lastTipDate = localStorage.getItem(DAILY_TIP_DATE_KEY);
+      
+      // If it's a new day or no tip exists, generate a new one
+      if (lastTipDate !== today) {
+        console.log('Generating new daily tip for today:', today);
+        const newTip = generateDailyTip(userAddictions);
+        
+        if (newTip) {
+          // Save the new tip and date
+          localStorage.setItem(DAILY_TIP_STORAGE_KEY, JSON.stringify(newTip));
+          localStorage.setItem(DAILY_TIP_DATE_KEY, today);
+          setDailyTip(newTip);
+        }
+      } else {
+        // If it's the same day, load the existing tip
+        const savedTip = localStorage.getItem(DAILY_TIP_STORAGE_KEY);
+        if (savedTip) {
+          setDailyTip(JSON.parse(savedTip));
+        } else {
+          // If no saved tip exists (shouldn't happen), generate a new one
+          const newTip = generateDailyTip(userAddictions);
+          if (newTip) {
+            localStorage.setItem(DAILY_TIP_STORAGE_KEY, JSON.stringify(newTip));
+            setDailyTip(newTip);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking/updating daily tip:', error);
+      // Fallback to generating a new tip
+      const newTip = generateDailyTip(userAddictions);
+      if (newTip) {
+        setDailyTip(newTip);
+      }
+    }
+  }, [generateDailyTip]);
 
   // Add a new addiction to track
   const addUserAddiction = useCallback(async (
@@ -615,10 +663,9 @@ export const useAddictionSupport = () => {
   // Generate daily tip when user addictions change
   useEffect(() => {
     if (userAddictions.length > 0) {
-      const tip = generateDailyTip(userAddictions);
-      setDailyTip(tip);
+      checkAndUpdateDailyTip(userAddictions);
     }
-  }, [userAddictions, generateDailyTip]);
+  }, [userAddictions, checkAndUpdateDailyTip]);
 
   return {
     // Data

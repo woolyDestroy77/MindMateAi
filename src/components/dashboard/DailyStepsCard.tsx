@@ -221,6 +221,12 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
 
   const dailySteps = generateDailySteps();
 
+  // Update completed status from localStorage
+  const stepsWithCompletedStatus = dailySteps.map(step => ({
+    ...step,
+    completed: completedSteps.has(step.id)
+  }));
+
   const toggleStepCompletion = (stepId: string) => {
     setCompletedSteps(prev => {
       const newSet = new Set(prev);
@@ -234,18 +240,18 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
   };
 
   const getStepsByCategory = (category: string) => {
-    return dailySteps.filter(step => step.category === category);
+    return stepsWithCompletedStatus.filter(step => step.category === category);
   };
 
   const getCategoryProgress = (category: string) => {
     const categorySteps = getStepsByCategory(category);
-    const completedInCategory = categorySteps.filter(step => completedSteps.has(step.id)).length;
+    const completedInCategory = categorySteps.filter(step => step.completed).length;
     return { completed: completedInCategory, total: categorySteps.length };
   };
 
   const getTotalProgress = () => {
-    const completed = dailySteps.filter(step => completedSteps.has(step.id)).length;
-    return { completed, total: dailySteps.length };
+    const completed = stepsWithCompletedStatus.filter(step => step.completed).length;
+    return { completed, total: stepsWithCompletedStatus.length };
   };
 
   const categories = [
@@ -333,7 +339,7 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
                     >
                       <div className="px-4 pb-4 space-y-3">
                         {categorySteps.map(step => {
-                          const isCompleted = completedSteps.has(step.id);
+                          const isCompleted = step.completed;
                           return (
                             <motion.div
                               key={step.id}

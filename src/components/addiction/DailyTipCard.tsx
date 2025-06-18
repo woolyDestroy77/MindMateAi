@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Lightbulb, Heart, Shield, Brain, Zap } from 'lucide-react';
 import Card from '../ui/Card';
@@ -10,6 +10,37 @@ interface DailyTipCardProps {
 }
 
 const DailyTipCard: React.FC<DailyTipCardProps> = ({ tip, daysClean }) => {
+  // Store the current tip in localStorage to persist across page reloads and navigation
+  useEffect(() => {
+    if (tip) {
+      localStorage.setItem('currentDailyTip', JSON.stringify(tip));
+    }
+  }, [tip]);
+
+  // Get the stored tip from localStorage if available
+  const [displayTip, setDisplayTip] = useState<DailyTip | null>(null);
+
+  useEffect(() => {
+    // If we have a prop tip, use it
+    if (tip) {
+      setDisplayTip(tip);
+      return;
+    }
+    
+    // Otherwise try to load from localStorage
+    try {
+      const savedTip = localStorage.getItem('currentDailyTip');
+      if (savedTip) {
+        setDisplayTip(JSON.parse(savedTip));
+      }
+    } catch (error) {
+      console.error('Error loading saved daily tip:', error);
+    }
+  }, [tip]);
+
+  // If no tip is available, don't render anything
+  if (!displayTip) return null;
+
   const getIconForTipType = (tipType: string) => {
     switch (tipType) {
       case 'motivation':
@@ -50,17 +81,17 @@ const DailyTipCard: React.FC<DailyTipCardProps> = ({ tip, daysClean }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className={`bg-gradient-to-br ${getColorForTipType(tip.tip_type)} border`}>
+      <Card className={`bg-gradient-to-br ${getColorForTipType(displayTip.tip_type)} border`}>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-lg bg-white/50 ${getColorForTipType(tip.tip_type)}`}>
-                {getIconForTipType(tip.tip_type)}
+              <div className={`p-2 rounded-lg bg-white/50 ${getColorForTipType(displayTip.tip_type)}`}>
+                {getIconForTipType(displayTip.tip_type)}
               </div>
               <div>
-                <h3 className="font-semibold text-lg">{tip.title}</h3>
+                <h3 className="font-semibold text-lg">{displayTip.title}</h3>
                 <p className="text-sm opacity-80 capitalize">
-                  {tip.tip_type} • Day {daysClean} of Recovery
+                  {displayTip.tip_type} • Day {daysClean} of Recovery
                 </p>
               </div>
             </div>
@@ -68,7 +99,7 @@ const DailyTipCard: React.FC<DailyTipCardProps> = ({ tip, daysClean }) => {
           </div>
           
           <div className="bg-white/30 rounded-lg p-4">
-            <p className="text-sm leading-relaxed">{tip.content}</p>
+            <p className="text-sm leading-relaxed">{displayTip.content}</p>
           </div>
           
           <div className="flex items-center justify-between text-xs opacity-75">
