@@ -183,11 +183,12 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden"
+            className="bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             <form onSubmit={handleSubmit} className="flex flex-col h-full">
-              <div className="p-6 border-b border-gray-200">
+              {/* Header - Fixed */}
+              <div className="p-6 border-b border-gray-200 flex-shrink-0">
                 <div className="flex justify-between items-center">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">
@@ -207,6 +208,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                 </div>
               </div>
 
+              {/* Content - Scrollable */}
               <div className="p-6 overflow-y-auto flex-1">
                 <div className="space-y-6">
                   {/* Mood Selection */}
@@ -514,7 +516,8 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                 </div>
               </div>
 
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200">
+              {/* Footer - Fixed */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 flex-shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
