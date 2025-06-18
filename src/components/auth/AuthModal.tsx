@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Apple, Github } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Apple } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AuthModalProps {
   mode: 'signin' | 'signup';
@@ -12,6 +13,7 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
+  const { signInWithGoogle, signInWithApple } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -21,9 +23,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isAppleLoading, setIsAppleLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,16 +152,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const handleGoogleSignIn = async () => {
     try {
       setIsGoogleLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      
-      if (error) throw error;
+      await signInWithGoogle();
+      onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+      console.error('Google sign-in error:', error);
     } finally {
       setIsGoogleLoading(false);
     }
@@ -168,16 +164,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const handleAppleSignIn = async () => {
     try {
       setIsAppleLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      
-      if (error) throw error;
+      await signInWithApple();
+      onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Apple');
+      console.error('Apple sign-in error:', error);
     } finally {
       setIsAppleLoading(false);
     }
