@@ -71,9 +71,9 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
-    
     try {
+      setIsLoading(true);
+      
       console.log('Saving profile with data:', formData);
       
       // First update profile data
