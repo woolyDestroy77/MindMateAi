@@ -11,7 +11,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
-import { format, parseISO, isToday, isYesterday } from 'date-fns';
+import { format, parseISO, isToday, isYesterday, subDays, eachDayOfInterval } from 'date-fns';
 import { MoodDataPoint, WeeklyTrend } from '../../hooks/useMoodTrends';
 
 // Register Chart.js components
@@ -33,20 +33,63 @@ interface MoodTrendsChartProps {
 }
 
 const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, timeRange }) => {
+  // Fill in missing days with null values to ensure continuous timeline
+  const fillMissingDays = (moodData: MoodDataPoint[]): MoodDataPoint[] => {
+    if (moodData.length === 0) return [];
+    
+    // Sort data by date
+    const sortedData = [...moodData].sort((a, b) => a.date.localeCompare(b.date));
+    
+    // Determine start and end dates
+    const startDate = parseISO(sortedData[0].date);
+    const endDate = parseISO(sortedData[sortedData.length - 1].date);
+    
+    // Generate all dates in the range
+    const allDates = eachDayOfInterval({ start: startDate, end: endDate });
+    
+    // Create a map of existing data points
+    const dataMap = new Map<string, MoodDataPoint>();
+    sortedData.forEach(point => {
+      dataMap.set(point.date, point);
+    });
+    
+    // Create a complete dataset with null values for missing days
+    return allDates.map(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      if (dataMap.has(dateStr)) {
+        return dataMap.get(dateStr)!;
+      } else {
+        // Create placeholder data for missing days
+        return {
+          date: dateStr,
+          mood: '😐',
+          moodName: 'neutral',
+          sentiment: 'neutral',
+          wellnessScore: null, // Use null for missing data points
+          messageCount: 0,
+          timestamp: date.toISOString()
+        };
+      }
+    });
+  };
+
+  // Get filled data
+  const filledData = fillMissingDays(data);
+
   // Prepare chart data
   const chartData = {
-    labels: data.map(point => {
+    labels: filledData.map(point => {
       const date = parseISO(point.date);
       if (isToday(date)) return 'Today';
       if (isYesterday(date)) return 'Yesterday';
       
       switch (timeRange) {
         case 'week':
-          return format(date, 'EEE'); // Mon, Tue, etc.
+          return format(date, 'EEE, MMM d'); // Mon, Jan 1
         case 'month':
-          return format(date, 'MMM d'); // Jan 1, Jan 2, etc.
+          return format(date, 'MMM d'); // Jan 1
         case 'quarter':
-          return format(date, 'MMM d'); // Jan 1, Feb 15, etc.
+          return format(date, 'MMM d'); // Jan 1
         default:
           return format(date, 'MMM d');
       }
@@ -54,36 +97,46 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
     datasets: [
       {
         label: 'Wellness Score',
-        data: data.map(point => point.wellnessScore),
+        data: filledData.map(point => point.wellnessScore),
         borderColor: 'rgb(157, 138, 199)',
         backgroundColor: 'rgba(157, 138, 199, 0.1)',
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: data.map(point => {
+        pointBackgroundColor: filledData.map(point => {
+          if (point.wellnessScore === null) return 'rgba(0,0,0,0)'; // Hide points for missing data
+          
           switch (point.sentiment) {
             case 'positive': return '#10B981'; // green
             case 'negative': return '#EF4444'; // red
             default: return '#6B7280'; // gray
           }
         }),
-        pointBorderColor: '#ffffff',
+        pointBorderColor: filledData.map(point => 
+          point.wellnessScore === null ? 'rgba(0,0,0,0)' : '#ffffff'
+        ),
         pointBorderWidth: 2,
-        pointRadius: 6,
-        pointHoverRadius: 8,
+        pointRadius: filledData.map(point => point.wellnessScore === null ? 0 : 6),
+        pointHoverRadius: filledData.map(point => point.wellnessScore === null ? 0 : 8),
+        spanGaps: true, // Connect lines across null values
       },
       {
         label: 'Message Activity',
-        data: data.map(point => point.messageCount * 10), // Scale for visibility
+        data: filledData.map(point => point.messageCount * 10), // Scale for visibility
         borderColor: 'rgb(169, 197, 160)',
         backgroundColor: 'rgba(169, 197, 160, 0.1)',
         fill: false,
         tension: 0.4,
-        pointBackgroundColor: 'rgb(169, 197, 160)',
-        pointBorderColor: '#ffffff',
+        pointBackgroundColor: filledData.map(point => 
+          point.messageCount === 0 ? 'rgba(0,0,0,0)' : 'rgb(169, 197, 160)'
+        ),
+        pointBorderColor: filledData.map(point => 
+          point.messageCount === 0 ? 'rgba(0,0,0,0)' : '#ffffff'
+        ),
         pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointRadius: filledData.map(point => point.messageCount === 0 ? 0 : 4),
+        pointHoverRadius: filledData.map(point => point.messageCount === 0 ? 0 : 6),
         yAxisID: 'y1',
+        spanGaps: true,
       }
     ],
   };
@@ -120,7 +173,7 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
         callbacks: {
           title: function(context: any) {
             const dataIndex = context[0].dataIndex;
-            const point = data[dataIndex];
+            const point = filledData[dataIndex];
             const date = parseISO(point.date);
             
             if (isToday(date)) return 'Today';
@@ -129,9 +182,10 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
           },
           label: function(context: any) {
             const dataIndex = context.dataIndex;
-            const point = data[dataIndex];
+            const point = filledData[dataIndex];
             
             if (context.datasetIndex === 0) {
+              if (point.wellnessScore === null) return 'No data available';
               return `Wellness Score: ${point.wellnessScore}/100 (${point.moodName} ${point.mood})`;
             } else {
               return `Messages: ${point.messageCount}`;
@@ -139,7 +193,10 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
           },
           afterBody: function(context: any) {
             const dataIndex = context[0].dataIndex;
-            const point = data[dataIndex];
+            const point = filledData[dataIndex];
+            
+            if (point.wellnessScore === null) return ['No mood data recorded for this day'];
+            
             return [
               '',
               `Mood: ${point.moodName} ${point.mood}`,
@@ -161,6 +218,8 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
           font: {
             size: 11,
           },
+          autoSkip: false, // Show all labels
+          maxTicksLimit: 31, // Maximum number of ticks to display
         },
       },
       y: {
@@ -195,7 +254,7 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
         display: true,
         position: 'right' as const,
         min: 0,
-        max: Math.max(...data.map(p => p.messageCount)) * 12 || 50,
+        max: Math.max(...filledData.map(p => p.messageCount)) * 12 || 50,
         ticks: {
           callback: function(value: any) {
             return Math.round(value / 10);

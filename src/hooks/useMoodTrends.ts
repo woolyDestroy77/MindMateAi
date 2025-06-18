@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, subWeeks, isToday, parseISO } from 'date-fns';
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, subWeeks, isToday, parseISO, subDays, addDays } from 'date-fns';
 
 export interface MoodDataPoint {
   date: string;
   mood: string;
   moodName: string;
   sentiment: string;
-  wellnessScore: number;
+  wellnessScore: number | null;
   messageCount: number;
   timestamp: string;
 }
@@ -53,16 +53,16 @@ export const useMoodTrends = () => {
       
       switch (selectedTimeRange) {
         case 'week':
-          startDate = subWeeks(now, 4); // Last 4 weeks
+          startDate = subDays(now, 28); // Last 4 weeks
           break;
         case 'month':
-          startDate = subWeeks(now, 12); // Last 3 months
+          startDate = subDays(now, 90); // Last 3 months
           break;
         case 'quarter':
-          startDate = subWeeks(now, 24); // Last 6 months
+          startDate = subDays(now, 180); // Last 6 months
           break;
         default:
-          startDate = subWeeks(now, 4);
+          startDate = subDays(now, 28);
       }
 
       // Fetch mood data from user_mood_data table
@@ -88,7 +88,7 @@ export const useMoodTrends = () => {
       console.log('📈 Raw data fetched:', { moodHistory: moodHistory?.length, chatHistory: chatHistory?.length });
 
       // Process the data
-      const processedData = processMoodData(moodHistory || [], chatHistory || []);
+      const processedData = processMoodData(moodHistory || [], chatHistory || [], startDate, now);
       const weeklyData = calculateWeeklyTrends(processedData);
       const generatedInsights = generateInsights(processedData, weeklyData);
 
@@ -106,49 +106,65 @@ export const useMoodTrends = () => {
     }
   }, [selectedTimeRange]);
 
-  // Process raw data into daily mood points
-  const processMoodData = (moodHistory: any[], chatHistory: any[]): MoodDataPoint[] => {
-    const dataMap = new Map<string, MoodDataPoint>();
+  // Process raw data into daily mood points with continuous dates
+  const processMoodData = (
+    moodHistory: any[], 
+    chatHistory: any[],
+    startDate: Date,
+    endDate: Date
+  ): MoodDataPoint[] => {
+    // Create a map for all dates in the range
+    const dateMap = new Map<string, MoodDataPoint>();
+    
+    // Generate all dates in the range
+    const allDates = eachDayOfInterval({ start: startDate, end: endDate });
+    allDates.forEach(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      dateMap.set(dateStr, {
+        date: dateStr,
+        mood: '😐',
+        moodName: 'neutral',
+        sentiment: 'neutral',
+        wellnessScore: null, // Use null for days without data
+        messageCount: 0,
+        timestamp: date.toISOString()
+      });
+    });
 
     // Process mood data
     moodHistory.forEach(mood => {
       const date = format(parseISO(mood.updated_at), 'yyyy-MM-dd');
       
-      if (!dataMap.has(date) || parseISO(mood.updated_at) > parseISO(dataMap.get(date)!.timestamp)) {
-        dataMap.set(date, {
-          date,
-          mood: mood.current_mood,
-          moodName: mood.mood_name,
-          sentiment: mood.sentiment,
-          wellnessScore: mood.wellness_score,
-          messageCount: 0,
-          timestamp: mood.updated_at
-        });
+      if (dateMap.has(date)) {
+        const existing = dateMap.get(date)!;
+        // Only update if this mood entry is newer than what we have
+        if (!existing.wellnessScore || parseISO(mood.updated_at) > parseISO(existing.timestamp)) {
+          dateMap.set(date, {
+            ...existing,
+            mood: mood.current_mood,
+            moodName: mood.mood_name,
+            sentiment: mood.sentiment,
+            wellnessScore: mood.wellness_score,
+            timestamp: mood.updated_at
+          });
+        }
       }
     });
 
     // Add message counts
     chatHistory.forEach(chat => {
       const date = format(parseISO(chat.created_at), 'yyyy-MM-dd');
-      const existing = dataMap.get(date);
       
-      if (existing) {
-        existing.messageCount += 1;
-      } else {
-        // Create entry for days with messages but no mood data
-        dataMap.set(date, {
-          date,
-          mood: '😐',
-          moodName: 'neutral',
-          sentiment: 'neutral',
-          wellnessScore: 60,
-          messageCount: 1,
-          timestamp: chat.created_at
+      if (dateMap.has(date)) {
+        const existing = dateMap.get(date)!;
+        dateMap.set(date, {
+          ...existing,
+          messageCount: existing.messageCount + 1
         });
       }
     });
 
-    return Array.from(dataMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+    return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   };
 
   // Calculate weekly trends and patterns
@@ -159,6 +175,8 @@ export const useMoodTrends = () => {
 
     // Group data by week
     data.forEach(point => {
+      if (point.wellnessScore === null) return; // Skip days without data
+      
       const date = parseISO(point.date);
       const weekStart = startOfWeek(date);
       const weekKey = format(weekStart, 'yyyy-MM-dd');
@@ -175,7 +193,12 @@ export const useMoodTrends = () => {
 
     sortedWeeks.forEach((weekKey, index) => {
       const weekData = weekMap.get(weekKey)!;
-      const averageWellness = weekData.reduce((sum, point) => sum + point.wellnessScore, 0) / weekData.length;
+      if (weekData.length === 0) return;
+      
+      const validScores = weekData.filter(point => point.wellnessScore !== null);
+      if (validScores.length === 0) return;
+      
+      const averageWellness = validScores.reduce((sum, point) => sum + (point.wellnessScore || 0), 0) / validScores.length;
       
       // Find dominant mood
       const moodCounts = new Map<string, number>();
@@ -192,8 +215,13 @@ export const useMoodTrends = () => {
       let improvement = 0;
       if (index > 0) {
         const prevWeekData = weekMap.get(sortedWeeks[index - 1])!;
-        const prevAverage = prevWeekData.reduce((sum, point) => sum + point.wellnessScore, 0) / prevWeekData.length;
-        improvement = averageWellness - prevAverage;
+        if (prevWeekData && prevWeekData.length > 0) {
+          const prevValidScores = prevWeekData.filter(point => point.wellnessScore !== null);
+          if (prevValidScores.length > 0) {
+            const prevAverage = prevValidScores.reduce((sum, point) => sum + (point.wellnessScore || 0), 0) / prevValidScores.length;
+            improvement = averageWellness - prevAverage;
+          }
+        }
       }
 
       trends.push({
@@ -263,12 +291,12 @@ export const useMoodTrends = () => {
     }
 
     // Consistency insights
-    const recentData = data.slice(-7); // Last 7 days
-    if (recentData.length >= 5) {
+    const dataWithScores = data.filter(point => point.wellnessScore !== null);
+    if (dataWithScores.length >= 5) {
       insights.push({
         type: 'achievement',
         title: 'Consistency Streak! 🔥',
-        description: `You've been actively tracking your mood for ${recentData.length} days. Consistency is key to wellness!`,
+        description: `You've been actively tracking your mood for ${dataWithScores.length} days. Consistency is key to wellness!`,
         icon: '⭐',
         color: 'bg-purple-50 text-purple-800',
         actionable: 'Keep your daily check-ins going to maintain momentum'
@@ -277,28 +305,30 @@ export const useMoodTrends = () => {
 
     // Mood pattern insights
     const moodCounts = new Map<string, number>();
-    data.forEach(point => {
+    dataWithScores.forEach(point => {
       moodCounts.set(point.moodName, (moodCounts.get(point.moodName) || 0) + 1);
     });
 
-    const dominantMood = Array.from(moodCounts.entries()).reduce((a, b) => a[1] > b[1] ? a : b);
-    
-    if (dominantMood[0] === 'happy' || dominantMood[0] === 'excited') {
-      insights.push({
-        type: 'pattern',
-        title: 'Joyful Spirit Detected! 😊',
-        description: `Your most common mood is "${dominantMood[0]}". You're radiating positive energy!`,
-        icon: '☀️',
-        color: 'bg-orange-50 text-orange-800'
-      });
-    } else if (dominantMood[0] === 'calm') {
-      insights.push({
-        type: 'pattern',
-        title: 'Zen Master Mode 🧘',
-        description: `You frequently experience calmness. This balanced state is excellent for mental clarity and decision-making.`,
-        icon: '🕊️',
-        color: 'bg-green-50 text-green-800'
-      });
+    if (moodCounts.size > 0) {
+      const dominantMood = Array.from(moodCounts.entries()).reduce((a, b) => a[1] > b[1] ? a : b);
+      
+      if (dominantMood[0] === 'happy' || dominantMood[0] === 'excited') {
+        insights.push({
+          type: 'pattern',
+          title: 'Joyful Spirit Detected! 😊',
+          description: `Your most common mood is "${dominantMood[0]}". You're radiating positive energy!`,
+          icon: '☀️',
+          color: 'bg-orange-50 text-orange-800'
+        });
+      } else if (dominantMood[0] === 'calm') {
+        insights.push({
+          type: 'pattern',
+          title: 'Zen Master Mode 🧘',
+          description: `You frequently experience calmness. This balanced state is excellent for mental clarity and decision-making.`,
+          icon: '🕊️',
+          color: 'bg-green-50 text-green-800'
+        });
+      }
     }
 
     // Engagement insights
@@ -316,24 +346,27 @@ export const useMoodTrends = () => {
     }
 
     // Wellness score insights
-    const currentScore = data[data.length - 1]?.wellnessScore || 0;
-    if (currentScore >= 80) {
-      insights.push({
-        type: 'achievement',
-        title: 'Wellness Superstar! 🌟',
-        description: `Your current wellness score of ${currentScore} indicates excellent mental health. You're thriving!`,
-        icon: '🏆',
-        color: 'bg-emerald-50 text-emerald-800'
-      });
-    } else if (currentScore >= 60) {
-      insights.push({
-        type: 'improvement',
-        title: 'Steady Progress 📊',
-        description: `Your wellness score of ${currentScore} shows you're on a good path. Small improvements compound over time.`,
-        icon: '📈',
-        color: 'bg-blue-50 text-blue-800',
-        actionable: 'Focus on one small wellness habit to boost your score further'
-      });
+    const latestDataPoint = dataWithScores[dataWithScores.length - 1];
+    if (latestDataPoint && latestDataPoint.wellnessScore !== null) {
+      const currentScore = latestDataPoint.wellnessScore;
+      if (currentScore >= 80) {
+        insights.push({
+          type: 'achievement',
+          title: 'Wellness Superstar! 🌟',
+          description: `Your current wellness score of ${currentScore} indicates excellent mental health. You're thriving!`,
+          icon: '🏆',
+          color: 'bg-emerald-50 text-emerald-800'
+        });
+      } else if (currentScore >= 60) {
+        insights.push({
+          type: 'improvement',
+          title: 'Steady Progress 📊',
+          description: `Your wellness score of ${currentScore} shows you're on a good path. Small improvements compound over time.`,
+          icon: '📈',
+          color: 'bg-blue-50 text-blue-800',
+          actionable: 'Focus on one small wellness habit to boost your score further'
+        });
+      }
     }
 
     return insights.slice(0, 4); // Limit to 4 most relevant insights
