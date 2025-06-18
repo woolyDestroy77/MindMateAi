@@ -102,6 +102,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
   const [photoTitle, setPhotoTitle] = useState('');
   const [photoPrivacy, setPhotoPrivacy] = useState('private');
   const modalRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Update word and character count when content changes
   useEffect(() => {
@@ -264,7 +265,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
               </div>
 
               {/* Content - Scrollable */}
-              <div className="p-4 overflow-y-auto flex-1">
+              <div ref={contentRef} className="p-4 overflow-y-auto flex-1">
                 <div className="space-y-4">
                   {/* Mood Selection */}
                   <div>
@@ -708,7 +709,7 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
               </div>
 
               {/* Footer - Fixed */}
-              <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t border-gray-200 flex-shrink-0">
+              <div className="bg-gray-50 px-4 py-3 flex justify-end space-x-3 border-t border-gray-200 flex-shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
