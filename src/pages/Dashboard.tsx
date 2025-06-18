@@ -38,7 +38,6 @@ import DailyStepsCard from '../components/dashboard/DailyStepsCard';
 import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard';
 import AchievementsCard from '../components/dashboard/AchievementsCard';
 import PhotoMemoriesCard from '../components/dashboard/PhotoMemoriesCard';
-import PhotoTimelineCard from '../components/dashboard/PhotoTimelineCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
@@ -682,18 +681,6 @@ const Dashboard = () => {
                 addictionType={primaryAddiction.addiction_type?.category}
                 daysClean={primaryAddiction.days_clean}
               />
-            </motion.div>
-          )}
-
-          {/* Photo Timeline Card */}
-          {allPhotos.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="md:col-span-2"
-            >
-              <PhotoTimelineCard photos={allPhotos} />
             </motion.div>
           )}
 
