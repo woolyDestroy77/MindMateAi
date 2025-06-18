@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle, 
@@ -38,6 +38,25 @@ interface DailyStepsCardProps {
 const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substance', daysClean }) => {
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [expandedCategory, setExpandedCategory] = useState<string | null>('morning');
+
+  // Load completed steps from localStorage
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const savedSteps = localStorage.getItem(`completedSteps_${today}`);
+    if (savedSteps) {
+      try {
+        setCompletedSteps(new Set(JSON.parse(savedSteps)));
+      } catch (error) {
+        console.error('Error loading completed steps:', error);
+      }
+    }
+  }, []);
+
+  // Save completed steps to localStorage
+  useEffect(() => {
+    const today = new Date().toDateString();
+    localStorage.setItem(`completedSteps_${today}`, JSON.stringify([...completedSteps]));
+  }, [completedSteps]);
 
   // Generate daily steps based on addiction type and recovery stage
   const generateDailySteps = (): DailyStep[] => {
