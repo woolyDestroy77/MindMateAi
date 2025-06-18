@@ -94,6 +94,7 @@ export const useDailyReset = () => {
       localStorage.removeItem(`goalPointsMap_${today}`);
       localStorage.removeItem(`hasShownFeelBetterToday_${today}`);
       localStorage.removeItem(`allGoalsFinished_${today}`);
+      localStorage.removeItem(`completedSteps_${today}`);
       
       // Also clear yesterday's data to prevent conflicts
       const yesterday = new Date();
@@ -103,6 +104,7 @@ export const useDailyReset = () => {
       localStorage.removeItem(`goalPointsMap_${yesterdayStr}`);
       localStorage.removeItem(`hasShownFeelBetterToday_${yesterdayStr}`);
       localStorage.removeItem(`allGoalsFinished_${yesterdayStr}`);
+      localStorage.removeItem(`completedSteps_${yesterdayStr}`);
 
       console.log('✅ Daily goal states cleared');
 
