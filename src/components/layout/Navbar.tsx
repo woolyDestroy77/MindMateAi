@@ -47,35 +47,56 @@ const Navbar: React.FC<NavbarProps> = ({
   useEffect(() => {
     // Load streak from localStorage or calculate it
     const calculateStreak = () => {
-      const today = new Date().toDateString();
-      const lastLogin = localStorage.getItem('lastLoginDate');
-      let currentStreak = parseInt(localStorage.getItem('dailyStreak') || '0');
+      if (!user) return;
       
-      if (lastLogin !== today) {
-        // New day login
-        if (lastLogin) {
-          const lastDate = new Date(lastLogin);
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          
-          if (lastDate.toDateString() === yesterday.toDateString()) {
-            // Consecutive day
-            currentStreak += 1;
-          } else {
-            // Streak broken
-            currentStreak = 1;
-          }
-        } else {
-          // First login
-          currentStreak = 1;
+      try {
+        // Get today's date
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Get stored login history
+        let loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '[]');
+        
+        // Add today to login history if not already present
+        if (!loginHistory.includes(todayStr)) {
+          loginHistory.push(todayStr);
+          localStorage.setItem('loginHistory', JSON.stringify(loginHistory));
         }
         
-        // Save updated streak and login date
+        // Sort login history by date (oldest first)
+        loginHistory.sort();
+        
+        // Calculate streak
+        let currentStreak = 1; // Start with today
+        let maxStreak = 1;
+        
+        // Start from the most recent date (excluding today) and work backwards
+        for (let i = loginHistory.length - 2; i >= 0; i--) {
+          const currentDate = new Date(loginHistory[i]);
+          const nextDate = new Date(loginHistory[i + 1]);
+          
+          // Calculate difference in days
+          const diffTime = Math.abs(nextDate.getTime() - currentDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            // Consecutive day
+            currentStreak++;
+          } else if (diffDays > 1) {
+            // Streak broken
+            break;
+          }
+        }
+        
+        // Update streak in localStorage
         localStorage.setItem('dailyStreak', currentStreak.toString());
-        localStorage.setItem('lastLoginDate', today);
+        setStreak(currentStreak);
+        
+        console.log('Calculated streak:', currentStreak, 'Login history:', loginHistory);
+      } catch (error) {
+        console.error('Error calculating streak:', error);
+        setStreak(0);
       }
-      
-      setStreak(currentStreak);
     };
     
     if (user) {

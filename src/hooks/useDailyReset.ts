@@ -110,7 +110,10 @@ export const useDailyReset = () => {
       localStorage.setItem('lastChatDate', today);
       console.log('✅ Chat date tracker updated');
 
-      // 5. Load custom goals that should persist
+      // 5. Update login history for streak tracking
+      updateLoginHistory(user.id);
+
+      // 6. Load custom goals that should persist
       await loadCustomGoals();
 
       console.log('✅ Comprehensive daily reset completed successfully');
@@ -124,6 +127,26 @@ export const useDailyReset = () => {
       toast.error('Failed to perform daily reset');
     }
   }, []);
+
+  // Update login history for streak tracking
+  const updateLoginHistory = (userId: string) => {
+    try {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      // Get stored login history
+      let loginHistory = JSON.parse(localStorage.getItem('loginHistory') || '[]');
+      
+      // Add today to login history if not already present
+      if (!loginHistory.includes(todayStr)) {
+        loginHistory.push(todayStr);
+        localStorage.setItem('loginHistory', JSON.stringify(loginHistory));
+        console.log('✅ Login history updated with today:', todayStr);
+      }
+    } catch (error) {
+      console.error('Error updating login history:', error);
+    }
+  };
 
   // Load custom goals from database
   const loadCustomGoals = useCallback(async () => {
