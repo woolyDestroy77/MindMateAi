@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2 } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Apple, Github } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
+import { FcGoogle } from 'react-icons/fc';
 
 interface AuthModalProps {
   mode: 'signin' | 'signup';
@@ -21,6 +22,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,6 +147,42 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      setIsAppleLoading(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Apple');
+    } finally {
+      setIsAppleLoading(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -176,6 +215,44 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 ? 'Sign in to continue your wellness journey'
                 : 'Join PureMind AI to start your wellness journey'}
             </p>
+
+            {/* Social Sign In Options */}
+            <div className="space-y-3 mb-6">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                fullWidth
+                onClick={handleGoogleSignIn}
+                isLoading={isGoogleLoading}
+                className="flex items-center justify-center"
+              >
+                {!isGoogleLoading && <FcGoogle size={20} className="mr-2" />}
+                Continue with Google
+              </Button>
+              
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                fullWidth
+                onClick={handleAppleSignIn}
+                isLoading={isAppleLoading}
+                className="flex items-center justify-center"
+              >
+                {!isAppleLoading && <Apple size={20} className="mr-2 text-black" />}
+                Continue with Apple
+              </Button>
+            </div>
+
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with email</span>
+              </div>
+            </div>
 
             <form onSubmit={handleNextStep} className="space-y-4">
               {mode === 'signup' && (
@@ -396,6 +473,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                         minLength={6}
                         required
                       />
+                    </div>
+                    <div className="flex justify-end mt-1">
+                      <button 
+                        type="button"
+                        className="text-xs text-lavender-600 hover:text-lavender-800"
+                      >
+                        Forgot password?
+                      </button>
                     </div>
                   </div>
                 </>

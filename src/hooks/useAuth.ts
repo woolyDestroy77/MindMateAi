@@ -204,6 +204,38 @@ export const useAuth = () => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+      throw error;
+    }
+  };
+
+  const signInWithApple = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: window.location.origin
+        }
+      });
+      
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Apple');
+      throw error;
+    }
+  };
+
   return {
     user,
     userProfile,
@@ -212,6 +244,8 @@ export const useAuth = () => {
     signOut,
     updateProfile,
     updateAvatar,
+    signInWithGoogle,
+    signInWithApple,
     refreshProfile: () => user ? fetchUserProfile(user.id) : Promise.resolve(null)
   };
 };

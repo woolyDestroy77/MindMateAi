@@ -1,7 +1,12 @@
 import React from 'react';
+import { FcGoogle } from 'react-icons/fc';
+import { Apple } from 'lucide-react';
 import Button from '../ui/Button';
+import { useAuth } from '../../hooks/useAuth';
 
 const CTASection: React.FC = () => {
+  const { signInWithGoogle, signInWithApple } = useAuth();
+  
   return (
     <section className="py-16 bg-gradient-to-r from-lavender-600 to-sage-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -13,25 +18,35 @@ const CTASection: React.FC = () => {
             Take the first step toward better mental wellbeing with PureMind AI's personalized support.
           </p>
           
-          <div className="mt-8 flex justify-center">
-            <div className="inline-flex rounded-md shadow">
-              <Button
-                variant="primary"
-                size="lg"
-                className="bg-white text-lavender-600 hover:bg-gray-100 hover:text-lavender-700"
-              >
-                Try PureMind AI for Free
-              </Button>
-            </div>
-            <div className="ml-3 inline-flex">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-white text-white hover:bg-white/10"
-              >
-                Learn More
-              </Button>
-            </div>
+          <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+            <Button
+              variant="primary"
+              size="lg"
+              className="bg-white text-lavender-600 hover:bg-gray-100 hover:text-lavender-700"
+              onClick={() => {}}
+            >
+              Try PureMind AI for Free
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white text-white hover:bg-white/10 flex items-center justify-center"
+              onClick={signInWithGoogle}
+            >
+              <FcGoogle size={20} className="mr-2" />
+              Sign up with Google
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white text-white hover:bg-white/10 flex items-center justify-center"
+              onClick={signInWithApple}
+            >
+              <Apple size={20} className="mr-2" />
+              Sign up with Apple
+            </Button>
           </div>
           
           <p className="mt-4 text-sm text-white opacity-75">
