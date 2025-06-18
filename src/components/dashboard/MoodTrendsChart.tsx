@@ -76,23 +76,28 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
   // Get filled data
   const filledData = fillMissingDays(data);
 
+  // Format labels based on time range
+  const formatDateLabel = (date: Date) => {
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    
+    switch (timeRange) {
+      case 'week':
+        return format(date, 'EEE'); // Sun, Mon, Tue, etc.
+      case 'month':
+        return format(date, 'MMM d'); // Jan 1, Feb 1, etc.
+      case 'quarter':
+        return format(date, 'MMM'); // Jan, Feb, Mar, etc.
+      default:
+        return format(date, 'EEE');
+    }
+  };
+
   // Prepare chart data
   const chartData = {
     labels: filledData.map(point => {
       const date = parseISO(point.date);
-      if (isToday(date)) return 'Today';
-      if (isYesterday(date)) return 'Yesterday';
-      
-      switch (timeRange) {
-        case 'week':
-          return format(date, 'EEE, MMM d'); // Mon, Jan 1
-        case 'month':
-          return format(date, 'MMM d'); // Jan 1
-        case 'quarter':
-          return format(date, 'MMM d'); // Jan 1
-        default:
-          return format(date, 'MMM d');
-      }
+      return formatDateLabel(date);
     }),
     datasets: [
       {
@@ -178,7 +183,17 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
             
             if (isToday(date)) return 'Today';
             if (isYesterday(date)) return 'Yesterday';
-            return format(date, 'EEEE, MMMM d, yyyy');
+            
+            switch (timeRange) {
+              case 'week':
+                return format(date, 'EEEE, MMMM d'); // Monday, January 1
+              case 'month':
+                return format(date, 'EEEE, MMMM d'); // Monday, January 1
+              case 'quarter':
+                return format(date, 'MMMM d, yyyy'); // January 1, 2025
+              default:
+                return format(date, 'EEEE, MMMM d');
+            }
           },
           label: function(context: any) {
             const dataIndex = context.dataIndex;
@@ -214,7 +229,7 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
           display: false,
         },
         ticks: {
-          maxRotation: 45,
+          maxRotation: 0,
           font: {
             size: 11,
           },
