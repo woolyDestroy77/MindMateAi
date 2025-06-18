@@ -710,7 +710,7 @@ const Dashboard = () => {
                               : 'text-gray-600 hover:bg-gray-100'
                           }`}
                         >
-                          {range === 'week' ? '4 Weeks' : range === 'month' ? '3 Months' : '6 Months'}
+                          {range === 'week' ? 'Past Week' : range === 'month' ? 'Past Month' : 'Past 6 Months'}
                         </button>
                       ))}
                     </div>

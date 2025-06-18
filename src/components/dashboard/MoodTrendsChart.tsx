@@ -85,15 +85,17 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
       case 'week':
         return format(date, 'EEE'); // Sun, Mon, Tue, etc.
       case 'month':
+        // For month view, show week numbers
         return format(date, 'MMM d'); // Jan 1, Feb 1, etc.
       case 'quarter':
+        // For quarter view, show month names
         return format(date, 'MMM'); // Jan, Feb, Mar, etc.
       default:
         return format(date, 'EEE');
     }
   };
 
-  // Prepare chart data
+  // Prepare chart data with simplified labels for mobile
   const chartData = {
     labels: filledData.map(point => {
       const date = parseISO(point.date);
@@ -144,6 +146,20 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
         spanGaps: true,
       }
     ],
+  };
+
+  // Determine max ticks based on time range to prevent label crowding
+  const getMaxTicks = () => {
+    switch (timeRange) {
+      case 'week':
+        return 7; // Show all days in a week
+      case 'month':
+        return 10; // Show about 10 days in a month
+      case 'quarter':
+        return 6; // Show about 6 months in a quarter
+      default:
+        return 7;
+    }
   };
 
   const chartOptions = {
@@ -229,12 +245,12 @@ const MoodTrendsChart: React.FC<MoodTrendsChartProps> = ({ data, weeklyTrends, t
           display: false,
         },
         ticks: {
-          maxRotation: 0,
+          maxRotation: 0, // Prevent label rotation
           font: {
             size: 11,
           },
-          autoSkip: false, // Show all labels
-          maxTicksLimit: 31, // Maximum number of ticks to display
+          autoSkip: true, // Allow skipping labels when crowded
+          maxTicksLimit: getMaxTicks(), // Limit number of ticks based on time range
         },
       },
       y: {

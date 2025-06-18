@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { startOfWeek, endOfWeek, eachDayOfInterval, format, subWeeks, isToday, parseISO, subDays, addDays } from 'date-fns';
+import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, isToday, parseISO, addDays } from 'date-fns';
 
 export interface MoodDataPoint {
   date: string;
@@ -53,16 +53,16 @@ export const useMoodTrends = () => {
       
       switch (selectedTimeRange) {
         case 'week':
-          startDate = subDays(now, 28); // Last 4 weeks
+          startDate = subDays(now, 7); // Past week
           break;
         case 'month':
-          startDate = subDays(now, 90); // Last 3 months
+          startDate = subDays(now, 30); // Past month
           break;
         case 'quarter':
-          startDate = subDays(now, 180); // Last 6 months
+          startDate = subDays(now, 180); // Past 6 months
           break;
         default:
-          startDate = subDays(now, 28);
+          startDate = subDays(now, 7);
       }
 
       // Fetch mood data from user_mood_data table
