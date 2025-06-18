@@ -23,9 +23,9 @@ const PROMPT_CATEGORIES = [
     color: 'text-purple-600',
     prompts: [
       'What made you smile today?',
-      'What are three things you're grateful for today?',
-      'What's something you learned today?',
-      'What's something you're proud of accomplishing recently?',
+      'What are three things you\'re grateful for today?',
+      'What\'s something you learned today?',
+      'What\'s something you're proud of accomplishing recently?',
       'How have you grown in the past month?'
     ]
   },
@@ -47,7 +47,7 @@ const PROMPT_CATEGORIES = [
     color: 'text-yellow-600',
     prompts: [
       'What are five things you can see, four things you can touch, three things you can hear, two things you can smell, and one thing you can taste right now?',
-      'Describe your surroundings in detail. What do you notice that you usually don't?',
+      'Describe your surroundings in detail. What do you notice that you usually don\'t?',
       'What sensations are you feeling in your body right now?',
       'What thoughts keep recurring in your mind today?',
       'If your mind was a weather pattern today, what would it be and why?'
@@ -58,11 +58,11 @@ const PROMPT_CATEGORIES = [
     icon: Shield,
     color: 'text-blue-600',
     prompts: [
-      'What's something you're struggling with right now?',
-      'What's a challenge you faced today and how did you handle it?',
-      'What's something you're worried about? What's the worst that could happen? What's most likely to happen?',
-      'What's a problem you're facing that you could use a different perspective on?',
-      'What's something difficult you've been avoiding? What's one small step you could take?'
+      'What\'s something you're struggling with right now?',
+      'What\'s a challenge you faced today and how did you handle it?',
+      'What\'s something you're worried about? What\'s the worst that could happen? What's most likely to happen?',
+      'What\'s a problem you're facing that you could use a different perspective on?',
+      'What\'s something difficult you've been avoiding? What\'s one small step you could take?'
     ]
   }
 ];
