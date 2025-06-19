@@ -172,7 +172,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 border-t">
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
               <div className="flex space-x-2">
                 <Button
                   variant={isRecording ? "primary" : "outline"}
@@ -180,7 +180,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   onClick={handleVoiceToggle}
                   className={isRecording ? "animate-pulse" : ""}
                 >
-                  <Mic size={20} />
+                  {isRecording ? <Mic size={20} /> : <Mic size={20} />}
                 </Button>
                 <textarea
                   value={input}
@@ -195,6 +195,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   size="sm"
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
+                  className="bg-lavender-600 hover:bg-lavender-700"
                 >
                   {isLoading ? (
                     <Loader2 className="animate-spin" size={20} />
@@ -203,11 +204,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   )}
                 </Button>
               </div>
-              {isLoading && (
-                <div className="mt-2 text-sm text-gray-500 text-center">
-                  PureMind AI is thinking...
-                </div>
-              )}
             </div>
           </div>
         </motion.div>

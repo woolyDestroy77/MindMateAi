@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Plus, Trash2, Settings, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, Plus, Trash2, Settings, Volume2, VolumeX, Send, Loader2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -32,10 +32,21 @@ const Chat = () => {
   } = useAIChat(activeSession?.id, updateMood);
   
   const { updateMoodFromAI } = useDashboardData();
-  const { isPlaying, stopAudio, voiceSettings, updateVoiceSettings, voices, testVoice, resetSettings } = useTextToSpeech();
+  const { 
+    speak, 
+    stop, 
+    isPlaying, 
+    currentMessageId, 
+    voiceSettings, 
+    updateVoiceSettings, 
+    voices, 
+    testVoice, 
+    resetSettings 
+  } = useTextToSpeech();
   
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [input, setInput] = useState("");
 
   // Function to update mood from chat
   async function updateMood(sentiment: string, userMessage: string, aiResponse: string) {
@@ -70,6 +81,17 @@ const Chat = () => {
   const handleResetDailyChat = async () => {
     if (window.confirm('Are you sure you want to reset today\'s chat? This will clear all messages from today.')) {
       await resetDailyChat();
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || chatLoading) return;
+
+    try {
+      await sendMessage(input.trim());
+      setInput("");
+    } catch (error) {
+      console.error("Failed to send message:", error);
     }
   };
 
@@ -124,7 +146,7 @@ const Chat = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={stopAudio}
+                      onClick={stop}
                       leftIcon={<VolumeX size={16} />}
                       title="Stop audio"
                     >
@@ -186,13 +208,7 @@ const Chat = () => {
                       {/* Voice button for assistant messages */}
                       {message.role === "assistant" && (
                         <button
-                          onClick={() => {
-                            if (isPlaying && currentMessageId === message.id) {
-                              stopAudio();
-                            } else {
-                              speak(message.content, message.id);
-                            }
-                          }}
+                          onClick={() => speak(message.content, message.id)}
                           className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                           title={isPlaying && currentMessageId === message.id ? "Stop" : "Play"}
                         >
@@ -215,7 +231,7 @@ const Chat = () => {
                     <div className="max-w-[80%] space-y-1">
                       <div className="p-3 bg-gray-100 rounded-lg">
                         <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-lavender-600"></div>
+                          <Loader2 className="animate-spin" size={16} />
                           <span className="text-gray-700">Thinking...</span>
                         </div>
                       </div>
@@ -247,7 +263,7 @@ const Chat = () => {
                     className="bg-lavender-600 hover:bg-lavender-700"
                   >
                     {chatLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <Loader2 className="animate-spin" size={20} />
                     ) : (
                       <Send size={20} />
                     )}
