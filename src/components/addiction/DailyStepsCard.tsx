@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   CheckCircle, 
@@ -54,6 +54,14 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
   
   const [expandedCategory, setExpandedCategory] = useState<string | null>('morning');
   const { createReminder, createAchievement } = useNotificationContext();
+  
+  // Track which steps have already triggered notifications
+  const notifiedStepsRef = useRef<Set<string>>(new Set());
+  const notifiedCategoriesRef = useRef<Set<string>>(new Set());
+  const notifiedAllCompletedRef = useRef<boolean>(false);
+  
+  // Track if reminders have been set
+  const remindersSetRef = useRef<boolean>(false);
 
   // Save completed steps to localStorage whenever they change
   useEffect(() => {
@@ -243,17 +251,23 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
       } else {
         newSet.add(stepId);
         
-        // Create achievement notification for completing a step
-        const step = dailySteps.find(s => s.id === stepId);
-        if (step) {
-          createAchievement(
-            `${step.title} Completed!`,
-            `You've completed your ${step.title.toLowerCase()} task. Keep up the great work!`,
-            {
-              actionUrl: '/addiction-support',
-              actionText: 'View Progress'
-            }
-          );
+        // Only create achievement notification if we haven't already for this step
+        if (!notifiedStepsRef.current.has(stepId)) {
+          // Mark this step as notified
+          notifiedStepsRef.current.add(stepId);
+          
+          // Create achievement notification for completing a step
+          const step = dailySteps.find(s => s.id === stepId);
+          if (step) {
+            createAchievement(
+              `${step.title} Completed!`,
+              `You've completed your ${step.title.toLowerCase()} task. Keep up the great work!`,
+              {
+                actionUrl: '/addiction-support',
+                actionText: 'View Progress'
+              }
+            );
+          }
         }
         
         // Check if all steps in a category are completed
@@ -262,7 +276,10 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
           const categorySteps = dailySteps.filter(s => s.category === category);
           const completedCategorySteps = categorySteps.filter(s => newSet.has(s.id));
           
-          if (categorySteps.length === completedCategorySteps.length) {
+          if (categorySteps.length === completedCategorySteps.length && !notifiedCategoriesRef.current.has(category)) {
+            // Mark this category as notified
+            notifiedCategoriesRef.current.add(category);
+            
             // All steps in this category are completed
             createAchievement(
               `${category.charAt(0).toUpperCase() + category.slice(1)} Routine Completed!`,
@@ -276,7 +293,10 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
         }
         
         // Check if all steps are completed
-        if (newSet.size === dailySteps.length) {
+        if (newSet.size === dailySteps.length && !notifiedAllCompletedRef.current) {
+          // Mark all-completed as notified
+          notifiedAllCompletedRef.current = true;
+          
           // All steps completed
           createAchievement(
             'All Recovery Steps Completed!',
@@ -319,6 +339,10 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
 
   // Set up reminders for incomplete steps
   useEffect(() => {
+    // Only run this once per component mount
+    if (remindersSetRef.current) return;
+    remindersSetRef.current = true;
+    
     // Check if we've already set reminders today
     const remindersSet = localStorage.getItem(`steps_reminders_set_${today}`);
     if (remindersSet) return;
@@ -510,7 +534,8 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
                                     </span>
                                     {!isCompleted && (
                                       <button
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation(); // Prevent toggling completion
                                           createReminder(
                                             `Reminder: ${step.title}`,
                                             `Don't forget to complete your ${step.title.toLowerCase()} step today.`,

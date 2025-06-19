@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from './useAuth';
@@ -24,6 +24,9 @@ export const useNotifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  
+  // Use a ref to track notification IDs to prevent duplicates
+  const notificationIdsRef = useRef<Set<string>>(new Set());
 
   // Check notification permission
   useEffect(() => {
@@ -76,6 +79,11 @@ export const useNotifications = () => {
       const localNotifications = loadLocalNotifications();
       setNotifications(localNotifications);
       setUnreadCount(localNotifications.filter(n => !n.read).length);
+      
+      // Update our ref with existing notification IDs
+      localNotifications.forEach(notification => {
+        notificationIdsRef.current.add(notification.id);
+      });
 
       // Then, fetch from database and merge
       const { data, error } = await supabase
@@ -256,6 +264,9 @@ export const useNotifications = () => {
           .eq('id', id)
           .eq('user_id', user.id);
       }
+      
+      // Remove from our tracking ref
+      notificationIdsRef.current.delete(id);
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -287,9 +298,29 @@ export const useNotifications = () => {
         showDesktopNotification = true
       } = options;
 
+      // Create a unique ID for the notification
+      const notificationId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Check if we've already created a similar notification recently
+      // This helps prevent duplicates when components re-render
+      const dedupeKey = `${title}_${message}`.replace(/\s+/g, '').toLowerCase();
+      const recentNotificationKey = `recent_notification_${dedupeKey}`;
+      const recentNotification = localStorage.getItem(recentNotificationKey);
+      
+      if (recentNotification) {
+        console.log('Skipping duplicate notification:', title);
+        return null;
+      }
+      
+      // Mark this notification as recently created (expires in 1 minute)
+      localStorage.setItem(recentNotificationKey, 'true');
+      setTimeout(() => {
+        localStorage.removeItem(recentNotificationKey);
+      }, 60000);
+
       // Create notification object
       const newNotification: Notification = {
-        id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: notificationId,
         title,
         message,
         type,
@@ -301,6 +332,15 @@ export const useNotifications = () => {
         expires_at: expiresIn ? addDays(new Date(), expiresIn).toISOString() : undefined,
         metadata
       };
+      
+      // Check if we already have this notification ID
+      if (notificationIdsRef.current.has(notificationId)) {
+        console.log('Notification ID already exists, skipping:', notificationId);
+        return null;
+      }
+      
+      // Add to our tracking ref
+      notificationIdsRef.current.add(notificationId);
 
       // Update local state
       setNotifications(prev => [newNotification, ...prev]);
@@ -355,6 +395,10 @@ export const useNotifications = () => {
             ...newNotification,
             id: data.id
           };
+          
+          // Update our tracking ref
+          notificationIdsRef.current.delete(notificationId);
+          notificationIdsRef.current.add(data.id);
 
           setNotifications(prev => 
             prev.map(n => n.id === newNotification.id ? updatedNotification : n)
@@ -609,6 +653,11 @@ export const useNotifications = () => {
       const localNotifications = loadLocalNotifications();
       setNotifications(localNotifications);
       setUnreadCount(localNotifications.filter(n => !n.read).length);
+      
+      // Update our ref with existing notification IDs
+      localNotifications.forEach(notification => {
+        notificationIdsRef.current.add(notification.id);
+      });
     }
   }, [user, fetchNotifications, generateDailyReminders]);
 

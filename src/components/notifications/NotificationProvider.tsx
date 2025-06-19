@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { toast } from 'react-hot-toast';
 import NotificationToast from './NotificationToast';
@@ -21,6 +21,9 @@ interface NotificationProviderProps {
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const notificationService = useNotifications();
   const { notifications, markAsRead, createReminder } = notificationService;
+  
+  // Use a ref to track which notifications have been shown as toasts
+  const shownNotificationsRef = useRef<Set<string>>(new Set());
 
   // Set up reminder check interval
   useEffect(() => {
@@ -95,13 +98,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     // Find unread notifications that haven't been shown as toast yet
     const unshownNotifications = notifications.filter(n => 
-      !n.read && !localStorage.getItem(`toast_shown_${n.id}`)
+      !n.read && !shownNotificationsRef.current.has(n.id)
     );
     
     // Show toast for each unshown notification
     unshownNotifications.forEach(notification => {
-      // Mark as shown in localStorage
-      localStorage.setItem(`toast_shown_${notification.id}`, 'true');
+      // Mark as shown in our ref
+      shownNotificationsRef.current.add(notification.id);
       
       // Show custom toast
       toast.custom((t) => (
