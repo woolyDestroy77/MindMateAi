@@ -1,10 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Mic, X, Loader } from "lucide-react";
+import { Send, Mic, X, Loader2, Volume2, VolumeX } from "lucide-react";
 import Button from "../ui/Button";
 import { useAIChat } from "../../hooks/useAIChat";
 import { useVoiceInput } from "../../hooks/useVoiceInput";
+import { useTextToSpeech } from "../../hooks/useTextToSpeech";
 
 interface ChatInterfaceProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
   const { messages, isLoading, sendMessage } = useAIChat();
   const { isRecording, transcript, startRecording, stopRecording } =
     useVoiceInput();
+  const { speak, stop, isPlaying, currentMessageId } = useTextToSpeech();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [recognition, setRecognition] = useState<any>(null);
 
@@ -66,6 +67,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
     }
   };
 
+  const handlePlayMessage = (messageId: string, content: string) => {
+    if (isPlaying && currentMessageId === messageId) {
+      stop();
+    } else {
+      speak(content, messageId);
+    }
+  };
+
   const getSentimentColor = (sentiment?: string) => {
     switch (sentiment?.toUpperCase()) {
       case "POSITIVE":
@@ -111,7 +120,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                     message.role === "user" ? "justify-end" : "justify-start"
                   }`}
                 >
-                  <div className="max-w-[80%] space-y-1">
+                  <div className="max-w-[80%] space-y-1 relative group">
                     <div
                       className={`p-3 rounded-lg ${
                         message.role === "user"
@@ -126,9 +135,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                         Sentiment: {message.sentiment}
                       </div>
                     )}
+                    
+                    {/* Voice button for assistant messages */}
+                    {message.role === "assistant" && (
+                      <button
+                        onClick={() => handlePlayMessage(message.id, message.content)}
+                        className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={isPlaying && currentMessageId === message.id ? "Stop" : "Play"}
+                      >
+                        {isPlaying && currentMessageId === message.id ? (
+                          <VolumeX size={16} className="text-gray-700" />
+                        ) : (
+                          <Volume2 size={16} className="text-gray-700" />
+                        )}
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               ))}
+              {isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[80%] space-y-1">
+                    <div className="p-3 bg-gray-100 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Loader2 className="animate-spin" size={16} />
+                        <span className="text-gray-700">Thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
@@ -157,7 +197,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ isOpen, onClose }) => {
                   disabled={!input.trim() || isLoading}
                 >
                   {isLoading ? (
-                    <Loader className="animate-spin\" size={20} />
+                    <Loader2 className="animate-spin" size={20} />
                   ) : (
                     <Send size={20} />
                   )}

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, X, Play, Pause, Settings, ArrowRight } from 'lucide-react';
+import { Send, Mic, MicOff, Loader2, Bot, User, Volume2, VolumeX, X, Play, Pause, Settings, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { useAIChat } from '../../hooks/useAIChat';
@@ -176,7 +176,7 @@ const AnxietyChat: React.FC = () => {
                 message.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              <div className="max-w-[80%] space-y-1">
+              <div className="max-w-[80%] space-y-1 relative group">
                 <div className={`flex items-start space-x-2 ${
                   message.role === "user" ? "flex-row-reverse space-x-reverse" : ""
                 }`}>
@@ -188,27 +188,26 @@ const AnxietyChat: React.FC = () => {
                     {message.role === "user" ? <User size={16} /> : <Bot size={16} />}
                   </div>
                   
-                  <div className={`p-3 rounded-lg ${
+                  <div className={`p-3 rounded-lg relative ${
                     message.role === "user"
                       ? "bg-blue-500 text-white"
                       : getSentimentColor(message.sentiment)
                   }`}>
                     <p className="whitespace-pre-wrap">{message.content}</p>
                     
+                    {/* Voice button for assistant messages */}
                     {message.role === "assistant" && (
-                      <div className="mt-2 flex justify-end">
-                        <button
-                          onClick={() => handlePlayMessage(message)}
-                          className="p-1 rounded-full hover:bg-white/20 transition-colors"
-                          title={isPlaying && currentMessageId === message.id ? "Stop" : "Play"}
-                        >
-                          {isPlaying && currentMessageId === message.id ? (
-                            <Pause size={16} className="text-gray-700" />
-                          ) : (
-                            <Play size={16} className="text-gray-700" />
-                          )}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handlePlayMessage(message)}
+                        className="absolute bottom-2 right-2 p-1.5 rounded-full bg-white/80 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        title={isPlaying && currentMessageId === message.id ? "Stop" : "Play"}
+                      >
+                        {isPlaying && currentMessageId === message.id ? (
+                          <VolumeX size={16} className="text-gray-700" />
+                        ) : (
+                          <Volume2 size={16} className="text-gray-700" />
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>
