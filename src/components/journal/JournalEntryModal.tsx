@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, Tag, Smile, Clock, Lightbulb, AlertTriangle, Heart, Brain, Shield, Image, Upload, Trash2, Camera, MapPin, Cloud, Zap } from 'lucide-react';
+import { X, Calendar, Tag, Smile, Clock, Lightbulb, AlertTriangle, Heart, Brain, Shield, Image, Upload, Trash2, Camera, MapPin, Cloud, Zap, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../ui/Button';
 import { format } from 'date-fns';
+import { useNotificationContext } from '../notifications/NotificationProvider';
 
 interface JournalEntryModalProps {
   isOpen: boolean;
@@ -102,6 +103,8 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
   const [photoTitle, setPhotoTitle] = useState('');
   const [photoPrivacy, setPhotoPrivacy] = useState('private');
   const modalRef = useRef<HTMLDivElement>(null);
+  const [reminderSet, setReminderSet] = useState(false);
+  const { createReminder } = useNotificationContext();
 
   // Update word and character count when content changes
   useEffect(() => {
@@ -116,6 +119,21 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
     try {
       setIsSubmitting(true);
       await onSubmit(content, selectedMood, tags, metadata);
+      
+      // Create a notification for journal entry completion
+      if (!initialContent) {
+        // This is a new entry, not an edit
+        createReminder(
+          'Journal Entry Completed',
+          'Great job on writing in your journal today! Regular journaling helps track your emotional journey.',
+          {
+            actionUrl: '/journal',
+            actionText: 'View Journal',
+            priority: 'low'
+          }
+        );
+      }
+      
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -222,6 +240,25 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
   const weatherOptions = [
     'Sunny', 'Cloudy', 'Rainy', 'Stormy', 'Snowy', 'Windy', 'Foggy', 'Hot', 'Cold'
   ];
+
+  // Set up a journal reminder
+  const setJournalReminder = () => {
+    // Create a reminder for tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    createReminder(
+      'Journal Reminder',
+      'Time for your daily journal entry. Reflect on your thoughts and feelings today.',
+      {
+        actionUrl: '/journal',
+        actionText: 'Write Entry',
+        priority: 'medium'
+      }
+    );
+    
+    setReminderSet(true);
+  };
 
   return (
     <AnimatePresence>
@@ -703,6 +740,23 @@ const JournalEntryModal: React.FC<JournalEntryModalProps> = ({
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+                  
+                  {/* Set Reminder */}
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={setJournalReminder}
+                      disabled={reminderSet}
+                      className={`text-sm flex items-center space-x-1 ${
+                        reminderSet 
+                          ? 'text-gray-400 cursor-not-allowed' 
+                          : 'text-lavender-600 hover:text-lavender-800'
+                      }`}
+                    >
+                      <Bell size={16} className="mr-1" />
+                      {reminderSet ? 'Reminder set for tomorrow' : 'Set reminder for tomorrow'}
+                    </button>
                   </div>
                 </div>
               </div>

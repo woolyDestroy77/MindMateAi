@@ -12,11 +12,15 @@ import {
   Brain,
   Flame,
   User,
+  Settings,
+  Image
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
 import AuthModal from "../auth/AuthModal";
 import UserProfileModal from "../profile/UserProfileModal";
+import NotificationCenter from "../notifications/NotificationCenter";
+import NotificationSettingsModal from "../notifications/NotificationSettings";
 import { useAuth } from "../../hooks/useAuth";
 
 interface NavbarProps {
@@ -38,6 +42,7 @@ const Navbar: React.FC<NavbarProps> = ({
     "signin" | "signup" | null
   >(null);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const isDashboard = location.pathname === "/dashboard";
   const isChat = location.pathname === "/chat";
   const isAddictionSupport = location.pathname === "/addiction-support";
@@ -140,6 +145,7 @@ const Navbar: React.FC<NavbarProps> = ({
     if (user) {
       return (
         <div className="flex items-center space-x-2">
+          <NotificationCenter />
           <button
             onClick={() => setShowProfileModal(true)}
             className="flex items-center space-x-2 p-1 rounded-full border border-gray-200 hover:bg-lavender-50 transition-colors"
@@ -374,6 +380,16 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     <Globe size={20} />
                   </button>
+                  
+                  {user && (
+                    <button
+                      onClick={() => setShowNotificationSettings(true)}
+                      className="p-2 rounded-full text-gray-600 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
+                      aria-label="Notification settings"
+                    >
+                      <Settings size={20} />
+                    </button>
+                  )}
                 </div>
 
                 {renderAuthButtons()}
@@ -388,6 +404,9 @@ const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-xs font-medium text-orange-700">{streak}</span>
                 </div>
               )}
+              
+              {/* Mobile Notification Center */}
+              {user && <NotificationCenter />}
               
               {/* Mobile Profile Button */}
               {user && (
@@ -501,6 +520,16 @@ const Navbar: React.FC<NavbarProps> = ({
                     <Brain size={16} />
                     <span>Anxiety Support</span>
                   </Link>
+                  <button
+                    onClick={() => {
+                      setShowNotificationSettings(true);
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300 w-full text-left"
+                  >
+                    <Settings size={16} />
+                    <span>Notification Settings</span>
+                  </button>
                 </>
               )
             )}
@@ -561,6 +590,12 @@ const Navbar: React.FC<NavbarProps> = ({
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+      />
+      
+      {/* Notification Settings Modal */}
+      <NotificationSettingsModal
+        isOpen={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
       />
     </>
   );

@@ -12,10 +12,12 @@ import {
   Target,
   Award,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Bell
 } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
+import { useNotificationContext } from '../notifications/NotificationProvider';
 
 interface DailyStep {
   id: string;
@@ -49,6 +51,7 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
   });
   
   const [expandedCategory, setExpandedCategory] = useState<string | null>('morning');
+  const { createReminder, createAchievement } = useNotificationContext();
 
   // Save completed steps to localStorage whenever they change
   useEffect(() => {
@@ -237,6 +240,51 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
         newSet.delete(stepId);
       } else {
         newSet.add(stepId);
+        
+        // Create achievement notification for completing a step
+        const step = dailySteps.find(s => s.id === stepId);
+        if (step) {
+          createAchievement(
+            `${step.title} Completed!`,
+            `You've completed your ${step.title.toLowerCase()} task. Keep up the great work!`,
+            {
+              actionUrl: '/addiction-support',
+              actionText: 'View Progress'
+            }
+          );
+        }
+        
+        // Check if all steps in a category are completed
+        const category = dailySteps.find(s => s.id === stepId)?.category;
+        if (category) {
+          const categorySteps = dailySteps.filter(s => s.category === category);
+          const completedCategorySteps = categorySteps.filter(s => newSet.has(s.id));
+          
+          if (categorySteps.length === completedCategorySteps.length) {
+            // All steps in this category are completed
+            createAchievement(
+              `${category.charAt(0).toUpperCase() + category.slice(1)} Routine Completed!`,
+              `You've completed all your ${category} recovery steps. Great discipline!`,
+              {
+                actionUrl: '/addiction-support',
+                actionText: 'View Progress'
+              }
+            );
+          }
+        }
+        
+        // Check if all steps are completed
+        if (newSet.size === dailySteps.length) {
+          // All steps completed
+          createAchievement(
+            'All Recovery Steps Completed!',
+            'You\'ve completed all your daily recovery steps. This is how lasting change happens!',
+            {
+              actionUrl: '/addiction-support',
+              actionText: 'View Progress'
+            }
+          );
+        }
       }
       return newSet;
     });
@@ -266,6 +314,77 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
 
   const totalProgress = getTotalProgress();
   const progressPercentage = (totalProgress.completed / totalProgress.total) * 100;
+
+  // Set up reminders for incomplete steps
+  useEffect(() => {
+    // Check if we've already set reminders today
+    const remindersSet = localStorage.getItem(`steps_reminders_set_${today}`);
+    if (remindersSet) return;
+    
+    // Set reminders based on time of day
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    // Morning reminders (if after 9 AM)
+    if (currentHour >= 9 && currentHour < 12) {
+      const morningSteps = stepsWithCompletedStatus.filter(step => 
+        step.category === 'morning' && !step.completed
+      );
+      
+      if (morningSteps.length > 0) {
+        createReminder(
+          'Morning Recovery Steps',
+          `You have ${morningSteps.length} morning recovery steps to complete.`,
+          {
+            actionUrl: '/addiction-support',
+            actionText: 'View Steps',
+            priority: 'medium'
+          }
+        );
+      }
+    }
+    
+    // Afternoon reminders (if after 2 PM)
+    if (currentHour >= 14 && currentHour < 17) {
+      const afternoonSteps = stepsWithCompletedStatus.filter(step => 
+        step.category === 'afternoon' && !step.completed
+      );
+      
+      if (afternoonSteps.length > 0) {
+        createReminder(
+          'Afternoon Recovery Steps',
+          `You have ${afternoonSteps.length} afternoon recovery steps to complete.`,
+          {
+            actionUrl: '/addiction-support',
+            actionText: 'View Steps',
+            priority: 'medium'
+          }
+        );
+      }
+    }
+    
+    // Evening reminders (if after 7 PM)
+    if (currentHour >= 19 && currentHour < 22) {
+      const eveningSteps = stepsWithCompletedStatus.filter(step => 
+        step.category === 'evening' && !step.completed
+      );
+      
+      if (eveningSteps.length > 0) {
+        createReminder(
+          'Evening Recovery Steps',
+          `You have ${eveningSteps.length} evening recovery steps to complete before bed.`,
+          {
+            actionUrl: '/addiction-support',
+            actionText: 'View Steps',
+            priority: 'medium'
+          }
+        );
+      }
+    }
+    
+    // Mark that we've set reminders for today
+    localStorage.setItem(`steps_reminders_set_${today}`, 'true');
+  }, [stepsWithCompletedStatus, createReminder, today]);
 
   return (
     <Card variant="elevated" className="h-full">
@@ -387,6 +506,25 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
                                     }`}>
                                       {step.difficulty}
                                     </span>
+                                    {!isCompleted && (
+                                      <button
+                                        onClick={() => {
+                                          createReminder(
+                                            `Reminder: ${step.title}`,
+                                            `Don't forget to complete your ${step.title.toLowerCase()} step today.`,
+                                            {
+                                              actionUrl: '/addiction-support',
+                                              actionText: 'View Steps',
+                                              priority: 'medium'
+                                            }
+                                          );
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                                      >
+                                        <Bell size={10} />
+                                        <span>Remind me</span>
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
                               </div>

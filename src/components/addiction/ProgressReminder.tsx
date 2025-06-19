@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Clock, Target, X, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Target, X, CheckCircle, Bell } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { useNotificationContext } from '../notifications/NotificationProvider';
 
 interface ProgressReminderProps {
   daysClean: number;
@@ -21,6 +22,7 @@ const ProgressReminder: React.FC<ProgressReminderProps> = ({
 }) => {
   const [showReminder, setShowReminder] = useState(false);
   const [timeUntilNextDay, setTimeUntilNextDay] = useState('');
+  const { createReminder } = useNotificationContext();
 
   // Calculate time until next day
   useEffect(() => {
@@ -49,9 +51,20 @@ const ProgressReminder: React.FC<ProgressReminderProps> = ({
       const reminderShown = localStorage.getItem(`reminder_shown_${new Date().toDateString()}`);
       if (!reminderShown) {
         setShowReminder(true);
+        
+        // Create a notification reminder
+        createReminder(
+          'Mark Your Clean Day',
+          `Don't forget to mark today as clean for your ${addictionName} recovery tracking.`,
+          {
+            actionUrl: '/addiction-support',
+            actionText: 'Mark Clean Day',
+            priority: 'high'
+          }
+        );
       }
     }
-  }, [canMarkToday]);
+  }, [canMarkToday, addictionName, createReminder]);
 
   const handleMarkCleanDay = () => {
     onMarkCleanDay();
@@ -77,6 +90,44 @@ const ProgressReminder: React.FC<ProgressReminderProps> = ({
       return `${daysClean + 1} days of strength and courage! You're an inspiration. ✨`;
     }
   };
+
+  // Set up reminder notification for clean day marking
+  useEffect(() => {
+    if (canMarkToday) {
+      // Check if we've already set a reminder today
+      const reminderSet = localStorage.getItem(`clean_day_reminder_set_${new Date().toDateString()}`);
+      
+      if (!reminderSet) {
+        // Schedule a reminder for 8 PM if not already marked
+        const now = new Date();
+        const reminderTime = new Date();
+        reminderTime.setHours(20, 0, 0, 0); // 8:00 PM
+        
+        // Only schedule if it's before 8 PM
+        if (now < reminderTime) {
+          const timeUntilReminder = reminderTime.getTime() - now.getTime();
+          
+          setTimeout(() => {
+            // Check again if it's still not marked
+            if (canMarkToday) {
+              createReminder(
+                'Mark Your Clean Day',
+                `Don't forget to mark today as clean for your ${addictionName} recovery tracking before the day ends.`,
+                {
+                  actionUrl: '/addiction-support',
+                  actionText: 'Mark Clean Day',
+                  priority: 'high'
+                }
+              );
+            }
+          }, timeUntilReminder);
+        }
+        
+        // Mark that we've set a reminder for today
+        localStorage.setItem(`clean_day_reminder_set_${new Date().toDateString()}`, 'true');
+      }
+    }
+  }, [canMarkToday, addictionName, createReminder]);
 
   return (
     <>
@@ -118,6 +169,10 @@ const ProgressReminder: React.FC<ProgressReminderProps> = ({
               >
                 Mark Day {daysClean + 1} Complete
               </Button>
+              <div className="flex items-center justify-center space-x-1 text-xs text-blue-600">
+                <Bell size={12} />
+                <span>You'll get a reminder at 8:00 PM if you forget</span>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
