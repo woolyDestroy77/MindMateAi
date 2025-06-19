@@ -36,27 +36,29 @@ interface DailyStepsCardProps {
 }
 
 const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substance', daysClean }) => {
-  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
+  const today = new Date().toDateString();
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(() => {
+    // Load completed steps from localStorage on initial render
+    try {
+      const saved = localStorage.getItem(`completedSteps_${today}`);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch (error) {
+      console.error('Error loading completed steps:', error);
+      return new Set();
+    }
+  });
+  
   const [expandedCategory, setExpandedCategory] = useState<string | null>('morning');
 
-  // Load completed steps from localStorage
+  // Save completed steps to localStorage whenever they change
   useEffect(() => {
-    const today = new Date().toDateString();
-    const savedSteps = localStorage.getItem(`completedSteps_${today}`);
-    if (savedSteps) {
-      try {
-        setCompletedSteps(new Set(JSON.parse(savedSteps)));
-      } catch (error) {
-        console.error('Error loading completed steps:', error);
-      }
+    try {
+      localStorage.setItem(`completedSteps_${today}`, JSON.stringify([...completedSteps]));
+      console.log('Saved completed steps to localStorage:', [...completedSteps]);
+    } catch (error) {
+      console.error('Error saving completed steps:', error);
     }
-  }, []);
-
-  // Save completed steps to localStorage
-  useEffect(() => {
-    const today = new Date().toDateString();
-    localStorage.setItem(`completedSteps_${today}`, JSON.stringify([...completedSteps]));
-  }, [completedSteps]);
+  }, [completedSteps, today]);
 
   // Generate daily steps based on addiction type and recovery stage
   const generateDailySteps = (): DailyStep[] => {
@@ -219,6 +221,7 @@ const DailyStepsCard: React.FC<DailyStepsCardProps> = ({ addictionType = 'substa
     }
   };
 
+  // Get the base steps
   const dailySteps = generateDailySteps();
 
   // Update completed status from localStorage
