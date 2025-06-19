@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Menu,
   X,
@@ -13,7 +13,8 @@ import {
   Flame,
   User,
   Settings,
-  Image
+  Image,
+  BookOpen
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
@@ -47,10 +48,11 @@ const Navbar: React.FC<NavbarProps> = ({
   const isChat = location.pathname === "/chat";
   const isAddictionSupport = location.pathname === "/addiction-support";
   const isAnxietySupport = location.pathname === "/anxiety-support";
+  const isBlog = location.pathname.startsWith("/blog");
   const [streak, setStreak] = useState(0);
 
+  // Load streak from localStorage or calculate it
   useEffect(() => {
-    // Load streak from localStorage or calculate it
     const calculateStreak = () => {
       if (!user) return;
       
@@ -175,7 +177,7 @@ const Navbar: React.FC<NavbarProps> = ({
       );
     }
 
-    if (!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport) {
+    if (!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !isBlog) {
       return (
         <div className="flex items-center space-x-2">
           <Button
@@ -207,15 +209,15 @@ const Navbar: React.FC<NavbarProps> = ({
     <>
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport
+          isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport || isBlog
             ? "bg-white/80 supports-[backdrop-filter]:bg-white/60 backdrop-blur-lg shadow-sm"
             : "bg-transparent"
         }`}
         style={{
           WebkitBackdropFilter:
-            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport ? "blur(8px)" : "none",
+            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport || isBlog ? "blur(8px)" : "none",
           backdropFilter:
-            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport ? "blur(8px)" : "none",
+            isScrolled || isDashboard || isChat || isAddictionSupport || isAnxietySupport || isBlog ? "blur(8px)" : "none",
         }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -233,7 +235,7 @@ const Navbar: React.FC<NavbarProps> = ({
 
             <div className="hidden md:block">
               <div className="ml-10 flex items-center space-x-3">
-                {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !user ? (
+                {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !isBlog && !user ? (
                   <>
                     <a
                       href="#features"
@@ -352,6 +354,26 @@ const Navbar: React.FC<NavbarProps> = ({
                           }`}
                         ></span>
                       </Link>
+                      <Link
+                        to="/blog"
+                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                          isBlog
+                            ? "text-lavender-600"
+                            : "text-gray-700 hover:text-lavender-600"
+                        }`}
+                      >
+                        <span className="relative z-10 flex items-center space-x-1">
+                          <BookOpen size={16} />
+                          <span>Blog</span>
+                        </span>
+                        <span
+                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                            isBlog
+                              ? "scale-100"
+                              : "scale-0 group-hover:scale-100"
+                          }`}
+                        ></span>
+                      </Link>
                     </>
                   )
                 )}
@@ -449,7 +471,7 @@ const Navbar: React.FC<NavbarProps> = ({
           }`}
         >
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/95 supports-[backdrop-filter]:bg-white/80 backdrop-blur-lg shadow-lg">
-            {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !user ? (
+            {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !isBlog && !user ? (
               <>
                 <a
                   href="#features"
@@ -520,6 +542,14 @@ const Navbar: React.FC<NavbarProps> = ({
                     <Brain size={16} />
                     <span>Anxiety Support</span>
                   </Link>
+                  <Link
+                    to="/blog"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <BookOpen size={16} />
+                    <span>Blog</span>
+                  </Link>
                   <button
                     onClick={() => {
                       setShowNotificationSettings(true);
@@ -549,7 +579,8 @@ const Navbar: React.FC<NavbarProps> = ({
               !isDashboard &&
               !isChat &&
               !isAddictionSupport &&
-              !isAnxietySupport && (
+              !isAnxietySupport &&
+              !isBlog && (
                 <div className="flex flex-col space-y-2 pt-2">
                   <Button
                     variant="ghost"

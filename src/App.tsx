@@ -9,6 +9,9 @@ import Journal from './pages/Journal';
 import Chat from './pages/Chat';
 import AddictionSupport from './pages/AddictionSupport';
 import AnxietySupport from './pages/AnxietySupport';
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
+import CreateBlogPost from './pages/CreateBlogPost';
 
 function App() {
   const { user, isInitialized } = useAuth();
@@ -38,6 +41,15 @@ function App() {
           } />
           <Route path="/anxiety-support" element={
             user ? <AnxietySupport /> : <Navigate to="/" replace />
+          } />
+          <Route path="/blog" element={
+            user ? <Blog /> : <Navigate to="/" replace />
+          } />
+          <Route path="/blog/post/:id" element={
+            user ? <BlogPost /> : <Navigate to="/" replace />
+          } />
+          <Route path="/blog/create" element={
+            user ? <CreateBlogPost /> : <Navigate to="/" replace />
           } />
         </Routes>
         <Toaster position="top-right" />
