@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { useAuth } from './useAuth';
 
 export interface BlogPost {
   id: string;
@@ -15,18 +14,16 @@ export interface BlogPost {
   likes: number;
   comments_count: number;
   is_published: boolean;
-  author?: {
-    id: string;
-    full_name: string;
-    avatar_url?: string;
-  };
   metadata?: {
     location?: string;
     mood?: string;
     recovery_day?: number;
-    privacy?: 'public' | 'private' | 'followers';
     featured?: boolean;
-    [key: string]: any;
+  };
+  author?: {
+    id: string;
+    full_name: string;
+    avatar_url?: string;
   };
 }
 
@@ -44,104 +41,101 @@ export interface BlogComment {
 }
 
 export const useBlog = () => {
-  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [userPosts, setUserPosts] = useState<BlogPost[]>([]);
+  const [featuredPosts, setFeaturedPosts] = useState<BlogPost[]>([]);
+  const [popularTags, setPopularTags] = useState<{tag: string, count: number}[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch all published blog posts
-  const fetchPosts = useCallback(async (filter?: string, tag?: string) => {
+  const fetchPosts = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       
-      let query = supabase
+      const { data, error } = await supabase
         .from('blog_posts')
         .select(`
           *,
-          author:user_id(id, full_name, avatar_url)
+          author:users(id, full_name, avatar_url)
         `)
         .eq('is_published', true)
         .order('created_at', { ascending: false });
-      
-      // Apply filters if provided
-      if (filter === 'featured') {
-        query = query.eq('metadata->featured', true);
-      } else if (filter === 'popular') {
-        query = query.order('likes', { ascending: false });
-      }
-      
-      // Filter by tag if provided
-      if (tag) {
-        query = query.contains('tags', [tag]);
-      }
-      
-      const { data, error } = await query;
 
       if (error) throw error;
-
+      
       setPosts(data || []);
+      
+      // Extract popular tags
+      const allTags = data?.flatMap(post => post.tags || []) || [];
+      const tagCounts = allTags.reduce((acc: Record<string, number>, tag: string) => {
+        acc[tag] = (acc[tag] || 0) + 1;
+        return acc;
+      }, {});
+      
+      const sortedTags = Object.entries(tagCounts)
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      
+      setPopularTags(sortedTags);
+      
+      // Get featured posts
+      const featured = data?.filter(post => post.metadata?.featured) || [];
+      setFeaturedPosts(featured.slice(0, 3));
+      
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch blog posts';
-      setError(message);
-      toast.error(message);
+      console.error('Error fetching blog posts:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch blog posts');
+      toast.error('Failed to load blog posts');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Fetch user's blog posts
+  // Fetch user's own posts
   const fetchUserPosts = useCallback(async () => {
-    if (!user) return;
-    
     try {
-      setIsLoading(true);
-      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('blog_posts')
         .select(`
           *,
-          author:user_id(id, full_name, avatar_url)
+          author:users(id, full_name, avatar_url)
         `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
       setUserPosts(data || []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch your blog posts';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching user posts:', err);
+      // Don't show toast for this error to avoid UI clutter
     }
-  }, [user]);
+  }, []);
 
-  // Fetch a single blog post by ID
-  const fetchPostById = useCallback(async (postId: string) => {
+  // Fetch a single post by ID
+  const fetchPost = useCallback(async (postId: string): Promise<BlogPost | null> => {
     try {
-      setIsLoading(true);
-      
       const { data, error } = await supabase
         .from('blog_posts')
         .select(`
           *,
-          author:user_id(id, full_name, avatar_url)
+          author:users(id, full_name, avatar_url)
         `)
         .eq('id', postId)
         .single();
 
       if (error) throw error;
-
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch blog post';
-      setError(message);
-      toast.error(message);
+      console.error('Error fetching blog post:', err);
+      toast.error('Failed to load blog post');
       return null;
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 
@@ -150,424 +144,369 @@ export const useBlog = () => {
     title: string,
     content: string,
     tags: string[] = [],
-    imageFile?: File,
-    metadata: any = {}
-  ) => {
-    if (!user) {
-      toast.error('You must be logged in to create a post');
-      return null;
-    }
-    
+    imageUrl?: string,
+    metadata?: any,
+    isPublished: boolean = true
+  ): Promise<BlogPost | null> => {
     try {
-      setIsLoading(true);
-      
-      // Upload image if provided
-      let imageUrl = '';
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('blog_images')
-          .upload(fileName, imageFile);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data: publicUrlData } = supabase.storage
-          .from('blog_images')
-          .getPublicUrl(fileName);
-          
-        imageUrl = publicUrlData.publicUrl;
-      }
-      
-      // Create post
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('blog_posts')
-        .insert([{
-          title,
-          content,
-          image_url: imageUrl || null,
-          user_id: user.id,
-          tags,
-          likes: 0,
-          comments_count: 0,
-          is_published: true,
-          metadata
-        }])
+        .insert([
+          {
+            title,
+            content,
+            image_url: imageUrl,
+            user_id: user.id,
+            tags,
+            is_published: isPublished,
+            metadata
+          }
+        ])
         .select()
         .single();
 
       if (error) throw error;
-
-      // Update local state
-      setUserPosts(prev => [data, ...prev]);
-      setPosts(prev => [data, ...prev]);
       
-      toast.success('Blog post created successfully!');
+      // Refresh posts list
+      fetchPosts();
+      fetchUserPosts();
+      
+      toast.success('Blog post created successfully');
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create blog post';
-      setError(message);
-      toast.error(message);
+      console.error('Error creating blog post:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to create blog post');
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, [user]);
+  }, [fetchPosts, fetchUserPosts]);
 
   // Update an existing blog post
   const updatePost = useCallback(async (
     postId: string,
-    updates: Partial<BlogPost>,
-    imageFile?: File
-  ) => {
-    if (!user) {
-      toast.error('You must be logged in to update a post');
-      return null;
-    }
-    
+    updates: Partial<BlogPost>
+  ): Promise<BlogPost | null> => {
     try {
-      setIsLoading(true);
-      
-      // Upload new image if provided
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        
-        const { error: uploadError, data: uploadData } = await supabase.storage
-          .from('blog_images')
-          .upload(fileName, imageFile);
-          
-        if (uploadError) throw uploadError;
-        
-        const { data: publicUrlData } = supabase.storage
-          .from('blog_images')
-          .getPublicUrl(fileName);
-          
-        updates.image_url = publicUrlData.publicUrl;
-      }
-      
-      // Update post
       const { data, error } = await supabase
         .from('blog_posts')
         .update(updates)
         .eq('id', postId)
-        .eq('user_id', user.id) // Ensure user can only update their own posts
         .select()
         .single();
 
       if (error) throw error;
-
-      // Update local state
-      setUserPosts(prev => prev.map(post => post.id === postId ? data : post));
-      setPosts(prev => prev.map(post => post.id === postId ? data : post));
       
-      toast.success('Blog post updated successfully!');
+      // Refresh posts list
+      fetchPosts();
+      fetchUserPosts();
+      
+      toast.success('Blog post updated successfully');
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update blog post';
-      setError(message);
-      toast.error(message);
+      console.error('Error updating blog post:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to update blog post');
       return null;
-    } finally {
-      setIsLoading(false);
     }
-  }, [user]);
+  }, [fetchPosts, fetchUserPosts]);
 
   // Delete a blog post
-  const deletePost = useCallback(async (postId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete a post');
-      return false;
-    }
-    
+  const deletePost = useCallback(async (postId: string): Promise<boolean> => {
     try {
-      setIsLoading(true);
-      
-      // Get the post to check if there's an image to delete
-      const { data: post, error: fetchError } = await supabase
-        .from('blog_posts')
-        .select('image_url')
-        .eq('id', postId)
-        .eq('user_id', user.id) // Ensure user can only delete their own posts
-        .single();
-        
-      if (fetchError) throw fetchError;
-      
-      // Delete the post
       const { error } = await supabase
         .from('blog_posts')
         .delete()
-        .eq('id', postId)
-        .eq('user_id', user.id);
+        .eq('id', postId);
 
       if (error) throw error;
-
-      // Delete the image if it exists
-      if (post.image_url) {
-        const imagePath = post.image_url.split('/').pop();
-        if (imagePath) {
-          await supabase.storage
-            .from('blog_images')
-            .remove([imagePath]);
-        }
-      }
-
-      // Update local state
-      setUserPosts(prev => prev.filter(post => post.id !== postId));
-      setPosts(prev => prev.filter(post => post.id !== postId));
       
-      toast.success('Blog post deleted successfully!');
+      // Refresh posts list
+      fetchPosts();
+      fetchUserPosts();
+      
+      toast.success('Blog post deleted successfully');
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete blog post';
-      setError(message);
-      toast.error(message);
+      console.error('Error deleting blog post:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to delete blog post');
       return false;
-    } finally {
-      setIsLoading(false);
     }
-  }, [user]);
+  }, [fetchPosts, fetchUserPosts]);
 
   // Like a blog post
-  const likePost = useCallback(async (postId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to like a post');
-      return false;
-    }
-    
+  const likePost = useCallback(async (postId: string): Promise<boolean> => {
     try {
-      // Check if user already liked this post
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
+
+      // Check if user already liked the post
       const { data: existingLike, error: checkError } = await supabase
         .from('blog_post_likes')
-        .select()
+        .select('*')
         .eq('post_id', postId)
         .eq('user_id', user.id)
-        .single();
-        
-      if (!checkError && existingLike) {
-        // User already liked this post, so unlike it
-        await supabase
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existingLike) {
+        // Unlike the post
+        const { error: unlikeError } = await supabase
           .from('blog_post_likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', user.id);
-          
+
+        if (unlikeError) throw unlikeError;
+
         // Decrement likes count
-        const { data: updatedPost, error: updateError } = await supabase.rpc(
-          'decrement_post_likes',
-          { post_id: postId }
-        );
-        
+        const { error: updateError } = await supabase.rpc('decrement_post_likes', {
+          post_id: postId
+        });
+
         if (updateError) throw updateError;
         
-        // Update local state
-        setPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes - 1 } : post
-        ));
-        setUserPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes - 1 } : post
-        ));
-        
-        return false; // Returned unliked state
+        toast.success('Post unliked');
       } else {
-        // User hasn't liked this post yet, so like it
-        await supabase
+        // Like the post
+        const { error: likeError } = await supabase
           .from('blog_post_likes')
-          .insert([{ post_id: postId, user_id: user.id }]);
-          
+          .insert([
+            { post_id: postId, user_id: user.id }
+          ]);
+
+        if (likeError) throw likeError;
+
         // Increment likes count
-        const { data: updatedPost, error: updateError } = await supabase.rpc(
-          'increment_post_likes',
-          { post_id: postId }
-        );
-        
+        const { error: updateError } = await supabase.rpc('increment_post_likes', {
+          post_id: postId
+        });
+
         if (updateError) throw updateError;
         
-        // Update local state
-        setPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes + 1 } : post
-        ));
-        setUserPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes + 1 } : post
-        ));
-        
-        return true; // Returned liked state
+        toast.success('Post liked');
       }
+
+      // Refresh posts to update like count
+      fetchPosts();
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to like/unlike post';
-      setError(message);
-      toast.error(message);
+      console.error('Error liking/unliking post:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to like/unlike post');
       return false;
     }
-  }, [user]);
+  }, [fetchPosts]);
 
   // Check if user has liked a post
-  const checkUserLiked = useCallback(async (postId: string) => {
-    if (!user) return false;
-    
+  const checkUserLiked = useCallback(async (postId: string): Promise<boolean> => {
     try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) return false;
+
       const { data, error } = await supabase
         .from('blog_post_likes')
-        .select()
+        .select('*')
         .eq('post_id', postId)
         .eq('user_id', user.id)
-        .single();
-        
-      return !error && data;
+        .maybeSingle();
+
+      if (error) throw error;
+      return !!data;
     } catch (err) {
+      console.error('Error checking if user liked post:', err);
       return false;
     }
-  }, [user]);
+  }, []);
 
   // Add a comment to a blog post
-  const addComment = useCallback(async (postId: string, content: string) => {
-    if (!user) {
-      toast.error('You must be logged in to comment');
-      return null;
-    }
-    
+  const addComment = useCallback(async (
+    postId: string,
+    content: string
+  ): Promise<BlogComment | null> => {
     try {
-      // Add comment
-      const { data: comment, error: commentError } = await supabase
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
         .from('blog_comments')
-        .insert([{
-          post_id: postId,
-          user_id: user.id,
-          content
-        }])
+        .insert([
+          { post_id: postId, user_id: user.id, content }
+        ])
         .select(`
           *,
-          author:user_id(id, full_name, avatar_url)
+          author:users(id, full_name, avatar_url)
         `)
         .single();
-        
-      if (commentError) throw commentError;
-      
+
+      if (error) throw error;
+
       // Increment comments count
-      const { error: updateError } = await supabase.rpc(
-        'increment_post_comments',
-        { post_id: postId }
-      );
-      
+      const { error: updateError } = await supabase.rpc('increment_post_comments', {
+        post_id: postId
+      });
+
       if (updateError) throw updateError;
       
-      // Update local state
-      setPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
-      ));
-      setUserPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
-      ));
-      
-      toast.success('Comment added successfully!');
-      return comment;
+      toast.success('Comment added');
+      return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to add comment';
-      setError(message);
-      toast.error(message);
+      console.error('Error adding comment:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to add comment');
       return null;
     }
-  }, [user]);
+  }, []);
 
   // Fetch comments for a blog post
-  const fetchComments = useCallback(async (postId: string) => {
+  const fetchComments = useCallback(async (postId: string): Promise<BlogComment[]> => {
     try {
       const { data, error } = await supabase
         .from('blog_comments')
         .select(`
           *,
-          author:user_id(id, full_name, avatar_url)
+          author:users(id, full_name, avatar_url)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-
       return data || [];
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch comments';
-      setError(message);
-      toast.error(message);
+      console.error('Error fetching comments:', err);
+      toast.error('Failed to load comments');
       return [];
     }
   }, []);
 
   // Delete a comment
-  const deleteComment = useCallback(async (commentId: string, postId: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete a comment');
-      return false;
-    }
-    
+  const deleteComment = useCallback(async (commentId: string, postId: string): Promise<boolean> => {
     try {
-      // Delete comment
       const { error } = await supabase
         .from('blog_comments')
         .delete()
-        .eq('id', commentId)
-        .eq('user_id', user.id); // Ensure user can only delete their own comments
+        .eq('id', commentId);
 
       if (error) throw error;
-      
+
       // Decrement comments count
-      const { error: updateError } = await supabase.rpc(
-        'decrement_post_comments',
-        { post_id: postId }
-      );
-      
+      const { error: updateError } = await supabase.rpc('decrement_post_comments', {
+        post_id: postId
+      });
+
       if (updateError) throw updateError;
       
-      // Update local state
-      setPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
-      ));
-      setUserPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
-      ));
-      
-      toast.success('Comment deleted successfully!');
+      toast.success('Comment deleted');
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete comment';
-      setError(message);
-      toast.error(message);
+      console.error('Error deleting comment:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to delete comment');
       return false;
     }
-  }, [user]);
+  }, []);
 
-  // Get popular tags from all posts
-  const getPopularTags = useCallback(() => {
-    const tagCounts: Record<string, number> = {};
-    
-    posts.forEach(post => {
-      post.tags.forEach(tag => {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      });
-    });
-    
-    return Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([tag, count]) => ({ tag, count }));
-  }, [posts]);
+  // Upload an image for a blog post
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
 
-  // Initialize
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image size must be less than 5MB');
+      }
+      
+      // Check file type
+      if (!file.type.match('image.*')) {
+        throw new Error('Please select an image file');
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('blog_images')
+        .upload(fileName, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('blog_images')
+        .getPublicUrl(fileName);
+        
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to upload image');
+      return null;
+    }
+  }, []);
+
+  // Filter posts by tag
+  const filterPostsByTag = useCallback(async (tag: string): Promise<BlogPost[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select(`
+          *,
+          author:users(id, full_name, avatar_url)
+        `)
+        .eq('is_published', true)
+        .contains('tags', [tag])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error filtering posts by tag:', err);
+      toast.error('Failed to filter posts');
+      return [];
+    }
+  }, []);
+
+  // Search posts by title or content
+  const searchPosts = useCallback(async (query: string): Promise<BlogPost[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select(`
+          *,
+          author:users(id, full_name, avatar_url)
+        `)
+        .eq('is_published', true)
+        .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error('Error searching posts:', err);
+      toast.error('Failed to search posts');
+      return [];
+    }
+  }, []);
+
+  // Initialize data
   useEffect(() => {
     fetchPosts();
-    if (user) {
-      fetchUserPosts();
-    }
-  }, [fetchPosts, fetchUserPosts, user]);
+    fetchUserPosts();
+  }, [fetchPosts, fetchUserPosts]);
 
   return {
     posts,
     userPosts,
+    featuredPosts,
+    popularTags,
     isLoading,
     error,
     fetchPosts,
     fetchUserPosts,
-    fetchPostById,
+    fetchPost,
     createPost,
     updatePost,
     deletePost,
@@ -576,6 +515,8 @@ export const useBlog = () => {
     addComment,
     fetchComments,
     deleteComment,
-    getPopularTags
+    uploadImage,
+    filterPostsByTag,
+    searchPosts
   };
 };
