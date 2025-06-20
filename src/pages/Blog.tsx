@@ -25,16 +25,13 @@ import { useAuth } from '../hooks/useAuth';
 import { format, parseISO } from 'date-fns';
 
 const Blog = () => {
-  const { posts, userPosts, isLoading, fetchPosts, likePost, checkUserLiked, getPopularTags } = useBlog();
+  const { posts, userPosts, isLoading, fetchPosts, likePost, checkUserLiked, popularTags } = useBlog();
   const { user, userProfile } = useAuth();
   const [filter, setFilter] = useState<'all' | 'featured' | 'popular' | 'mine'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   
-  // Get popular tags
-  const popularTags = getPopularTags();
-
   // Load user likes
   useEffect(() => {
     const loadUserLikes = async () => {
@@ -379,7 +376,7 @@ const Blog = () => {
                   Popular Tags
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {popularTags.map(({ tag, count }) => (
+                  {popularTags && popularTags.map(({ tag, count }) => (
                     <button
                       key={tag}
                       onClick={() => setSelectedTag(tag)}
