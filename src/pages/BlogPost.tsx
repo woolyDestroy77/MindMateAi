@@ -29,7 +29,7 @@ import { useNotificationContext } from '../components/notifications/Notification
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { fetchPostById, likePost, checkUserLiked, addComment, fetchComments, deleteComment, deletePost } = useBlog();
+  const { fetchPost, likePost, checkUserLiked, addComment, fetchComments, deleteComment, deletePost } = useBlog();
   const { user } = useAuth();
   const { createAchievement } = useNotificationContext();
   
@@ -51,7 +51,7 @@ const BlogPost = () => {
       
       try {
         // Fetch post
-        const postData = await fetchPostById(id);
+        const postData = await fetchPost(id);
         if (postData) {
           setPost(postData);
           
@@ -74,7 +74,7 @@ const BlogPost = () => {
     };
     
     loadData();
-  }, [id, fetchPostById, checkUserLiked, fetchComments, navigate]);
+  }, [id, fetchPost, checkUserLiked, fetchComments, navigate]);
 
   // Handle like/unlike
   const handleLike = async () => {
@@ -384,17 +384,7 @@ const BlogPost = () => {
                 <div className="flex space-x-4">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
                     {user && (
-                      <>
-                        {userProfile?.avatar_url ? (
-                          <img 
-                            src={userProfile.avatar_url} 
-                            alt={userProfile.full_name} 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-full h-full p-2 text-lavender-600" />
-                        )}
-                      </>
+                      <User className="w-full h-full p-2 text-lavender-600" />
                     )}
                   </div>
                   <div className="flex-1">

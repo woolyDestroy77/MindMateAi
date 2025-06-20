@@ -56,10 +56,7 @@ export const useBlog = () => {
       
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
@@ -103,10 +100,7 @@ export const useBlog = () => {
 
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -123,10 +117,7 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('id', postId)
         .single();
 
@@ -263,13 +254,15 @@ export const useBlog = () => {
         if (unlikeError) throw unlikeError;
 
         // Decrement likes count
-        const { error: updateError } = await supabase.rpc('decrement_post_likes', {
-          post_id: postId
-        });
+        const { error: updateError } = await supabase
+          .from('blog_posts')
+          .update({ likes: supabase.sql`likes - 1` })
+          .eq('id', postId);
 
         if (updateError) throw updateError;
         
         toast.success('Post unliked');
+        return false;
       } else {
         // Like the post
         const { error: likeError } = await supabase
@@ -281,24 +274,22 @@ export const useBlog = () => {
         if (likeError) throw likeError;
 
         // Increment likes count
-        const { error: updateError } = await supabase.rpc('increment_post_likes', {
-          post_id: postId
-        });
+        const { error: updateError } = await supabase
+          .from('blog_posts')
+          .update({ likes: supabase.sql`likes + 1` })
+          .eq('id', postId);
 
         if (updateError) throw updateError;
         
         toast.success('Post liked');
+        return true;
       }
-
-      // Refresh posts to update like count
-      fetchPosts();
-      return true;
     } catch (err) {
       console.error('Error liking/unliking post:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to like/unlike post');
       return false;
     }
-  }, [fetchPosts]);
+  }, []);
 
   // Check if user has liked a post
   const checkUserLiked = useCallback(async (postId: string): Promise<boolean> => {
@@ -337,18 +328,16 @@ export const useBlog = () => {
         .insert([
           { post_id: postId, user_id: user.id, content }
         ])
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
 
       // Increment comments count
-      const { error: updateError } = await supabase.rpc('increment_post_comments', {
-        post_id: postId
-      });
+      const { error: updateError } = await supabase
+        .from('blog_posts')
+        .update({ comments_count: supabase.sql`comments_count + 1` })
+        .eq('id', postId);
 
       if (updateError) throw updateError;
       
@@ -366,10 +355,7 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_comments')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
@@ -393,9 +379,10 @@ export const useBlog = () => {
       if (error) throw error;
 
       // Decrement comments count
-      const { error: updateError } = await supabase.rpc('decrement_post_comments', {
-        post_id: postId
-      });
+      const { error: updateError } = await supabase
+        .from('blog_posts')
+        .update({ comments_count: supabase.sql`comments_count - 1` })
+        .eq('id', postId);
 
       if (updateError) throw updateError;
       
@@ -452,10 +439,7 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('is_published', true)
         .contains('tags', [tag])
         .order('created_at', { ascending: false });
@@ -474,10 +458,7 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select(`
-          *,
-          author:users(id, full_name, avatar_url)
-        `)
+        .select('*')
         .eq('is_published', true)
         .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
         .order('created_at', { ascending: false });
