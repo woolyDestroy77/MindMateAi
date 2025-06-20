@@ -127,9 +127,9 @@ export const useBlog = () => {
       if (data) {
         try {
           // Get user metadata from auth
-          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(data.user_id);
+          const { data: userData } = await supabase.auth.getUser();
           
-          if (!userError && userData && userData.user) {
+          if (userData && userData.user) {
             data.author = {
               id: userData.user.id,
               full_name: userData.user.user_metadata.full_name || 'Anonymous',
@@ -150,12 +150,73 @@ export const useBlog = () => {
     }
   }, []);
 
+  // Convert data URL to File object
+  const dataURLtoFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type });
+  };
+
+  // Upload an image for a blog post
+  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
+
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image size must be less than 5MB');
+      }
+      
+      // Check file type
+      if (!file.type.match('image.*')) {
+        throw new Error('Please select an image file');
+      }
+
+      // Create a storage bucket if it doesn't exist (without underscores)
+      const { error: bucketError } = await supabase.storage.createBucket('blogimages', {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024, // 5MB
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+      });
+      
+      if (bucketError && !bucketError.message.includes('already exists')) {
+        console.error('Error creating bucket:', bucketError);
+        // Continue anyway, the bucket might already exist
+      }
+
+      const fileExt = file.name.split('.').pop() || 'png';
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data: uploadData } = await supabase.storage
+        .from('blogimages')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('blogimages')
+        .getPublicUrl(fileName);
+        
+      return publicUrlData.publicUrl;
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to upload image');
+      return null;
+    }
+  }, []);
+
   // Create a new blog post
   const createPost = useCallback(async (
     title: string,
     content: string,
     tags: string[] = [],
-    imageUrl?: string | File,
+    imageFile?: string | File,
     metadata?: any,
     isPublished: boolean = true
   ): Promise<BlogPost | null> => {
@@ -165,19 +226,16 @@ export const useBlog = () => {
       if (!user) throw new Error('User not authenticated');
 
       // Handle image upload if it's a File
-      let finalImageUrl = imageUrl;
-      if (imageUrl instanceof File) {
-        finalImageUrl = await uploadImage(imageUrl);
-        if (!finalImageUrl) {
-          throw new Error('Failed to upload image');
-        }
-      } else if (typeof imageUrl === 'string' && imageUrl.startsWith('data:')) {
+      let finalImageUrl = undefined;
+      if (imageFile instanceof File) {
+        finalImageUrl = await uploadImage(imageFile);
+      } else if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
         // Handle base64 image data
-        const file = await dataURLtoFile(imageUrl, 'blog-image.png');
+        const file = await dataURLtoFile(imageFile, 'blog-image.png');
         finalImageUrl = await uploadImage(file);
-        if (!finalImageUrl) {
-          throw new Error('Failed to upload image');
-        }
+      } else if (typeof imageFile === 'string') {
+        // It's already a URL
+        finalImageUrl = imageFile;
       }
 
       const { data, error } = await supabase
@@ -209,7 +267,7 @@ export const useBlog = () => {
       toast.error(err instanceof Error ? err.message : 'Failed to create blog post');
       return null;
     }
-  }, [fetchPosts, fetchUserPosts]);
+  }, [fetchPosts, fetchUserPosts, uploadImage]);
 
   // Update an existing blog post
   const updatePost = useCallback(async (
@@ -257,7 +315,7 @@ export const useBlog = () => {
       toast.error(err instanceof Error ? err.message : 'Failed to update blog post');
       return null;
     }
-  }, [fetchPosts, fetchUserPosts]);
+  }, [fetchPosts, fetchUserPosts, uploadImage]);
 
   // Delete a blog post
   const deletePost = useCallback(async (postId: string): Promise<boolean> => {
@@ -493,67 +551,6 @@ export const useBlog = () => {
       return false;
     }
   }, []);
-
-  // Upload an image for a blog post
-  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) throw new Error('User not authenticated');
-
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Image size must be less than 5MB');
-      }
-      
-      // Check file type
-      if (!file.type.match('image.*')) {
-        throw new Error('Please select an image file');
-      }
-
-      // Create a storage bucket if it doesn't exist
-      const { error: bucketError } = await supabase.storage.createBucket('blog_images', {
-        public: true,
-        fileSizeLimit: 5 * 1024 * 1024, // 5MB
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-      });
-      
-      if (bucketError && !bucketError.message.includes('already exists')) {
-        console.error('Error creating bucket:', bucketError);
-        // Continue anyway, the bucket might already exist
-      }
-
-      const fileExt = file.name.split('.').pop() || 'png';
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('blog_images')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-        
-      if (uploadError) throw uploadError;
-      
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from('blog_images')
-        .getPublicUrl(fileName);
-        
-      return publicUrlData.publicUrl;
-    } catch (err) {
-      console.error('Error uploading image:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to upload image');
-      return null;
-    }
-  }, []);
-
-  // Convert data URL to File object
-  const dataURLtoFile = async (dataUrl: string, filename: string): Promise<File> => {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], filename, { type: blob.type });
-  };
 
   // Filter posts by tag
   const filterPostsByTag = useCallback(async (tag: string): Promise<BlogPost[]> => {
