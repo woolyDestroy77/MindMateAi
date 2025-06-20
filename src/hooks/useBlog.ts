@@ -155,7 +155,7 @@ export const useBlog = () => {
     title: string,
     content: string,
     tags: string[] = [],
-    imageUrl?: string,
+    imageUrl?: string | File,
     metadata?: any,
     isPublished: boolean = true
   ): Promise<BlogPost | null> => {
@@ -164,13 +164,29 @@ export const useBlog = () => {
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
 
+      // Handle image upload if it's a File
+      let finalImageUrl = imageUrl;
+      if (imageUrl instanceof File) {
+        finalImageUrl = await uploadImage(imageUrl);
+        if (!finalImageUrl) {
+          throw new Error('Failed to upload image');
+        }
+      } else if (typeof imageUrl === 'string' && imageUrl.startsWith('data:')) {
+        // Handle base64 image data
+        const file = await dataURLtoFile(imageUrl, 'blog-image.png');
+        finalImageUrl = await uploadImage(file);
+        if (!finalImageUrl) {
+          throw new Error('Failed to upload image');
+        }
+      }
+
       const { data, error } = await supabase
         .from('blog_posts')
         .insert([
           {
             title,
             content,
-            image_url: imageUrl,
+            image_url: finalImageUrl,
             user_id: user.id,
             tags,
             is_published: isPublished,
@@ -201,9 +217,29 @@ export const useBlog = () => {
     updates: Partial<BlogPost>
   ): Promise<BlogPost | null> => {
     try {
+      // Handle image upload if it's a File
+      let finalUpdates = { ...updates };
+      if (updates.image_url instanceof File) {
+        const imageUrl = await uploadImage(updates.image_url);
+        if (imageUrl) {
+          finalUpdates.image_url = imageUrl;
+        } else {
+          delete finalUpdates.image_url; // Remove if upload failed
+        }
+      } else if (typeof updates.image_url === 'string' && updates.image_url.startsWith('data:')) {
+        // Handle base64 image data
+        const file = await dataURLtoFile(updates.image_url, 'blog-image.png');
+        const imageUrl = await uploadImage(file);
+        if (imageUrl) {
+          finalUpdates.image_url = imageUrl;
+        } else {
+          delete finalUpdates.image_url; // Remove if upload failed
+        }
+      }
+
       const { data, error } = await supabase
         .from('blog_posts')
-        .update(updates)
+        .update(finalUpdates)
         .eq('id', postId)
         .select()
         .single();
@@ -405,9 +441,9 @@ export const useBlog = () => {
       const commentsWithAuthors = await Promise.all((data || []).map(async (comment) => {
         try {
           // Get user metadata from auth
-          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(comment.user_id);
+          const { data: userData } = await supabase.auth.getUser();
           
-          if (!userError && userData && userData.user) {
+          if (userData && userData.user && userData.user.id === comment.user_id) {
             return {
               ...comment,
               author: {
@@ -475,12 +511,27 @@ export const useBlog = () => {
         throw new Error('Please select an image file');
       }
 
-      const fileExt = file.name.split('.').pop();
+      // Create a storage bucket if it doesn't exist
+      const { error: bucketError } = await supabase.storage.createBucket('blog_images', {
+        public: true,
+        fileSizeLimit: 5 * 1024 * 1024, // 5MB
+        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+      });
+      
+      if (bucketError && !bucketError.message.includes('already exists')) {
+        console.error('Error creating bucket:', bucketError);
+        // Continue anyway, the bucket might already exist
+      }
+
+      const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('blog_images')
-        .upload(fileName, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
         
       if (uploadError) throw uploadError;
       
@@ -496,6 +547,13 @@ export const useBlog = () => {
       return null;
     }
   }, []);
+
+  // Convert data URL to File object
+  const dataURLtoFile = async (dataUrl: string, filename: string): Promise<File> => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type });
+  };
 
   // Filter posts by tag
   const filterPostsByTag = useCallback(async (tag: string): Promise<BlogPost[]> => {

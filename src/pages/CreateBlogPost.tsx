@@ -26,7 +26,7 @@ import { useNotificationContext } from '../components/notifications/Notification
 
 const CreateBlogPost = () => {
   const navigate = useNavigate();
-  const { createPost } = useBlog();
+  const { createPost, uploadImage } = useBlog();
   const { userAddictions } = useAddictionSupport();
   const { createAchievement } = useNotificationContext();
   
@@ -128,11 +128,12 @@ const CreateBlogPost = () => {
     setIsSubmitting(true);
     
     try {
+      // Use the actual file for upload
       const newPost = await createPost(
         title.trim(),
         content.trim(),
         tags,
-        imagePreview || undefined,
+        imageFile || undefined,
         metadata
       );
       

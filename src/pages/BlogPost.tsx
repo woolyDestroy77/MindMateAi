@@ -340,6 +340,7 @@ const BlogPost = () => {
                   className={`flex items-center space-x-2 ${
                     isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
                   }`}
+                  disabled={!user}
                 >
                   <Heart size={20} className={isLiked ? 'fill-current' : ''} />
                   <span className="font-medium">{post.likes}</span>
