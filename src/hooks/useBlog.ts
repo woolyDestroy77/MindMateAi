@@ -174,18 +174,8 @@ export const useBlog = () => {
         throw new Error('Please select an image file');
       }
 
-      // Create a storage bucket if it doesn't exist (without underscores)
-      const { error: bucketError } = await supabase.storage.createBucket('blogimages', {
-        public: true,
-        fileSizeLimit: 5 * 1024 * 1024, // 5MB
-        allowedMimeTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-      });
+      console.log('Uploading image to Supabase storage...');
       
-      if (bucketError && !bucketError.message.includes('already exists')) {
-        console.error('Error creating bucket:', bucketError);
-        // Continue anyway, the bucket might already exist
-      }
-
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
@@ -196,13 +186,20 @@ export const useBlog = () => {
           upsert: false
         });
         
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
+      
+      console.log('Image uploaded successfully:', uploadData);
       
       // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('blogimages')
         .getPublicUrl(fileName);
-        
+      
+      console.log('Public URL:', publicUrlData.publicUrl);
+      
       return publicUrlData.publicUrl;
     } catch (err) {
       console.error('Error uploading image:', err);
@@ -216,7 +213,7 @@ export const useBlog = () => {
     title: string,
     content: string,
     tags: string[] = [],
-    imageFile?: string | File,
+    imageFile?: File | string,
     metadata?: any,
     isPublished: boolean = true
   ): Promise<BlogPost | null> => {
@@ -225,17 +222,28 @@ export const useBlog = () => {
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
 
-      // Handle image upload if it's a File
-      let finalImageUrl = undefined;
-      if (imageFile instanceof File) {
-        finalImageUrl = await uploadImage(imageFile);
-      } else if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
-        // Handle base64 image data
-        const file = await dataURLtoFile(imageFile, 'blog-image.png');
-        finalImageUrl = await uploadImage(file);
-      } else if (typeof imageFile === 'string') {
-        // It's already a URL
-        finalImageUrl = imageFile;
+      // Handle image upload if provided
+      let imageUrl = undefined;
+      
+      if (imageFile) {
+        console.log('Processing image for blog post:', typeof imageFile);
+        
+        if (imageFile instanceof File) {
+          // Direct file upload
+          console.log('Uploading file directly');
+          imageUrl = await uploadImage(imageFile);
+        } else if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
+          // Convert data URL to file and upload
+          console.log('Converting data URL to file');
+          const file = await dataURLtoFile(imageFile, `blog-image-${Date.now()}.png`);
+          imageUrl = await uploadImage(file);
+        } else if (typeof imageFile === 'string') {
+          // It's already a URL
+          console.log('Using existing URL');
+          imageUrl = imageFile;
+        }
+        
+        console.log('Final image URL:', imageUrl);
       }
 
       const { data, error } = await supabase
@@ -244,7 +252,7 @@ export const useBlog = () => {
           {
             title,
             content,
-            image_url: finalImageUrl,
+            image_url: imageUrl,
             user_id: user.id,
             tags,
             is_published: isPublished,

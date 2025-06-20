@@ -133,7 +133,7 @@ const CreateBlogPost = () => {
         title.trim(),
         content.trim(),
         tags,
-        imageFile || undefined,
+        imageFile, // Pass the actual File object
         metadata
       );
       
