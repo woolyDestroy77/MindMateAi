@@ -280,15 +280,7 @@ const Blog = () => {
                     <div className="p-6">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                          {post.author?.avatar_url ? (
-                            <img 
-                              src={post.author.avatar_url} 
-                              alt={post.author.full_name} 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-full h-full p-2 text-lavender-600" />
-                          )}
+                          <User className="w-full h-full p-2 text-lavender-600" />
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
@@ -329,6 +321,24 @@ const Blog = () => {
                         </div>
                       )}
                       
+                      {post.metadata && (
+                        <div className="mb-4">
+                          {post.metadata.recovery_day !== undefined && (
+                            <div className="inline-flex items-center bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg text-xs mr-2">
+                              <Heart size={12} className="mr-1" />
+                              Day {post.metadata.recovery_day} of Recovery
+                            </div>
+                          )}
+                          
+                          {post.metadata.mood && (
+                            <div className="inline-flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded-lg text-xs">
+                              {post.metadata.mood}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Actions */}
                       <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                         <div className="flex space-x-4">
                           <button
@@ -336,6 +346,7 @@ const Blog = () => {
                             className={`flex items-center space-x-1 text-sm ${
                               likedPosts[post.id] ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
                             }`}
+                            disabled={!user}
                           >
                             <Heart size={16} className={likedPosts[post.id] ? 'fill-current' : ''} />
                             <span>{post.likes}</span>
@@ -354,7 +365,13 @@ const Blog = () => {
                           <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
                             <Bookmark size={16} />
                           </button>
-                          <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(window.location.origin + `/blog/post/${post.id}`);
+                              alert('Link copied to clipboard!');
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                          >
                             <Share2 size={16} />
                           </button>
                         </div>

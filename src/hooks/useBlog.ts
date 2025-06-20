@@ -122,6 +122,26 @@ export const useBlog = () => {
         .single();
 
       if (error) throw error;
+      
+      // Get author info from auth.users metadata
+      if (data) {
+        try {
+          // Get user metadata from auth
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(data.user_id);
+          
+          if (!userError && userData && userData.user) {
+            data.author = {
+              id: userData.user.id,
+              full_name: userData.user.user_metadata.full_name || 'Anonymous',
+              avatar_url: userData.user.user_metadata.avatar_url
+            };
+          }
+        } catch (userError) {
+          console.error('Error fetching author data:', userError);
+          // Continue without author data
+        }
+      }
+      
       return data;
     } catch (err) {
       console.error('Error fetching blog post:', err);
@@ -342,6 +362,26 @@ export const useBlog = () => {
       if (updateError) throw updateError;
       
       toast.success('Comment added');
+      
+      // Try to add author info
+      if (data) {
+        try {
+          // Get user metadata from auth
+          const { data: userData } = await supabase.auth.getUser();
+          
+          if (userData && userData.user) {
+            data.author = {
+              id: userData.user.id,
+              full_name: userData.user.user_metadata.full_name || 'Anonymous',
+              avatar_url: userData.user.user_metadata.avatar_url
+            };
+          }
+        } catch (userError) {
+          console.error('Error adding author data to comment:', userError);
+          // Continue without author data
+        }
+      }
+      
       return data;
     } catch (err) {
       console.error('Error adding comment:', err);
@@ -360,7 +400,30 @@ export const useBlog = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      
+      // Try to add author info to each comment
+      const commentsWithAuthors = await Promise.all((data || []).map(async (comment) => {
+        try {
+          // Get user metadata from auth
+          const { data: userData, error: userError } = await supabase.auth.admin.getUserById(comment.user_id);
+          
+          if (!userError && userData && userData.user) {
+            return {
+              ...comment,
+              author: {
+                id: userData.user.id,
+                full_name: userData.user.user_metadata.full_name || 'Anonymous',
+                avatar_url: userData.user.user_metadata.avatar_url
+              }
+            };
+          }
+        } catch (userError) {
+          console.error('Error fetching comment author data:', userError);
+        }
+        return comment;
+      }));
+      
+      return commentsWithAuthors;
     } catch (err) {
       console.error('Error fetching comments:', err);
       toast.error('Failed to load comments');

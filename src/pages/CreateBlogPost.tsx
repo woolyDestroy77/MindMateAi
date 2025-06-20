@@ -132,7 +132,7 @@ const CreateBlogPost = () => {
         title.trim(),
         content.trim(),
         tags,
-        imageFile || undefined,
+        imagePreview || undefined,
         metadata
       );
       

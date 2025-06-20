@@ -383,9 +383,7 @@ const BlogPost = () => {
               <form onSubmit={handleSubmitComment} className="mb-8">
                 <div className="flex space-x-4">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                    {user && (
-                      <User className="w-full h-full p-2 text-lavender-600" />
-                    )}
+                    <User className="w-full h-full p-2 text-lavender-600" />
                   </div>
                   <div className="flex-1">
                     <textarea
