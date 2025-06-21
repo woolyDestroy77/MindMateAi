@@ -160,21 +160,37 @@ export const useBlog = () => {
   // Upload an image for a blog post
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
     try {
+      console.log('Starting image upload process...');
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) throw new Error('User not authenticated');
+      if (userError) {
+        console.error('User authentication error:', userError);
+        throw userError;
+      }
+      
+      if (!user) {
+        console.error('No authenticated user found');
+        throw new Error('User not authenticated');
+      }
 
       // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
+        console.error('File too large:', file.size);
         throw new Error('Image size must be less than 5MB');
       }
       
       // Check file type
       if (!file.type.match('image.*')) {
+        console.error('Invalid file type:', file.type);
         throw new Error('Please select an image file');
       }
 
-      console.log('Uploading image to Supabase storage...');
+      console.log('Uploading image to Supabase storage bucket "blogimages"...');
+      console.log('File details:', {
+        name: file.name,
+        type: file.type,
+        size: `${(file.size / 1024).toFixed(2)} KB`
+      });
       
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -198,7 +214,7 @@ export const useBlog = () => {
         .from('blogimages')
         .getPublicUrl(fileName);
       
-      console.log('Public URL:', publicUrlData.publicUrl);
+      console.log('Public URL generated:', publicUrlData.publicUrl);
       
       return publicUrlData.publicUrl;
     } catch (err) {
@@ -218,6 +234,8 @@ export const useBlog = () => {
     isPublished: boolean = true
   ): Promise<BlogPost | null> => {
     try {
+      console.log('Creating new blog post...');
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
@@ -263,6 +281,8 @@ export const useBlog = () => {
         .single();
 
       if (error) throw error;
+      
+      console.log('Blog post created successfully:', data);
       
       // Refresh posts list
       fetchPosts();
