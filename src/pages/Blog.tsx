@@ -288,7 +288,11 @@ const Blog = () => {
                         <img 
                           src={post.image_url} 
                           alt={post.title} 
-                          className="w-full h-full object-cover"
+                          className="w-full h-64 object-cover"
+                          onError={(e) => {
+                            console.error("Image failed to load:", post.image_url);
+                            e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+                          }}
                         />
                       </div>
                     )}
@@ -296,7 +300,18 @@ const Blog = () => {
                     <div className="p-6">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                          <User className="w-full h-full p-2 text-lavender-600" />
+                          {post.author?.avatar_url ? (
+                            <img 
+                              src={post.author.avatar_url} 
+                              alt={post.author.full_name} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                              }}
+                            />
+                          ) : (
+                            <User className="w-full h-full p-2 text-lavender-600" />
+                          )}
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
@@ -450,6 +465,9 @@ const Blog = () => {
                               src={post.image_url} 
                               alt={post.title} 
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-lavender-100">
@@ -512,6 +530,9 @@ const Blog = () => {
                               src={post.image_url} 
                               alt={post.title} 
                               className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-yellow-100">
