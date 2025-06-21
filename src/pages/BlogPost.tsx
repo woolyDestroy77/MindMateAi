@@ -228,7 +228,11 @@ const BlogPost = () => {
               <img 
                 src={post.image_url} 
                 alt={post.title} 
-                className="w-full h-full object-cover"
+                className="w-full h-96 object-cover"
+                onError={(e) => {
+                  console.error("Image failed to load:", post.image_url);
+                  e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+                }}
               />
             </div>
           )}
