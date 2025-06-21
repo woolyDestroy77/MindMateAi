@@ -48,6 +48,50 @@ export const useBlog = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to generate signed URLs for images
+  const generateSignedUrl = async (imageUrl: string): Promise<string> => {
+    try {
+      // Extract the object path from the public URL
+      const urlParts = imageUrl.split('/');
+      const bucketIndex = urlParts.findIndex(part => part === 'blogimages');
+      
+      if (bucketIndex === -1 || bucketIndex === urlParts.length - 1) {
+        // If we can't find the bucket name or there's no path after it, return original URL
+        return imageUrl;
+      }
+      
+      const objectPath = urlParts.slice(bucketIndex + 1).join('/');
+      
+      // Generate signed URL (valid for 1 hour)
+      const { data, error } = await supabase.storage
+        .from('blogimages')
+        .createSignedUrl(objectPath, 3600);
+      
+      if (error) {
+        console.error('Error creating signed URL:', error);
+        return imageUrl; // Return original URL as fallback
+      }
+      
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error generating signed URL:', err);
+      return imageUrl; // Return original URL as fallback
+    }
+  };
+
+  // Helper function to process posts and generate signed URLs for images
+  const processPostsWithSignedUrls = async (posts: BlogPost[]): Promise<BlogPost[]> => {
+    return Promise.all(
+      posts.map(async (post) => {
+        if (post.image_url) {
+          const signedUrl = await generateSignedUrl(post.image_url);
+          return { ...post, image_url: signedUrl };
+        }
+        return post;
+      })
+    );
+  };
+
   // Fetch all published blog posts
   const fetchPosts = useCallback(async () => {
     try {
@@ -62,10 +106,12 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      setPosts(data || []);
+      // Process posts with signed URLs
+      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
+      setPosts(postsWithSignedUrls);
       
       // Extract popular tags
-      const allTags = data?.flatMap(post => post.tags || []) || [];
+      const allTags = postsWithSignedUrls?.flatMap(post => post.tags || []) || [];
       const tagCounts = allTags.reduce((acc: Record<string, number>, tag: string) => {
         acc[tag] = (acc[tag] || 0) + 1;
         return acc;
@@ -79,7 +125,7 @@ export const useBlog = () => {
       setPopularTags(sortedTags);
       
       // Get featured posts
-      const featured = data?.filter(post => post.metadata?.featured) || [];
+      const featured = postsWithSignedUrls?.filter(post => post.metadata?.featured) || [];
       setFeaturedPosts(featured.slice(0, 3));
       
     } catch (err) {
@@ -105,7 +151,10 @@ export const useBlog = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUserPosts(data || []);
+      
+      // Process posts with signed URLs
+      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
+      setUserPosts(postsWithSignedUrls);
     } catch (err) {
       console.error('Error fetching user posts:', err);
       // Don't show toast for this error to avoid UI clutter
@@ -123,14 +172,21 @@ export const useBlog = () => {
 
       if (error) throw error;
       
+      // Process the single post with signed URL
+      let processedPost = data;
+      if (data && data.image_url) {
+        const signedUrl = await generateSignedUrl(data.image_url);
+        processedPost = { ...data, image_url: signedUrl };
+      }
+      
       // Get author info from auth.users metadata
-      if (data) {
+      if (processedPost) {
         try {
           // Get user metadata from auth
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData && userData.user) {
-            data.author = {
+            processedPost.author = {
               id: userData.user.id,
               full_name: userData.user.user_metadata.full_name || 'Anonymous',
               avatar_url: userData.user.user_metadata.avatar_url
@@ -142,7 +198,7 @@ export const useBlog = () => {
         }
       }
       
-      return data;
+      return processedPost;
     } catch (err) {
       console.error('Error fetching blog post:', err);
       toast.error('Failed to load blog post');
@@ -591,7 +647,10 @@ export const useBlog = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // Process posts with signed URLs
+      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
+      return postsWithSignedUrls;
     } catch (err) {
       console.error('Error filtering posts by tag:', err);
       toast.error('Failed to filter posts');
@@ -610,7 +669,10 @@ export const useBlog = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data || [];
+      
+      // Process posts with signed URLs
+      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
+      return postsWithSignedUrls;
     } catch (err) {
       console.error('Error searching posts:', err);
       toast.error('Failed to search posts');
