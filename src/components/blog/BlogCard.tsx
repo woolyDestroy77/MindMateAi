@@ -30,6 +30,14 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
     return content.substring(0, maxLength) + '...';
   };
 
+  // Helper function to get valid image URL
+  const getValidImageUrl = (imageUrl: string | null | undefined) => {
+    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+      return "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+    }
+    return imageUrl;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -49,7 +57,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
         <Link to={`/blog/post/${post.id}`}>
           <div className="aspect-w-16 aspect-h-9 bg-gray-200">
             <img 
-              src={post.image_url} 
+              src={getValidImageUrl(post.image_url)} 
               alt={post.title} 
               className="w-full h-64 object-cover"
               onError={(e) => {
