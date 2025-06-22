@@ -14,9 +14,7 @@ import {
   Trash2, 
   Share2, 
   AlertTriangle,
-  X,
-  ThumbsUp,
-  Award
+  X
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import Navbar from '../components/layout/Navbar';
@@ -41,14 +39,6 @@ export default function BlogPost() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Helper function to get valid image URL
-  const getValidImageUrl = (imageUrl: string | null | undefined) => {
-    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
-      return "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-    }
-    return imageUrl;
-  };
 
   // Load post and comments
   useEffect(() => {
@@ -227,21 +217,6 @@ export default function BlogPost() {
           {post.metadata?.featured && (
             <div className="bg-yellow-500 text-white px-4 py-1 text-center text-sm font-medium">
               Featured Story
-            </div>
-          )}
-          
-          {/* Post Image */}
-          {post.image_url && (
-            <div className="aspect-w-16 aspect-h-9 bg-gray-200">
-              <img 
-                src={getValidImageUrl(post.image_url)} 
-                alt={post.title} 
-                className="w-full h-96 object-cover"
-                onError={(e) => {
-                  console.error("Image failed to load:", post.image_url);
-                  e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-                }}
-              />
             </div>
           )}
           

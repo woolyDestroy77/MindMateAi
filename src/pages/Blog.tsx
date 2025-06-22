@@ -15,12 +15,12 @@ import {
   Award, 
   Bookmark,
   ThumbsUp,
-  Share2,
-  Image as ImageIcon
+  Share2
 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import BlogCard from '../components/blog/BlogCard';
 import { useBlog } from '../hooks/useBlog';
 import { useAuth } from '../hooks/useAuth';
 import { format, parseISO } from 'date-fns';
@@ -32,7 +32,6 @@ const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   
   // Load user likes
   useEffect(() => {
@@ -101,15 +100,6 @@ const Blog = () => {
   const getExcerpt = (content: string, maxLength: number = 150) => {
     if (content.length <= maxLength) return content;
     return content.substring(0, maxLength) + '...';
-  };
-
-  // Handle image error
-  const handleImageError = (postId: string) => {
-    console.error(`Image failed to load for post: ${postId}`);
-    setImageErrors(prev => ({
-      ...prev,
-      [postId]: true
-    }));
   };
 
   if (isLoading) {
@@ -274,144 +264,12 @@ const Blog = () => {
             ) : (
               <div className="space-y-6">
                 {sortedPosts.map((post) => (
-                  <motion.div
-                    key={post.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-lg shadow overflow-hidden"
-                  >
-                    {post.image_url && !imageErrors[post.id] ? (
-                      <div className="aspect-w-16 aspect-h-9 bg-gray-200">
-                        <img 
-                          src={post.image_url} 
-                          alt={post.title} 
-                          className="w-full h-full object-cover"
-                          onError={() => handleImageError(post.id)}
-                        />
-                      </div>
-                    ) : post.image_url && imageErrors[post.id] ? (
-                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 flex items-center justify-center">
-                        <div className="text-center">
-                          <ImageIcon size={32} className="mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500">Image unavailable</p>
-                        </div>
-                      </div>
-                    ) : null}
-                    
-                    <div className="p-6">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                          {post.author?.avatar_url ? (
-                            <img 
-                              src={post.author.avatar_url} 
-                              alt={post.author.full_name} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = '';
-                                (e.target as HTMLElement).classList.add('flex', 'items-center', 'justify-center');
-                                (e.target as HTMLElement).innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-lavender-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
-                              }}
-                            />
-                          ) : (
-                            <User className="w-full h-full p-2 text-lavender-600" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
-                          <div className="text-xs text-gray-500 flex items-center">
-                            <Calendar size={12} className="mr-1" />
-                            {format(parseISO(post.created_at), 'MMM d, yyyy')}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <Link to={`/blog/post/${post.id}`}>
-                        <h2 className="text-xl font-bold text-gray-900 mb-2 hover:text-lavender-600 transition-colors">
-                          {post.title}
-                        </h2>
-                      </Link>
-                      
-                      <p className="text-gray-600 mb-4">
-                        {getExcerpt(post.content)}
-                        {post.content.length > 150 && (
-                          <Link to={`/blog/post/${post.id}`} className="text-lavender-600 hover:text-lavender-800 ml-1">
-                            Read more
-                          </Link>
-                        )}
-                      </p>
-                      
-                      {post.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {post.tags.map((tag) => (
-                            <button
-                              key={tag}
-                              onClick={() => setSelectedTag(tag)}
-                              className="bg-lavender-50 text-lavender-700 px-2 py-1 rounded-full text-xs flex items-center hover:bg-lavender-100 transition-colors"
-                            >
-                              <Tag size={12} className="mr-1" />
-                              {tag}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {post.metadata && (
-                        <div className="mb-4">
-                          {post.metadata.recovery_day !== undefined && (
-                            <div className="inline-flex items-center bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg text-xs mr-2">
-                              <Heart size={12} className="mr-1" />
-                              Day {post.metadata.recovery_day} of Recovery
-                            </div>
-                          )}
-                          
-                          {post.metadata.mood && (
-                            <div className="inline-flex items-center bg-green-50 text-green-700 px-2 py-0.5 rounded-lg text-xs">
-                              {post.metadata.mood}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {/* Actions */}
-                      <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                        <div className="flex space-x-4">
-                          <button
-                            onClick={() => handleLike(post.id)}
-                            className={`flex items-center space-x-1 text-sm ${
-                              likedPosts[post.id] ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
-                            }`}
-                            disabled={!user}
-                          >
-                            <Heart size={16} className={likedPosts[post.id] ? 'fill-current' : ''} />
-                            <span>{post.likes}</span>
-                          </button>
-                          
-                          <Link 
-                            to={`/blog/post/${post.id}#comments`}
-                            className="flex items-center space-x-1 text-sm text-gray-500 hover:text-lavender-600"
-                          >
-                            <MessageSquare size={16} />
-                            <span>{post.comments_count}</span>
-                          </Link>
-                        </div>
-                        
-                        <div className="flex space-x-2">
-                          <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
-                            <Bookmark size={16} />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(window.location.origin + `/blog/post/${post.id}`);
-                              alert('Link copied to clipboard!');
-                            }}
-                            className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-                          >
-                            <Share2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
+                  <BlogCard 
+                    key={post.id} 
+                    post={post} 
+                    onLike={handleLike} 
+                    isLiked={likedPosts[post.id] || false} 
+                  />
                 ))}
               </div>
             )}
@@ -427,7 +285,7 @@ const Blog = () => {
                   Popular Tags
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {popularTags && popularTags.map(({ tag, count }) => (
+                  {popularTags.map(({ tag, count }) => (
                     <button
                       key={tag}
                       onClick={() => setSelectedTag(tag)}
@@ -462,19 +320,8 @@ const Blog = () => {
                         to={`/blog/post/${post.id}`}
                         className="flex items-start space-x-3 group"
                       >
-                        <div className="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
-                          {post.image_url && !imageErrors[post.id] ? (
-                            <img 
-                              src={post.image_url} 
-                              alt={post.title} 
-                              className="w-full h-full object-cover"
-                              onError={() => handleImageError(post.id)}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-lavender-100">
-                              <BookOpen size={20} className="text-lavender-600" />
-                            </div>
-                          )}
+                        <div className="w-12 h-12 rounded-lg bg-lavender-100 flex-shrink-0 flex items-center justify-center">
+                          <BookOpen size={20} className="text-lavender-600" />
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 group-hover:text-lavender-600 transition-colors">
@@ -525,19 +372,8 @@ const Blog = () => {
                         to={`/blog/post/${post.id}`}
                         className="flex items-start space-x-3 group"
                       >
-                        <div className="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
-                          {post.image_url && !imageErrors[post.id] ? (
-                            <img 
-                              src={post.image_url} 
-                              alt={post.title} 
-                              className="w-full h-full object-cover"
-                              onError={() => handleImageError(post.id)}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-yellow-100">
-                              <Award size={20} className="text-yellow-600" />
-                            </div>
-                          )}
+                        <div className="w-12 h-12 rounded-lg bg-yellow-100 flex-shrink-0 flex items-center justify-center">
+                          <Award size={20} className="text-yellow-600" />
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 group-hover:text-lavender-600 transition-colors">

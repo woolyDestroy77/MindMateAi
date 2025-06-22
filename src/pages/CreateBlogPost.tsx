@@ -11,7 +11,6 @@ import {
   Smile, 
   Eye, 
   EyeOff, 
-  Calendar,
   Info,
   User
 } from 'lucide-react';
