@@ -12,13 +12,13 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) => {
-  const { userProfile, updateProfile, updateAvatar, refreshProfile } = useAuth();
+  const { userProfile, updateProfile, updateAvatar, refreshProfile, isLoadingProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
-  const [isLoading, setIsLoading] = useState(false);
   const [newProfileImage, setNewProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Initialize form data when profile loads or edit mode changes
   useEffect(() => {
@@ -72,10 +72,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
 
   const handleSave = async () => {
     try {
-      setIsLoading(true);
-      
-      console.log('Saving profile with data:', formData);
-      
       // First update profile data
       const profileUpdated = await updateProfile(formData);
       
@@ -88,8 +84,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
         const avatarUrl = await updateAvatar(newProfileImage);
         if (!avatarUrl) {
           toast.error('Profile updated but image upload failed');
-        } else {
-          console.log('Avatar updated successfully:', avatarUrl);
         }
         
         setNewProfileImage(null);
@@ -99,13 +93,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
       // Refresh profile data to ensure we have the latest
       await refreshProfile();
       
-      toast.success('Profile updated successfully');
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving profile:', error);
       toast.error('Failed to update profile. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -137,6 +128,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
           onClick={onClose}
         >
           <motion.div
+            ref={modalRef}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
@@ -294,7 +286,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                         variant="outline"
                         fullWidth
                         onClick={handleCancel}
-                        disabled={isLoading}
+                        disabled={isLoadingProfile}
                       >
                         Cancel
                       </Button>
@@ -303,7 +295,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onClose }) 
                         variant="primary"
                         fullWidth
                         onClick={handleSave}
-                        isLoading={isLoading}
+                        isLoading={isLoadingProfile}
                         leftIcon={<Save size={18} />}
                       >
                         Save Changes

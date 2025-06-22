@@ -107,6 +107,9 @@ export const useAuth = () => {
       
       console.log('Filtered updates:', filteredUpdates);
       
+      // Set loading state to show feedback to the user
+      setIsLoadingProfile(true);
+      
       const { data, error } = await supabase.auth.updateUser({
         data: filteredUpdates
       });
@@ -128,11 +131,14 @@ export const useAuth = () => {
         setUserProfile(updatedProfile);
       }
       
+      toast.success('Profile updated successfully');
       return true;
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile');
       return false;
+    } finally {
+      setIsLoadingProfile(false);
     }
   };
 
@@ -144,6 +150,9 @@ export const useAuth = () => {
       if (file.size > 5 * 1024 * 1024) {
         throw new Error('Image size must be less than 5MB');
       }
+      
+      // Set loading state
+      setIsLoadingProfile(true);
       
       // Upload image to storage
       const fileExt = file.name.split('.').pop();
@@ -186,11 +195,14 @@ export const useAuth = () => {
         setUserProfile({ ...userProfile, avatar_url: publicUrlData.publicUrl });
       }
       
+      toast.success('Profile picture updated successfully');
       return publicUrlData.publicUrl;
     } catch (error) {
       console.error('Error updating avatar:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to update profile picture');
       return null;
+    } finally {
+      setIsLoadingProfile(false);
     }
   };
 
