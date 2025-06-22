@@ -587,3 +587,6 @@ const Blog = () => {
       </main>
     </div>
   );
+};
+
+export default Blog;
