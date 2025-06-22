@@ -5,31 +5,19 @@ import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import ChatInterface from '../components/chat/ChatInterface';
-import ChatSidebar from '../components/chat/ChatSidebar';
 import VoiceSettingsModal from '../components/chat/VoiceSettingsModal';
-import { useChatSessions } from '../hooks/useChatSessions';
 import { useAIChat } from '../hooks/useAIChat';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 
 const Chat = () => {
   const { 
-    sessions, 
-    activeSession, 
-    isLoading: sessionsLoading, 
-    createNewSession, 
-    switchToSession, 
-    deleteSession, 
-    renameSession 
-  } = useChatSessions();
-  
-  const { 
     messages, 
     isLoading: chatLoading, 
     sendMessage, 
     deleteChatHistory, 
     resetDailyChat 
-  } = useAIChat(activeSession?.id, updateMood);
+  } = useAIChat(undefined, updateMood);
   
   const { updateMoodFromAI } = useDashboardData();
   const { 
@@ -56,21 +44,6 @@ const Chat = () => {
       console.error('Error updating mood from chat:', error);
     }
   }
-
-  // Create a new session if none exists
-  useEffect(() => {
-    const initializeChat = async () => {
-      if (!sessionsLoading && sessions.length === 0) {
-        await createNewSession();
-      }
-    };
-
-    initializeChat();
-  }, [sessionsLoading, sessions, createNewSession]);
-
-  const handleNewChat = async () => {
-    await createNewSession();
-  };
 
   const handleClearChat = async () => {
     if (window.confirm('Are you sure you want to clear this chat history? This cannot be undone.')) {
@@ -100,20 +73,7 @@ const Chat = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="flex flex-col md:flex-row space-y-6 md:space-y-0 md:space-x-6">
-          {/* Chat Sessions Sidebar */}
-          <div className="w-full md:w-80 flex-shrink-0">
-            <ChatSidebar
-              sessions={sessions}
-              activeSession={activeSession}
-              isLoading={sessionsLoading}
-              onCreateNew={handleNewChat}
-              onSwitchSession={switchToSession}
-              onDeleteSession={deleteSession}
-              onRenameSession={renameSession}
-            />
-          </div>
-
+        <div className="flex flex-col space-y-6">
           {/* Main Chat Area */}
           <div className="flex-1">
             <Card className="h-[calc(100vh-200px)] flex flex-col">
@@ -125,7 +85,7 @@ const Chat = () => {
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">
-                      {activeSession?.name || 'AI Chat'}
+                      Daily Wellness Chat
                     </h2>
                     <p className="text-sm text-gray-600">
                       Chat with PureMind AI about your thoughts and feelings
@@ -165,11 +125,11 @@ const Chat = () => {
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={handleNewChat}
+                    onClick={handleResetDailyChat}
                     leftIcon={<Plus size={16} />}
-                    title="Start new chat"
+                    title="Reset daily chat"
                   >
-                    New Chat
+                    Reset Chat
                   </Button>
                 </div>
               </div>
