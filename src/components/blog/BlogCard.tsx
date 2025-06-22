@@ -78,6 +78,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
                 src={post.author.avatar_url} 
                 alt={post.author.full_name} 
                 className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                }}
               />
             ) : (
               <User className="w-full h-full p-2 text-lavender-600" />
