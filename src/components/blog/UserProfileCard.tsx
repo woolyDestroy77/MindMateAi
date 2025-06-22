@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useBlogSocial } from '../../hooks/useBlogSocial';
 import SendMessageModal from './SendMessageModal';
+import { toast } from 'react-hot-toast';
 
 interface UserProfileCardProps {
   userId: string;
@@ -30,9 +31,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const { 
     isFollowing, 
     followUser, 
-    unfollowUser, 
-    getFollowerCount, 
-    getFollowingCount 
+    unfollowUser
   } = useBlogSocial();
   
   const [followerCount, setFollowerCount] = useState(0);
@@ -46,34 +45,24 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
     setIsFollowingUser(isFollowing(userId));
   }, [userId, isFollowing]);
   
-  // Get follower and following counts
-  useEffect(() => {
-    const loadCounts = async () => {
-      const [followers, following] = await Promise.all([
-        getFollowerCount(userId),
-        getFollowingCount(userId)
-      ]);
-      
-      setFollowerCount(followers);
-      setFollowingCount(following);
-    };
-    
-    loadCounts();
-  }, [userId, getFollowerCount, getFollowingCount]);
-  
+  // Handle follow toggle
   const handleFollowToggle = async () => {
-    if (isLoading) return;
+    if (isLoading || !user) return;
     
     setIsLoading(true);
     try {
       if (isFollowingUser) {
-        await unfollowUser(userId, userName);
-        setFollowerCount(prev => Math.max(0, prev - 1));
+        await unfollowUser(userId);
+        setIsFollowingUser(false);
+        toast.success(`Unfollowed ${userName}`);
       } else {
-        await followUser(userId, userName);
-        setFollowerCount(prev => prev + 1);
+        await followUser(userId);
+        setIsFollowingUser(true);
+        toast.success(`Now following ${userName}`);
       }
-      setIsFollowingUser(!isFollowingUser);
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      toast.error('Failed to update follow status');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +92,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
             )}
           </div>
           
-          {!isCurrentUser && (
+          {!isCurrentUser && user && (
             <div className="flex space-x-2 mt-2">
               <Button
                 variant={isFollowingUser ? "outline" : "primary"}

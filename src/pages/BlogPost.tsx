@@ -25,10 +25,13 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import BlogHeader from '../components/blog/BlogHeader';
 import UserProfileCard from '../components/blog/UserProfileCard';
+import SendMessageModal from '../components/blog/SendMessageModal';
 import { useBlog, BlogPost as BlogPostType, BlogComment } from '../hooks/useBlog';
 import { useAuth } from '../hooks/useAuth';
 import { useBlogSocial } from '../hooks/useBlogSocial';
 import { useNotificationContext } from '../components/notifications/NotificationProvider';
+import { toast } from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 export default function BlogPost() {
   const { id } = useParams<{ id: string }>();
@@ -40,7 +43,7 @@ export default function BlogPost() {
     followUser, 
     unfollowUser 
   } = useBlogSocial();
-  const { createAchievement, createNotification } = useNotificationContext();
+  const { createAchievement } = useNotificationContext();
   
   const [post, setPost] = useState<BlogPostType | null>(null);
   const [comments, setComments] = useState<BlogComment[]>([]);
@@ -52,6 +55,7 @@ export default function BlogPost() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
 
   // Load post and comments
   useEffect(() => {
@@ -237,15 +241,26 @@ export default function BlogPost() {
     setIsTogglingFollow(true);
     try {
       if (isFollowingAuthor) {
-        await unfollowUser(post.author.id, post.author.full_name);
+        await unfollowUser(post.author.id);
         setIsFollowingAuthor(false);
+        toast.success(`Unfollowed ${post.author.full_name}`);
       } else {
-        await followUser(post.author.id, post.author.full_name);
+        await followUser(post.author.id);
         setIsFollowingAuthor(true);
+        toast.success(`Now following ${post.author.full_name}`);
       }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+      toast.error('Failed to update follow status');
     } finally {
       setIsTogglingFollow(false);
     }
+  };
+
+  // Handle message author
+  const handleMessageAuthor = () => {
+    if (!post?.author || !user || post.author.id === user.id) return;
+    setShowMessageModal(true);
   };
 
   if (isLoading) {
@@ -356,9 +371,7 @@ export default function BlogPost() {
                         variant="outline"
                         size="sm"
                         leftIcon={<MessageCircle size={16} />}
-                        onClick={() => {
-                          // Open message modal
-                        }}
+                        onClick={handleMessageAuthor}
                       >
                         Message
                       </Button>
@@ -679,6 +692,17 @@ export default function BlogPost() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Message Modal */}
+      {post?.author && (
+        <SendMessageModal
+          isOpen={showMessageModal}
+          onClose={() => setShowMessageModal(false)}
+          recipientId={post.author.id}
+          recipientName={post.author.full_name}
+          recipientAvatar={post.author.avatar_url}
+        />
+      )}
     </div>
   );
 }
