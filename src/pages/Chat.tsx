@@ -62,7 +62,7 @@ const Chat = () => {
 
     try {
       await sendMessage(input.trim());
-      setInput("");
+      setInput(""); // Clear input after sending
     } catch (error) {
       console.error("Failed to send message:", error);
     }

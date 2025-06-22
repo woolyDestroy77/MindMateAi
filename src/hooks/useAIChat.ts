@@ -114,6 +114,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (!user) {
           // Clear any stale session data and sign out
           await supabase.auth.signOut();
+          setIsLoading(false);
           throw new Error("Your session has expired or is invalid. Please sign in again.");
         }
 
@@ -321,6 +322,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         if (!user) {
           // Clear any stale session data and sign out
           await supabase.auth.signOut();
+          setIsLoading(false);
           throw new Error("Your session has expired or is invalid. Please sign in again.");
         }
 
