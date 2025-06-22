@@ -49,10 +49,10 @@ export const useBlog = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to generate signed URLs for images
-  const generateSignedUrl = async (imageUrl: string): Promise<string | null> => {
+  const generateSignedUrl = async (imageUrl: any): Promise<string | null> => {
     try {
-      // Add explicit validation at the beginning
-      if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+      // Add explicit validation at the beginning - check for non-string or empty values
+      if (typeof imageUrl !== 'string' || !imageUrl || imageUrl.trim() === '') {
         console.log('Invalid or empty image URL:', imageUrl);
         return null;
       }
@@ -109,7 +109,7 @@ export const useBlog = () => {
       return data.signedUrl;
     } catch (err) {
       console.error('Error generating signed URL:', err);
-      return imageUrl; // Return the original URL on error
+      return null; // Return null on error to ensure consistent return type
     }
   };
 
