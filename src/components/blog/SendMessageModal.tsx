@@ -26,7 +26,7 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || isSubmitting) return;
+    if (!message.trim() || isSubmitting || !recipientId || recipientId.trim() === '') return;
     
     setIsSubmitting(true);
     try {
@@ -113,7 +113,7 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
                   type="submit"
                   variant="primary"
                   isLoading={isSubmitting}
-                  disabled={!message.trim() || isSubmitting}
+                  disabled={!message.trim() || isSubmitting || !recipientId || recipientId.trim() === ''}
                   leftIcon={<Send size={16} />}
                 >
                   Send Message
