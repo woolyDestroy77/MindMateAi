@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, User } from 'lucide-react';
 import Button from '../ui/Button';
 import { useBlogSocial } from '../../hooks/useBlogSocial';
+import { supabase } from '../../lib/supabase';
 
 interface SendMessageModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { sendMessage } = useBlogSocial();
+  const blogSocial = useBlogSocial();
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +31,32 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
     
     setIsSubmitting(true);
     try {
-      const sent = await sendMessage(recipientId, message.trim());
-      if (sent) {
+      if (blogSocial && blogSocial.sendMessage) {
+        const sent = await blogSocial.sendMessage(recipientId, message.trim());
+        if (sent) {
+          setMessage('');
+          onClose();
+        }
+      } else {
+        // Fallback if hook isn't available
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('You must be logged in to send messages');
+        }
+        
+        await supabase
+          .from('blog_direct_messages')
+          .insert([{ 
+            sender_id: user.id, 
+            recipient_id: recipientId, 
+            message: message.trim() 
+          }]);
+          
         setMessage('');
         onClose();
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
     } finally {
       setIsSubmitting(false);
     }
