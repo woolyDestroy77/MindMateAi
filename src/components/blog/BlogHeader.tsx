@@ -20,15 +20,15 @@ interface BlogHeaderProps {
 
 const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
   const { 
-    followers, 
-    following, 
-    unreadMessageCount, 
-    isLoading, 
-    followUser, 
-    unfollowUser, 
-    isFollowing,
-    setConversation
-  } = useBlogSocial();
+    followers = [], 
+    following = [], 
+    unreadMessageCount = 0, 
+    isLoading = false, 
+    followUser = () => {}, 
+    unfollowUser = () => {}, 
+    isFollowing = () => false,
+    setConversation = () => {}
+  } = useBlogSocial() || {};
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showFollowers, setShowFollowers] = useState(false);
