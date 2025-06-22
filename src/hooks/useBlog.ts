@@ -56,38 +56,23 @@ export const useBlog = () => {
       
       const { data, error } = await supabase
         .from('blog_posts')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_posts_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('is_published', true)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Process posts to add author information
-      const processedPosts = await Promise.all((data || []).map(async (post) => {
-        try {
-          // Get user metadata from auth
-          const { data: userData } = await supabase.auth.getUser();
-          
-          if (userData && userData.user && userData.user.id === post.user_id) {
-            return {
-              ...post,
-              author: {
-                id: userData.user.id,
-                full_name: userData.user.user_metadata.full_name || 'Anonymous',
-                avatar_url: userData.user.user_metadata.avatar_url
-              }
-            };
-          }
-        } catch (userError) {
-          console.error('Error fetching post author data:', userError);
-        }
-        return post;
-      }));
-      
-      setPosts(processedPosts);
+      setPosts(data || []);
       
       // Extract popular tags
-      const allTags = data?.flatMap(post => post.tags || []) || [];
+      const allTags = (data || []).flatMap(post => post.tags || []);
       const tagCounts = allTags.reduce((acc: Record<string, number>, tag: string) => {
         acc[tag] = (acc[tag] || 0) + 1;
         return acc;
@@ -101,7 +86,7 @@ export const useBlog = () => {
       setPopularTags(sortedTags);
       
       // Get featured posts
-      const featured = processedPosts.filter(post => post.metadata?.featured) || [];
+      const featured = (data || []).filter(post => post.metadata?.featured) || [];
       setFeaturedPosts(featured.slice(0, 3));
       
     } catch (err) {
@@ -122,23 +107,20 @@ export const useBlog = () => {
 
       const { data, error } = await supabase
         .from('blog_posts')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_posts_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Process posts to add author information
-      const processedPosts = data?.map(post => ({
-        ...post,
-        author: {
-          id: user.id,
-          full_name: user.user_metadata.full_name || 'Anonymous',
-          avatar_url: user.user_metadata.avatar_url
-        }
-      })) || [];
-      
-      setUserPosts(processedPosts);
+      setUserPosts(data || []);
     } catch (err) {
       console.error('Error fetching user posts:', err);
       // Don't show toast for this error to avoid UI clutter
@@ -150,44 +132,18 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_posts_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('id', postId)
         .single();
 
       if (error) throw error;
-      
-      // Add author information
-      if (data) {
-        try {
-          // Get user metadata from auth
-          const { data: userData } = await supabase.auth.getUser();
-          
-          if (userData && userData.user) {
-            // Get the post author's metadata
-            const { data: authorData, error: authorError } = await supabase.auth.admin.getUserById(data.user_id);
-            
-            if (!authorError && authorData) {
-              data.author = {
-                id: authorData.user.id,
-                full_name: authorData.user.user_metadata.full_name || 'Anonymous',
-                avatar_url: authorData.user.user_metadata.avatar_url
-              };
-            } else {
-              // Fallback to current user if they are the author
-              if (userData.user.id === data.user_id) {
-                data.author = {
-                  id: userData.user.id,
-                  full_name: userData.user.user_metadata.full_name || 'Anonymous',
-                  avatar_url: userData.user.user_metadata.avatar_url
-                };
-              }
-            }
-          }
-        } catch (userError) {
-          console.error('Error fetching author data:', userError);
-          // Continue without author data
-        }
-      }
       
       return data;
     } catch (err) {
@@ -445,7 +401,14 @@ export const useBlog = () => {
         .insert([
           { post_id: postId, user_id: user.id, content }
         ])
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_comments_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .single();
 
       if (error) throw error;
@@ -483,15 +446,6 @@ export const useBlog = () => {
       
       toast.success('Comment added');
       
-      // Add author info to the comment
-      if (data) {
-        data.author = {
-          id: user.id,
-          full_name: user.user_metadata.full_name || 'Anonymous',
-          avatar_url: user.user_metadata.avatar_url
-        };
-      }
-      
       return data;
     } catch (err) {
       console.error('Error adding comment:', err);
@@ -505,59 +459,20 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_comments')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_comments_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
       
-      // Get current user for author info
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Add author info to each comment
-      const commentsWithAuthors = await Promise.all((data || []).map(async (comment) => {
-        try {
-          // If the comment is from the current user, use their info
-          if (user && user.id === comment.user_id) {
-            return {
-              ...comment,
-              author: {
-                id: user.id,
-                full_name: user.user_metadata.full_name || 'Anonymous',
-                avatar_url: user.user_metadata.avatar_url
-              }
-            };
-          }
-          
-          // Otherwise, try to get the user's info from auth
-          const { data: authorData, error: authorError } = await supabase.auth.admin.getUserById(comment.user_id);
-          
-          if (!authorError && authorData) {
-            return {
-              ...comment,
-              author: {
-                id: authorData.user.id,
-                full_name: authorData.user.user_metadata.full_name || 'Anonymous',
-                avatar_url: authorData.user.user_metadata.avatar_url
-              }
-            };
-          }
-        } catch (userError) {
-          console.error('Error fetching comment author data:', userError);
-        }
-        
-        // Fallback if we can't get author info
-        return {
-          ...comment,
-          author: {
-            id: comment.user_id,
-            full_name: 'Anonymous',
-            avatar_url: undefined
-          }
-        };
-      }));
-      
-      return commentsWithAuthors;
+      return data || [];
     } catch (err) {
       console.error('Error fetching comments:', err);
       toast.error('Failed to load comments');
@@ -620,7 +535,14 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_posts_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('is_published', true)
         .contains('tags', [tag])
         .order('created_at', { ascending: false });
@@ -639,7 +561,14 @@ export const useBlog = () => {
     try {
       const { data, error } = await supabase
         .from('blog_posts')
-        .select('*')
+        .select(`
+          *,
+          author:users!blog_posts_user_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('is_published', true)
         .or(`title.ilike.%${query}%,content.ilike.%${query}%`)
         .order('created_at', { ascending: false });

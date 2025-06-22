@@ -59,23 +59,20 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_followers')
-        .select('*, follower:users!follower_id(id, raw_user_meta_data)')
+        .select(`
+          *,
+          follower:users!blog_followers_follower_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('following_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Process the data to extract user metadata
-      const processedFollowers = data.map((follower: any) => ({
-        ...follower,
-        follower: follower.follower ? {
-          id: follower.follower.id,
-          full_name: follower.follower.raw_user_meta_data?.full_name || 'Anonymous',
-          avatar_url: follower.follower.raw_user_meta_data?.avatar_url
-        } : null
-      }));
-      
-      setFollowers(processedFollowers);
+      setFollowers(data || []);
     } catch (error) {
       console.error('Error fetching followers:', error);
     }
@@ -88,23 +85,20 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_followers')
-        .select('*, following:users!following_id(id, raw_user_meta_data)')
+        .select(`
+          *,
+          following:users!blog_followers_following_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .eq('follower_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Process the data to extract user metadata
-      const processedFollowing = data.map((follow: any) => ({
-        ...follow,
-        following: follow.following ? {
-          id: follow.following.id,
-          full_name: follow.following.raw_user_meta_data?.full_name || 'Anonymous',
-          avatar_url: follow.following.raw_user_meta_data?.avatar_url
-        } : null
-      }));
-      
-      setFollowing(processedFollowing);
+      setFollowing(data || []);
     } catch (error) {
       console.error('Error fetching following:', error);
     }
@@ -251,31 +245,28 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_direct_messages')
-        .select('*, sender:users!sender_id(id, raw_user_meta_data), recipient:users!recipient_id(id, raw_user_meta_data)')
+        .select(`
+          *,
+          sender:users!blog_direct_messages_sender_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          ),
+          recipient:users!blog_direct_messages_recipient_id_fkey(
+            id,
+            full_name,
+            avatar_url
+          )
+        `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      // Process the data to extract user metadata
-      const processedMessages = data.map((message: any) => ({
-        ...message,
-        sender: message.sender ? {
-          id: message.sender.id,
-          full_name: message.sender.raw_user_meta_data?.full_name || 'Anonymous',
-          avatar_url: message.sender.raw_user_meta_data?.avatar_url
-        } : null,
-        recipient: message.recipient ? {
-          id: message.recipient.id,
-          full_name: message.recipient.raw_user_meta_data?.full_name || 'Anonymous',
-          avatar_url: message.recipient.raw_user_meta_data?.avatar_url
-        } : null
-      }));
-      
-      setMessages(processedMessages);
+      setMessages(data || []);
       
       // Count unread messages
-      const unreadCount = processedMessages.filter(
+      const unreadCount = (data || []).filter(
         msg => msg.recipient_id === user.id && !msg.is_read
       ).length;
       
@@ -285,7 +276,7 @@ export const useBlogSocial = () => {
       const uniqueUsers = new Set<string>();
       const conversationUsersList: any[] = [];
       
-      processedMessages.forEach(msg => {
+      (data || []).forEach(msg => {
         const otherUserId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
         const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
         
@@ -293,7 +284,7 @@ export const useBlogSocial = () => {
           uniqueUsers.add(otherUserId);
           
           // Find the latest message with this user
-          const latestMessage = processedMessages
+          const latestMessage = (data || [])
             .filter(m => 
               (m.sender_id === user.id && m.recipient_id === otherUserId) || 
               (m.sender_id === otherUserId && m.recipient_id === user.id)
@@ -305,7 +296,7 @@ export const useBlogSocial = () => {
             full_name: otherUser.full_name,
             avatar_url: otherUser.avatar_url,
             latestMessage: latestMessage,
-            unreadCount: processedMessages.filter(
+            unreadCount: (data || []).filter(
               m => m.sender_id === otherUserId && m.recipient_id === user.id && !m.is_read
             ).length
           });
@@ -498,10 +489,14 @@ export const useBlogSocial = () => {
           // Show notification for new message
           const newMessage = payload.new as any;
           if (newMessage && newMessage.sender_id) {
-            // Get sender info
-            supabase.auth.admin.getUserById(newMessage.sender_id)
+            // Get sender info from our users view
+            supabase
+              .from('users')
+              .select('full_name')
+              .eq('id', newMessage.sender_id)
+              .single()
               .then(({ data }) => {
-                const senderName = data?.user?.user_metadata?.full_name || 'Someone';
+                const senderName = data?.full_name || 'Someone';
                 
                 // Create notification
                 createNotification(
