@@ -61,7 +61,7 @@ export const useBlogSocial = () => {
         .from('blog_followers')
         .select(`
           *,
-          follower:follower_id(id, user_metadata->full_name, user_metadata->avatar_url)
+          follower:follower_id(*)
         `)
         .eq('following_id', user.id)
         .order('created_at', { ascending: false });
@@ -73,8 +73,8 @@ export const useBlogSocial = () => {
         ...follower,
         follower: {
           id: follower.follower.id,
-          full_name: follower.follower.full_name || 'Anonymous',
-          avatar_url: follower.follower.avatar_url
+          full_name: follower.follower.user_metadata?.full_name || 'Anonymous',
+          avatar_url: follower.follower.user_metadata?.avatar_url
         }
       }));
       
@@ -93,7 +93,7 @@ export const useBlogSocial = () => {
         .from('blog_followers')
         .select(`
           *,
-          following:following_id(id, user_metadata->full_name, user_metadata->avatar_url)
+          following:following_id(*)
         `)
         .eq('follower_id', user.id)
         .order('created_at', { ascending: false });
@@ -105,8 +105,8 @@ export const useBlogSocial = () => {
         ...follow,
         following: {
           id: follow.following.id,
-          full_name: follow.following.full_name || 'Anonymous',
-          avatar_url: follow.following.avatar_url
+          full_name: follow.following.user_metadata?.full_name || 'Anonymous',
+          avatar_url: follow.following.user_metadata?.avatar_url
         }
       }));
       
@@ -259,8 +259,8 @@ export const useBlogSocial = () => {
         .from('blog_direct_messages')
         .select(`
           *,
-          sender:sender_id(id, user_metadata->full_name, user_metadata->avatar_url),
-          recipient:recipient_id(id, user_metadata->full_name, user_metadata->avatar_url)
+          sender:sender_id(*),
+          recipient:recipient_id(*)
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
@@ -272,13 +272,13 @@ export const useBlogSocial = () => {
         ...message,
         sender: {
           id: message.sender.id,
-          full_name: message.sender.full_name || 'Anonymous',
-          avatar_url: message.sender.avatar_url
+          full_name: message.sender.user_metadata?.full_name || 'Anonymous',
+          avatar_url: message.sender.user_metadata?.avatar_url
         },
         recipient: {
           id: message.recipient.id,
-          full_name: message.recipient.full_name || 'Anonymous',
-          avatar_url: message.recipient.avatar_url
+          full_name: message.recipient.user_metadata?.full_name || 'Anonymous',
+          avatar_url: message.recipient.user_metadata?.avatar_url
         }
       }));
       
