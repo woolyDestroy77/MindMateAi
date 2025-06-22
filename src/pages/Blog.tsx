@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
   Search, 
@@ -21,17 +21,40 @@ import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import BlogCard from '../components/blog/BlogCard';
+import BlogHeader from '../components/blog/BlogHeader';
 import { useBlog } from '../hooks/useBlog';
 import { useAuth } from '../hooks/useAuth';
 import { format, parseISO } from 'date-fns';
 
 const Blog = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { posts, userPosts, isLoading, fetchPosts, likePost, checkUserLiked, popularTags } = useBlog();
   const { user, userProfile } = useAuth();
   const [filter, setFilter] = useState<'all' | 'featured' | 'popular' | 'mine'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  
+  // Parse query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tagParam = params.get('tag');
+    const filterParam = params.get('filter') as 'all' | 'featured' | 'popular' | 'mine' | null;
+    const searchParam = params.get('search');
+    
+    if (tagParam) {
+      setSelectedTag(tagParam);
+    }
+    
+    if (filterParam && ['all', 'featured', 'popular', 'mine'].includes(filterParam)) {
+      setFilter(filterParam);
+    }
+    
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, [location.search]);
   
   // Load user likes
   useEffect(() => {
@@ -96,17 +119,18 @@ const Blog = () => {
     }));
   };
 
-  // Get excerpt from content
-  const getExcerpt = (content: string, maxLength: number = 150) => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + '...';
+  // Handle search
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    navigate(`/blog?search=${encodeURIComponent(term)}`);
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <BlogHeader onSearch={handleSearch} />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavender-600 mx-auto"></div>
             <p className="mt-4 text-gray-600">Loading blog posts...</p>
@@ -119,117 +143,90 @@ const Blog = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
+      <BlogHeader onSearch={handleSearch} />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <BookOpen className="mr-3 text-lavender-600" size={28} />
-              Community Blog
-            </h1>
-            <p className="text-gray-600">Share your journey and connect with others</p>
-          </div>
-          <Link to="/blog/create">
-            <Button
-              variant="primary"
-              leftIcon={<Plus size={18} />}
-              className="bg-gradient-to-r from-lavender-500 to-sage-500"
-            >
-              Create Post
-            </Button>
-          </Link>
-        </div>
-
-        {/* Filters and Search */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Filters */}
         <div className="mb-8 bg-white rounded-lg shadow p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search posts..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                />
-              </div>
-            </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                setFilter('all');
+                setSelectedTag(null);
+                navigate('/blog');
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === 'all' && !selectedTag
+                  ? 'bg-lavender-100 text-lavender-800'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All Posts
+            </button>
             
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  setFilter('all');
-                  setSelectedTag(null);
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  filter === 'all' && !selectedTag
-                    ? 'bg-lavender-100 text-lavender-800'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                All Posts
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFilter('featured');
-                  setSelectedTag(null);
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
-                  filter === 'featured'
-                    ? 'bg-lavender-100 text-lavender-800'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <Award size={16} className="mr-1" />
-                Featured
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFilter('popular');
-                  setSelectedTag(null);
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
-                  filter === 'popular'
-                    ? 'bg-lavender-100 text-lavender-800'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <TrendingUp size={16} className="mr-1" />
-                Popular
-              </button>
-              
-              <button
-                onClick={() => {
-                  setFilter('mine');
-                  setSelectedTag(null);
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
-                  filter === 'mine'
-                    ? 'bg-lavender-100 text-lavender-800'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <User size={16} className="mr-1" />
-                My Posts
-              </button>
-              
-              {selectedTag && (
-                <div className="px-3 py-2 rounded-lg bg-blue-100 text-blue-800 text-sm font-medium flex items-center">
-                  <Tag size={16} className="mr-1" />
-                  {selectedTag}
-                  <button
-                    onClick={() => setSelectedTag(null)}
-                    className="ml-2 text-blue-600 hover:text-blue-800"
-                  >
-                    ×
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={() => {
+                setFilter('featured');
+                setSelectedTag(null);
+                navigate('/blog?filter=featured');
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                filter === 'featured'
+                  ? 'bg-lavender-100 text-lavender-800'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Award size={16} className="mr-1" />
+              Featured
+            </button>
+            
+            <button
+              onClick={() => {
+                setFilter('popular');
+                setSelectedTag(null);
+                navigate('/blog?filter=popular');
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                filter === 'popular'
+                  ? 'bg-lavender-100 text-lavender-800'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <TrendingUp size={16} className="mr-1" />
+              Popular
+            </button>
+            
+            <button
+              onClick={() => {
+                setFilter('mine');
+                setSelectedTag(null);
+                navigate('/blog?filter=mine');
+              }}
+              className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center ${
+                filter === 'mine'
+                  ? 'bg-lavender-100 text-lavender-800'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <User size={16} className="mr-1" />
+              My Posts
+            </button>
+            
+            {selectedTag && (
+              <div className="px-3 py-2 rounded-lg bg-blue-100 text-blue-800 text-sm font-medium flex items-center">
+                <Tag size={16} className="mr-1" />
+                {selectedTag}
+                <button
+                  onClick={() => {
+                    setSelectedTag(null);
+                    navigate('/blog');
+                  }}
+                  className="ml-2 text-blue-600 hover:text-blue-800"
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -288,7 +285,10 @@ const Blog = () => {
                   {popularTags.map(({ tag, count }) => (
                     <button
                       key={tag}
-                      onClick={() => setSelectedTag(tag)}
+                      onClick={() => {
+                        setSelectedTag(tag);
+                        navigate(`/blog?tag=${encodeURIComponent(tag)}`);
+                      }}
                       className={`px-3 py-1.5 rounded-full text-sm flex items-center ${
                         selectedTag === tag
                           ? 'bg-lavender-100 text-lavender-800'
@@ -320,8 +320,18 @@ const Blog = () => {
                         to={`/blog/post/${post.id}`}
                         className="flex items-start space-x-3 group"
                       >
-                        <div className="w-12 h-12 rounded-lg bg-lavender-100 flex-shrink-0 flex items-center justify-center">
-                          <BookOpen size={20} className="text-lavender-600" />
+                        <div className="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
+                          {post.image_url ? (
+                            <img 
+                              src={post.image_url} 
+                              alt={post.title} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-lavender-100">
+                              <BookOpen size={20} className="text-lavender-600" />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 group-hover:text-lavender-600 transition-colors">

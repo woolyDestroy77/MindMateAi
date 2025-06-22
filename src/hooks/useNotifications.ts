@@ -8,7 +8,7 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: 'reminder' | 'achievement' | 'alert' | 'info';
+  type: 'reminder' | 'achievement' | 'alert' | 'info' | 'follow' | 'like' | 'comment' | 'message';
   priority: 'high' | 'medium' | 'low';
   read: boolean;
   actionUrl?: string;
@@ -276,7 +276,7 @@ export const useNotifications = () => {
   const createNotification = useCallback(async (
     title: string,
     message: string,
-    type: 'reminder' | 'achievement' | 'alert' | 'info' = 'info',
+    type: 'reminder' | 'achievement' | 'alert' | 'info' | 'follow' | 'like' | 'comment' | 'message' = 'info',
     options: {
       priority?: 'high' | 'medium' | 'low';
       actionUrl?: string;
@@ -355,7 +355,11 @@ export const useNotifications = () => {
         toast(message, {
           icon: type === 'achievement' ? '🏆' : 
                 type === 'alert' ? '⚠️' : 
-                type === 'reminder' ? '⏰' : 'ℹ️',
+                type === 'reminder' ? '⏰' : 
+                type === 'follow' ? '👤' :
+                type === 'like' ? '❤️' :
+                type === 'comment' ? '💬' :
+                type === 'message' ? '✉️' : 'ℹ️',
           duration: 5000
         });
       }
@@ -481,7 +485,7 @@ export const useNotifications = () => {
     scheduledTime: Date,
     title: string,
     message: string,
-    type: 'reminder' | 'achievement' | 'alert' | 'info' = 'reminder',
+    type: 'reminder' | 'achievement' | 'alert' | 'info' | 'follow' | 'like' | 'comment' | 'message' = 'reminder',
     options: {
       priority?: 'high' | 'medium' | 'low';
       actionUrl?: string;
@@ -676,6 +680,7 @@ export const useNotifications = () => {
     createAlert,
     scheduleNotification,
     refreshNotifications: fetchNotifications,
-    generateDailyReminders
+    generateDailyReminders,
+    user
   };
 };

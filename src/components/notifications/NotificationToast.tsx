@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Bell, X, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Bell, X, CheckCircle, Clock, AlertTriangle, Heart, MessageSquare, User, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Notification } from '../../hooks/useNotifications';
 
@@ -37,6 +37,14 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'alert':
         return <AlertTriangle className="w-5 h-5 text-red-500" />;
+      case 'follow':
+        return <UserPlus className="w-5 h-5 text-purple-500" />;
+      case 'like':
+        return <Heart className="w-5 h-5 text-red-500" />;
+      case 'comment':
+        return <MessageSquare className="w-5 h-5 text-blue-500" />;
+      case 'message':
+        return <MessageSquare className="w-5 h-5 text-green-500" />;
       case 'info':
       default:
         return <Bell className="w-5 h-5 text-gray-500" />;
@@ -52,6 +60,14 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
         return 'bg-green-50 border-green-200';
       case 'alert':
         return 'bg-red-50 border-red-200';
+      case 'follow':
+        return 'bg-purple-50 border-purple-200';
+      case 'like':
+        return 'bg-red-50 border-red-200';
+      case 'comment':
+        return 'bg-blue-50 border-blue-200';
+      case 'message':
+        return 'bg-green-50 border-green-200';
       case 'info':
       default:
         return 'bg-white border-gray-200';

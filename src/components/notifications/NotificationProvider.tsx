@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { useNotifications } from '../../hooks/useNotifications';
 import { toast } from 'react-hot-toast';
 import NotificationToast from './NotificationToast';
+import { supabase } from '../../lib/supabase';
 
 // Create context
 const NotificationContext = createContext<ReturnType<typeof useNotifications> | undefined>(undefined);
@@ -20,7 +21,7 @@ interface NotificationProviderProps {
 
 export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
   const notificationService = useNotifications();
-  const { notifications, markAsRead, createReminder } = notificationService;
+  const { notifications, markAsRead, createReminder, user } = notificationService;
   
   // Use a ref to track which notifications have been shown as toasts
   const shownNotificationsRef = useRef<Set<string>>(new Set());
@@ -93,6 +94,50 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     
     return () => clearInterval(interval);
   }, [createReminder]);
+
+  // Set up real-time subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    
+    const notificationsSubscription = supabase
+      .channel('user_notifications_changes')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'user_notifications',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('New notification received:', payload);
+        notificationService.refreshNotifications();
+        
+        // Show toast for new notification
+        const newNotification = payload.new as any;
+        if (newNotification) {
+          toast.custom((t) => (
+            <NotificationToast
+              notification={{
+                id: newNotification.id,
+                title: newNotification.title,
+                message: newNotification.message,
+                type: newNotification.type,
+                priority: newNotification.priority,
+                read: false,
+                actionUrl: newNotification.action_url,
+                actionText: newNotification.action_text,
+                created_at: newNotification.created_at
+              }}
+              onClose={() => toast.dismiss(t.id)}
+              onAction={() => markAsRead(newNotification.id)}
+            />
+          ));
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(notificationsSubscription);
+    };
+  }, [user, notificationService, markAsRead]);
 
   // Custom toast renderer for notifications
   useEffect(() => {
