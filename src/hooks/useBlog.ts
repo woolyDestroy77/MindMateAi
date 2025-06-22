@@ -191,7 +191,7 @@ export const useBlog = () => {
         throw new Error('Please select an image file');
       }
 
-      console.log('Uploading image to Supabase storage bucket "blogimages"...');
+      console.log('Uploading image to Supabase storage bucket "public"...');
       console.log('File details:', {
         name: file.name,
         type: file.type,
@@ -199,10 +199,10 @@ export const useBlog = () => {
       });
       
       const fileExt = file.name.split('.').pop() || 'png';
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const fileName = `blog-images/${user.id}-${Date.now()}.${fileExt}`;
       
       const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('blogimages')
+        .from('public')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
@@ -217,7 +217,7 @@ export const useBlog = () => {
       
       // Get public URL
       const { data: publicUrlData } = supabase.storage
-        .from('blogimages')
+        .from('public')
         .getPublicUrl(fileName);
       
       console.log('Public URL generated:', publicUrlData.publicUrl);
