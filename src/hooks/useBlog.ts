@@ -51,31 +51,50 @@ export const useBlog = () => {
   // Helper function to generate signed URLs for images
   const generateSignedUrl = async (imageUrl: string): Promise<string | null> => {
     try {
-      // Extract the object path from the public URL
-      const urlParts = imageUrl.split('/');
-      const bucketIndex = urlParts.findIndex(part => part === 'blogimages');
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        console.log('Invalid image URL:', imageUrl);
+        return null;
+      }
+
+      // Extract the bucket and object path from the URL
+      const urlObj = new URL(imageUrl);
+      const pathParts = urlObj.pathname.split('/');
       
-      if (bucketIndex === -1 || bucketIndex === urlParts.length - 1) {
-        // If we can't find the bucket name or there's no path after it, return null
+      // Find the index of 'storage/v1/object/public'
+      const publicIndex = pathParts.findIndex(part => part === 'public');
+      if (publicIndex === -1 || publicIndex >= pathParts.length - 2) {
+        console.log('Cannot extract bucket path from URL:', imageUrl);
         return null;
       }
       
-      const objectPath = urlParts.slice(bucketIndex + 1).join('/');
+      // The bucket name should be right after 'public'
+      const bucketName = pathParts[publicIndex + 1];
+      
+      // The object path is everything after the bucket name
+      const objectPath = pathParts.slice(publicIndex + 2).join('/');
+      
+      if (!bucketName || !objectPath) {
+        console.log('Invalid bucket or object path:', { bucketName, objectPath });
+        return null;
+      }
+      
+      console.log('Generating signed URL for:', { bucketName, objectPath });
       
       // Generate signed URL (valid for 1 hour)
       const { data, error } = await supabase.storage
-        .from('blogimages')
+        .from(bucketName)
         .createSignedUrl(objectPath, 3600);
       
       if (error) {
         console.error('Error creating signed URL:', error);
-        return null; // Return null instead of original URL
+        return null;
       }
       
+      console.log('Generated signed URL successfully');
       return data.signedUrl;
     } catch (err) {
       console.error('Error generating signed URL:', err);
-      return null; // Return null instead of original URL
+      return null;
     }
   };
 
@@ -84,8 +103,16 @@ export const useBlog = () => {
     return Promise.all(
       posts.map(async (post) => {
         if (post.image_url) {
-          const signedUrl = await generateSignedUrl(post.image_url);
-          return { ...post, image_url: signedUrl || undefined };
+          try {
+            const signedUrl = await generateSignedUrl(post.image_url);
+            return { 
+              ...post, 
+              image_url: signedUrl || post.image_url // Keep original URL as fallback
+            };
+          } catch (error) {
+            console.error('Error processing post image:', error);
+            return post;
+          }
         }
         return post;
       })
@@ -175,8 +202,15 @@ export const useBlog = () => {
       // Process the single post with signed URL
       let processedPost = data;
       if (data && data.image_url) {
-        const signedUrl = await generateSignedUrl(data.image_url);
-        processedPost = { ...data, image_url: signedUrl || undefined };
+        try {
+          const signedUrl = await generateSignedUrl(data.image_url);
+          processedPost = { 
+            ...data, 
+            image_url: signedUrl || data.image_url // Keep original URL as fallback
+          };
+        } catch (error) {
+          console.error('Error processing post image:', error);
+        }
       }
       
       // Get author info from auth.users metadata
