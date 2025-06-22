@@ -49,15 +49,15 @@ export const useBlog = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Helper function to generate signed URLs for images
-  const generateSignedUrl = async (imageUrl: string): Promise<string> => {
+  const generateSignedUrl = async (imageUrl: string): Promise<string | null> => {
     try {
       // Extract the object path from the public URL
       const urlParts = imageUrl.split('/');
       const bucketIndex = urlParts.findIndex(part => part === 'blogimages');
       
       if (bucketIndex === -1 || bucketIndex === urlParts.length - 1) {
-        // If we can't find the bucket name or there's no path after it, return original URL
-        return imageUrl;
+        // If we can't find the bucket name or there's no path after it, return null
+        return null;
       }
       
       const objectPath = urlParts.slice(bucketIndex + 1).join('/');
@@ -69,13 +69,13 @@ export const useBlog = () => {
       
       if (error) {
         console.error('Error creating signed URL:', error);
-        return imageUrl; // Return original URL as fallback
+        return null; // Return null instead of original URL
       }
       
       return data.signedUrl;
     } catch (err) {
       console.error('Error generating signed URL:', err);
-      return imageUrl; // Return original URL as fallback
+      return null; // Return null instead of original URL
     }
   };
 
@@ -85,7 +85,7 @@ export const useBlog = () => {
       posts.map(async (post) => {
         if (post.image_url) {
           const signedUrl = await generateSignedUrl(post.image_url);
-          return { ...post, image_url: signedUrl };
+          return { ...post, image_url: signedUrl || undefined };
         }
         return post;
       })
@@ -176,7 +176,7 @@ export const useBlog = () => {
       let processedPost = data;
       if (data && data.image_url) {
         const signedUrl = await generateSignedUrl(data.image_url);
-        processedPost = { ...data, image_url: signedUrl };
+        processedPost = { ...data, image_url: signedUrl || undefined };
       }
       
       // Get author info from auth.users metadata
