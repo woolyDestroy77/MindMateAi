@@ -237,7 +237,11 @@ const CreateBlogPost = () => {
                       <img 
                         src={imagePreview} 
                         alt="Preview" 
-                        className="w-full h-full object-cover"
+                        className="w-full h-64 object-cover"
+                        onError={(e) => {
+                          console.error("Preview image failed to load");
+                          e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
+                        }}
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center opacity-0 hover:opacity-100">
                         <div className="flex space-x-2">

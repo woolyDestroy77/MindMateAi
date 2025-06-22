@@ -249,7 +249,18 @@ const BlogPost = () => {
             {/* Author and Date */}
             <div className="flex items-center space-x-4 mb-6">
               <div className="w-12 h-12 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                <User className="w-full h-full p-2 text-lavender-600" />
+                {post.author?.avatar_url ? (
+                  <img 
+                    src={post.author.avatar_url} 
+                    alt={post.author.full_name} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                    }}
+                  />
+                ) : (
+                  <User className="w-full h-full p-2 text-lavender-600" />
+                )}
               </div>
               <div>
                 <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
@@ -431,7 +442,18 @@ const BlogPost = () => {
                       className="flex space-x-4"
                     >
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                        <User className="w-full h-full p-2 text-lavender-600" />
+                        {comment.author?.avatar_url ? (
+                          <img 
+                            src={comment.author.avatar_url} 
+                            alt={comment.author.full_name} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                            }}
+                          />
+                        ) : (
+                          <User className="w-full h-full p-2 text-lavender-600" />
+                        )}
                       </div>
                       <div className="flex-1">
                         <div className="bg-gray-50 rounded-lg p-4">

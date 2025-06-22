@@ -63,7 +63,13 @@ export const useBlog = () => {
         urlObj = new URL(imageUrl);
       } catch (urlError) {
         console.log('Failed to parse URL:', imageUrl, urlError);
-        return null;
+        return imageUrl; // Return the original URL if it's not a Supabase URL
+      }
+
+      // Check if this is a Supabase storage URL
+      if (!urlObj.pathname.includes('storage/v1/object/public')) {
+        console.log('Not a Supabase storage URL, returning as is:', imageUrl);
+        return imageUrl;
       }
 
       // Extract the bucket and object path from the URL
@@ -73,7 +79,7 @@ export const useBlog = () => {
       const publicIndex = pathParts.findIndex(part => part === 'public');
       if (publicIndex === -1 || publicIndex >= pathParts.length - 2) {
         console.log('Cannot extract bucket path from URL:', imageUrl);
-        return null;
+        return imageUrl; // Return the original URL
       }
       
       // The bucket name should be right after 'public'
@@ -84,7 +90,7 @@ export const useBlog = () => {
       
       if (!bucketName || !objectPath) {
         console.log('Invalid bucket or object path:', { bucketName, objectPath });
-        return null;
+        return imageUrl; // Return the original URL
       }
       
       console.log('Generating signed URL for:', { bucketName, objectPath });
@@ -96,14 +102,14 @@ export const useBlog = () => {
       
       if (error) {
         console.error('Error creating signed URL:', error);
-        return null;
+        return imageUrl; // Return the original URL on error
       }
       
       console.log('Generated signed URL successfully');
       return data.signedUrl;
     } catch (err) {
       console.error('Error generating signed URL:', err);
-      return null;
+      return imageUrl; // Return the original URL on error
     }
   };
 
@@ -116,15 +122,11 @@ export const useBlog = () => {
             const signedUrl = await generateSignedUrl(post.image_url);
             return { 
               ...post, 
-              // Explicitly set to null if signed URL generation failed
-              image_url: signedUrl || null
+              image_url: signedUrl || post.image_url // Use original URL as fallback
             };
           } catch (error) {
             console.error('Error processing post image:', error);
-            return {
-              ...post,
-              image_url: null // Ensure null instead of invalid URL
-            };
+            return post; // Return post with original URL on error
           }
         }
         return post;
@@ -219,15 +221,11 @@ export const useBlog = () => {
           const signedUrl = await generateSignedUrl(data.image_url);
           processedPost = { 
             ...data, 
-            // Explicitly set to null if signed URL generation failed
-            image_url: signedUrl || null
+            image_url: signedUrl || data.image_url // Use original URL as fallback
           };
         } catch (error) {
           console.error('Error processing post image:', error);
-          processedPost = {
-            ...data,
-            image_url: null // Ensure null instead of invalid URL
-          };
+          processedPost = data; // Keep original data on error
         }
       }
       
