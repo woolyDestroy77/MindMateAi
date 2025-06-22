@@ -165,70 +165,43 @@ export const useBlog = () => {
 
   // Upload an image for a blog post
   const uploadImage = useCallback(async (file: File): Promise<string | null> => {
-    try {
-      console.log('Starting image upload process...');
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('User authentication error:', userError);
-        throw userError;
-      }
-      
-      if (!user) {
-        console.error('No authenticated user found');
-        throw new Error('User not authenticated');
-      }
+  try {
+    console.log('Starting image upload process...');
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) throw userError ?? new Error('User not authenticated');
 
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        console.error('File too large:', file.size);
-        throw new Error('Image size must be less than 5MB');
-      }
-      
-      // Check file type
-      if (!file.type.match('image.*')) {
-        console.error('Invalid file type:', file.type);
-        throw new Error('Please select an image file');
-      }
+    if (file.size > 5 * 1024 * 1024) throw new Error('Image size must be less than 5MB');
+    if (!file.type.match('image.*')) throw new Error('Please select a valid image file');
 
-      console.log('Uploading image to Supabase storage bucket "public"...');
-      console.log('File details:', {
-        name: file.name,
-        type: file.type,
-        size: `${(file.size / 1024).toFixed(2)} KB`
+    const fileExt = file.name.split('.').pop() || 'png';
+    const filePath = `blog-images/${user.id}-${Date.now()}.${fileExt}`;
+
+    const { error: uploadError } = await supabase
+      .storage
+      .from('blogimages')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
       });
-      
-      const fileExt = file.name.split('.').pop() || 'png';
-      const fileName = `blog-images/${user.id}-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError, data: uploadData } = await supabase.storage
-        .from('public')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-        
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw uploadError;
-      }
-      
-      console.log('Image uploaded successfully:', uploadData);
-      
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from('public')
-        .getPublicUrl(fileName);
-      
-      console.log('Public URL generated:', publicUrlData.publicUrl);
-      
-      return publicUrlData.publicUrl;
-    } catch (err) {
-      console.error('Error uploading image:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to upload image');
-      return null;
-    }
-  }, []);
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicUrlData } = supabase
+      .storage
+      .from('blogimages')
+      .getPublicUrl(filePath);
+
+    if (!publicUrlData?.publicUrl) throw new Error('Failed to retrieve public URL');
+
+    return publicUrlData.publicUrl;
+  } catch (err) {
+    console.error('Error uploading image:', err);
+    toast.error(err instanceof Error ? err.message : 'Failed to upload image');
+    return null;
+  }
+}, []);
+
 
   // Create a new blog post
   const createPost = useCallback(async (
