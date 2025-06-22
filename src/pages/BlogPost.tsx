@@ -26,7 +26,7 @@ import { useBlog, BlogPost as BlogPostType, BlogComment } from '../hooks/useBlog
 import { useAuth } from '../hooks/useAuth';
 import { useNotificationContext } from '../components/notifications/NotificationProvider';
 
-const BlogPost = () => {
+export default function BlogPost() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { fetchPost, likePost, checkUserLiked, addComment, fetchComments, deleteComment, deletePost } = useBlog();
@@ -541,4 +541,4 @@ const BlogPost = () => {
       </AnimatePresence>
     </div>
   );
-};
+}
