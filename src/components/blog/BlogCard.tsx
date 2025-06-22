@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -6,10 +6,7 @@ import {
   MessageSquare, 
   Tag, 
   User, 
-  Calendar, 
-  Share2, 
-  Bookmark,
-  Award
+  Calendar
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { BlogPost } from '../../hooks/useBlog';
@@ -39,7 +36,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
       {/* Featured Badge */}
       {post.metadata?.featured && (
         <div className="bg-yellow-500 text-white px-4 py-1 text-center text-sm font-medium flex items-center justify-center">
-          <Award size={14} className="mr-1" />
           Featured Story
         </div>
       )}
@@ -130,6 +126,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
                 isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
               }`}
               disabled={!user}
+              aria-label={isLiked ? "Unlike post" : "Like post"}
             >
               <Heart size={16} className={isLiked ? 'fill-current' : ''} />
               <span>{post.likes}</span>
@@ -138,25 +135,11 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
             <Link 
               to={`/blog/post/${post.id}#comments`}
               className="flex items-center space-x-1 text-sm text-gray-500 hover:text-lavender-600"
+              aria-label="View comments"
             >
               <MessageSquare size={16} />
               <span>{post.comments_count}</span>
             </Link>
-          </div>
-          
-          <div className="flex space-x-2">
-            <button className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100">
-              <Bookmark size={16} />
-            </button>
-            <button 
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.origin + `/blog/post/${post.id}`);
-                alert('Link copied to clipboard!');
-              }}
-              className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
-            >
-              <Share2 size={16} />
-            </button>
           </div>
         </div>
       </div>

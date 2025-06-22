@@ -54,8 +54,10 @@ export default function BlogPost() {
           setPost(postData);
           
           // Check if user has liked this post
-          const liked = await checkUserLiked(id);
-          setIsLiked(liked);
+          if (user) {
+            const liked = await checkUserLiked(id);
+            setIsLiked(liked);
+          }
           
           // Fetch comments
           const commentsData = await fetchComments(id);
@@ -72,7 +74,7 @@ export default function BlogPost() {
     };
     
     loadData();
-  }, [id, fetchPost, checkUserLiked, fetchComments, navigate]);
+  }, [id, fetchPost, checkUserLiked, fetchComments, navigate, user]);
 
   // Handle like/unlike
   const handleLike = async () => {
@@ -95,7 +97,7 @@ export default function BlogPost() {
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!post || !commentText.trim() || isSubmittingComment) return;
+    if (!post || !commentText.trim() || isSubmittingComment || !user) return;
     
     setIsSubmittingComment(true);
     
@@ -140,6 +142,15 @@ export default function BlogPost() {
     const success = await deleteComment(commentId, post.id);
     if (success) {
       setComments(prev => prev.filter(comment => comment.id !== commentId));
+      
+      // Update post comments count in local state
+      setPost(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          comments_count: Math.max(0, prev.comments_count - 1)
+        };
+      });
     }
   };
 
@@ -331,6 +342,7 @@ export default function BlogPost() {
                     isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
                   }`}
                   disabled={!user}
+                  aria-label={isLiked ? "Unlike post" : "Like post"}
                 >
                   <Heart size={20} className={isLiked ? 'fill-current' : ''} />
                   <span className="font-medium">{post.likes}</span>
@@ -352,6 +364,7 @@ export default function BlogPost() {
                     alert('Link copied to clipboard!');
                   }}
                   className="flex items-center space-x-1 text-gray-500 hover:text-lavender-600"
+                  aria-label="Share post"
                 >
                   <Share2 size={18} />
                   <span className="text-sm">Share</span>
@@ -371,34 +384,53 @@ export default function BlogPost() {
               </h2>
               
               {/* Comment Form */}
-              <form onSubmit={handleSubmitComment} className="mb-8">
-                <div className="flex space-x-4">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                    <User className="w-full h-full p-2 text-lavender-600" />
-                  </div>
-                  <div className="flex-1">
-                    <textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Add a comment..."
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none"
-                      rows={3}
-                      required
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        disabled={!commentText.trim() || isSubmittingComment || !user}
-                        isLoading={isSubmittingComment}
-                        leftIcon={<Send size={16} />}
-                      >
-                        Post Comment
-                      </Button>
+              {user ? (
+                <form onSubmit={handleSubmitComment} className="mb-8">
+                  <div className="flex space-x-4">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                      {user.user_metadata?.avatar_url ? (
+                        <img 
+                          src={user.user_metadata.avatar_url} 
+                          alt={user.user_metadata.full_name || 'User'} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                          }}
+                        />
+                      ) : (
+                        <User className="w-full h-full p-2 text-lavender-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <textarea
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none"
+                        rows={3}
+                        required
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          disabled={!commentText.trim() || isSubmittingComment}
+                          isLoading={isSubmittingComment}
+                          leftIcon={<Send size={16} />}
+                        >
+                          Post Comment
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                </form>
+              ) : (
+                <div className="bg-lavender-50 p-4 rounded-lg mb-6">
+                  <p className="text-lavender-800 text-sm">
+                    Please <Link to="/" className="font-medium underline">sign in</Link> to leave a comment.
+                  </p>
                 </div>
-              </form>
+              )}
               
               {/* Comments List */}
               {comments.length === 0 ? (

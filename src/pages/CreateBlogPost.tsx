@@ -20,7 +20,7 @@ import { useBlog } from '../hooks/useBlog';
 import { useAddictionSupport } from '../hooks/useAddictionSupport';
 import { useNotificationContext } from '../components/notifications/NotificationProvider';
 
-const CreateBlogPost = () => {
+export default function CreateBlogPost() {
   const navigate = useNavigate();
   const { createPost } = useBlog();
   const { userAddictions } = useAddictionSupport();
@@ -410,6 +410,4 @@ const CreateBlogPost = () => {
       </main>
     </div>
   );
-};
-
-export default CreateBlogPost;
+}

@@ -62,8 +62,29 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Use posts directly without processing signed URLs for public images
-      setPosts(data || []);
+      // Process posts to add author information
+      const processedPosts = await Promise.all((data || []).map(async (post) => {
+        try {
+          // Get user metadata from auth
+          const { data: userData } = await supabase.auth.getUser();
+          
+          if (userData && userData.user && userData.user.id === post.user_id) {
+            return {
+              ...post,
+              author: {
+                id: userData.user.id,
+                full_name: userData.user.user_metadata.full_name || 'Anonymous',
+                avatar_url: userData.user.user_metadata.avatar_url
+              }
+            };
+          }
+        } catch (userError) {
+          console.error('Error fetching post author data:', userError);
+        }
+        return post;
+      }));
+      
+      setPosts(processedPosts);
       
       // Extract popular tags
       const allTags = data?.flatMap(post => post.tags || []) || [];
@@ -80,7 +101,7 @@ export const useBlog = () => {
       setPopularTags(sortedTags);
       
       // Get featured posts
-      const featured = data?.filter(post => post.metadata?.featured) || [];
+      const featured = processedPosts.filter(post => post.metadata?.featured) || [];
       setFeaturedPosts(featured.slice(0, 3));
       
     } catch (err) {
@@ -107,8 +128,17 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Use posts directly without processing signed URLs for public images
-      setUserPosts(data || []);
+      // Process posts to add author information
+      const processedPosts = data?.map(post => ({
+        ...post,
+        author: {
+          id: user.id,
+          full_name: user.user_metadata.full_name || 'Anonymous',
+          avatar_url: user.user_metadata.avatar_url
+        }
+      })) || [];
+      
+      setUserPosts(processedPosts);
     } catch (err) {
       console.error('Error fetching user posts:', err);
       // Don't show toast for this error to avoid UI clutter
@@ -126,21 +156,32 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Use post data directly without processing signed URLs
-      let processedPost = data;
-      
-      // Get author info from auth.users metadata
-      if (processedPost) {
+      // Add author information
+      if (data) {
         try {
           // Get user metadata from auth
           const { data: userData } = await supabase.auth.getUser();
           
           if (userData && userData.user) {
-            processedPost.author = {
-              id: userData.user.id,
-              full_name: userData.user.user_metadata.full_name || 'Anonymous',
-              avatar_url: userData.user.user_metadata.avatar_url
-            };
+            // Get the post author's metadata
+            const { data: authorData, error: authorError } = await supabase.auth.admin.getUserById(data.user_id);
+            
+            if (!authorError && authorData) {
+              data.author = {
+                id: authorData.user.id,
+                full_name: authorData.user.user_metadata.full_name || 'Anonymous',
+                avatar_url: authorData.user.user_metadata.avatar_url
+              };
+            } else {
+              // Fallback to current user if they are the author
+              if (userData.user.id === data.user_id) {
+                data.author = {
+                  id: userData.user.id,
+                  full_name: userData.user.user_metadata.full_name || 'Anonymous',
+                  avatar_url: userData.user.user_metadata.avatar_url
+                };
+              }
+            }
           }
         } catch (userError) {
           console.error('Error fetching author data:', userError);
@@ -148,7 +189,7 @@ export const useBlog = () => {
         }
       }
       
-      return processedPost;
+      return data;
     } catch (err) {
       console.error('Error fetching blog post:', err);
       toast.error('Failed to load blog post');
@@ -293,15 +334,15 @@ export const useBlog = () => {
         
         // Update local state
         setPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
         ));
         
         setUserPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
         ));
         
         setFeaturedPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
         ));
         
         toast.success('Post unliked');
@@ -412,23 +453,13 @@ export const useBlog = () => {
       
       toast.success('Comment added');
       
-      // Try to add author info
+      // Add author info to the comment
       if (data) {
-        try {
-          // Get user metadata from auth
-          const { data: userData } = await supabase.auth.getUser();
-          
-          if (userData && userData.user) {
-            data.author = {
-              id: userData.user.id,
-              full_name: userData.user.user_metadata.full_name || 'Anonymous',
-              avatar_url: userData.user.user_metadata.avatar_url
-            };
-          }
-        } catch (userError) {
-          console.error('Error adding author data to comment:', userError);
-          // Continue without author data
-        }
+        data.author = {
+          id: user.id,
+          full_name: user.user_metadata.full_name || 'Anonymous',
+          avatar_url: user.user_metadata.avatar_url
+        };
       }
       
       return data;
@@ -450,26 +481,50 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Try to add author info to each comment
+      // Get current user for author info
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Add author info to each comment
       const commentsWithAuthors = await Promise.all((data || []).map(async (comment) => {
         try {
-          // Get user metadata from auth
-          const { data: userData } = await supabase.auth.getUser();
-          
-          if (userData && userData.user && userData.user.id === comment.user_id) {
+          // If the comment is from the current user, use their info
+          if (user && user.id === comment.user_id) {
             return {
               ...comment,
               author: {
-                id: userData.user.id,
-                full_name: userData.user.user_metadata.full_name || 'Anonymous',
-                avatar_url: userData.user.user_metadata.avatar_url
+                id: user.id,
+                full_name: user.user_metadata.full_name || 'Anonymous',
+                avatar_url: user.user_metadata.avatar_url
+              }
+            };
+          }
+          
+          // Otherwise, try to get the user's info from auth
+          const { data: authorData, error: authorError } = await supabase.auth.admin.getUserById(comment.user_id);
+          
+          if (!authorError && authorData) {
+            return {
+              ...comment,
+              author: {
+                id: authorData.user.id,
+                full_name: authorData.user.user_metadata.full_name || 'Anonymous',
+                avatar_url: authorData.user.user_metadata.avatar_url
               }
             };
           }
         } catch (userError) {
           console.error('Error fetching comment author data:', userError);
         }
-        return comment;
+        
+        // Fallback if we can't get author info
+        return {
+          ...comment,
+          author: {
+            id: comment.user_id,
+            full_name: 'Anonymous',
+            avatar_url: undefined
+          }
+        };
       }));
       
       return commentsWithAuthors;
@@ -531,8 +586,6 @@ export const useBlog = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      // Return posts directly without processing signed URLs
       return data || [];
     } catch (err) {
       console.error('Error filtering posts by tag:', err);
@@ -552,8 +605,6 @@ export const useBlog = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
-      // Return posts directly without processing signed URLs
       return data || [];
     } catch (err) {
       console.error('Error searching posts:', err);
