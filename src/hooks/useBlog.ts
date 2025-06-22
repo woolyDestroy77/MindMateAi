@@ -324,25 +324,35 @@ export const useBlog = () => {
 
         if (unlikeError) throw unlikeError;
 
-        // Decrement likes count
+        // Get current likes count and decrement it
+        const { data: currentPost, error: fetchError } = await supabase
+          .from('blog_posts')
+          .select('likes')
+          .eq('id', postId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const newLikesCount = Math.max(0, (currentPost?.likes || 0) - 1);
+
         const { error: updateError } = await supabase
           .from('blog_posts')
-          .update({ likes: supabase.sql`likes - 1` })
+          .update({ likes: newLikesCount })
           .eq('id', postId);
 
         if (updateError) throw updateError;
         
         // Update local state
         setPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         setUserPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         setFeaturedPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: Math.max(0, post.likes - 1) } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         toast.success('Post unliked');
@@ -357,25 +367,35 @@ export const useBlog = () => {
 
         if (likeError) throw likeError;
 
-        // Increment likes count
+        // Get current likes count and increment it
+        const { data: currentPost, error: fetchError } = await supabase
+          .from('blog_posts')
+          .select('likes')
+          .eq('id', postId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const newLikesCount = (currentPost?.likes || 0) + 1;
+
         const { error: updateError } = await supabase
           .from('blog_posts')
-          .update({ likes: supabase.sql`likes + 1` })
+          .update({ likes: newLikesCount })
           .eq('id', postId);
 
         if (updateError) throw updateError;
         
         // Update local state
         setPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         setUserPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         setFeaturedPosts(prev => prev.map(post => 
-          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+          post.id === postId ? { ...post, likes: newLikesCount } : post
         ));
         
         toast.success('Post liked');
@@ -430,25 +450,35 @@ export const useBlog = () => {
 
       if (error) throw error;
 
-      // Increment comments count
+      // Get current comments count and increment it
+      const { data: currentPost, error: fetchError } = await supabase
+        .from('blog_posts')
+        .select('comments_count')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newCommentsCount = (currentPost?.comments_count || 0) + 1;
+
       const { error: updateError } = await supabase
         .from('blog_posts')
-        .update({ comments_count: supabase.sql`comments_count + 1` })
+        .update({ comments_count: newCommentsCount })
         .eq('id', postId);
 
       if (updateError) throw updateError;
       
       // Update local state
       setPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       setUserPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       setFeaturedPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       toast.success('Comment added');
@@ -545,25 +575,35 @@ export const useBlog = () => {
 
       if (error) throw error;
 
-      // Decrement comments count
+      // Get current comments count and decrement it
+      const { data: currentPost, error: fetchError } = await supabase
+        .from('blog_posts')
+        .select('comments_count')
+        .eq('id', postId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newCommentsCount = Math.max(0, (currentPost?.comments_count || 0) - 1);
+
       const { error: updateError } = await supabase
         .from('blog_posts')
-        .update({ comments_count: supabase.sql`comments_count - 1` })
+        .update({ comments_count: newCommentsCount })
         .eq('id', postId);
 
       if (updateError) throw updateError;
       
       // Update local state
       setPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       setUserPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       setFeaturedPosts(prev => prev.map(post => 
-        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+        post.id === postId ? { ...post, comments_count: newCommentsCount } : post
       ));
       
       toast.success('Comment deleted');
