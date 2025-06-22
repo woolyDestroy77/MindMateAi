@@ -412,3 +412,5 @@ const CreateBlogPost = () => {
     </div>
   );
 };
+
+export default CreateBlogPost;
