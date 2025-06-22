@@ -15,7 +15,8 @@ import {
   Award, 
   Bookmark,
   ThumbsUp,
-  Share2
+  Share2,
+  Image as ImageIcon
 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
@@ -31,6 +32,7 @@ const Blog = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   
   // Load user likes
   useEffect(() => {
@@ -115,12 +117,13 @@ const Blog = () => {
     return content.substring(0, maxLength) + '...';
   };
 
-  // Helper function to get valid image URL
-  const getValidImageUrl = (imageUrl: string | null | undefined) => {
-    if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
-      return "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-    }
-    return imageUrl;
+  // Handle image error
+  const handleImageError = (postId: string) => {
+    console.error(`Image failed to load for post: ${postId}`);
+    setImageErrors(prev => ({
+      ...prev,
+      [postId]: true
+    }));
   };
 
   if (isLoading) {
@@ -291,19 +294,23 @@ const Blog = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-lg shadow overflow-hidden"
                   >
-                    {post.image_url && (
+                    {post.image_url && !imageErrors[post.id] ? (
                       <div className="aspect-w-16 aspect-h-9 bg-gray-200">
                         <img 
-                          src={getValidImageUrl(post.image_url)} 
+                          src={post.image_url} 
                           alt={post.title} 
-                          className="w-full h-64 object-cover"
-                          onError={(e) => {
-                            console.error("Image failed to load:", post.image_url);
-                            e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-                          }}
+                          className="w-full h-full object-cover"
+                          onError={() => handleImageError(post.id)}
                         />
                       </div>
-                    )}
+                    ) : post.image_url && imageErrors[post.id] ? (
+                      <div className="aspect-w-16 aspect-h-9 bg-gray-100 flex items-center justify-center">
+                        <div className="text-center">
+                          <ImageIcon size={32} className="mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">Image unavailable</p>
+                        </div>
+                      </div>
+                    ) : null}
                     
                     <div className="p-6">
                       <div className="flex items-center space-x-3 mb-3">
@@ -314,7 +321,9 @@ const Blog = () => {
                               alt={post.author.full_name} 
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                                (e.target as HTMLImageElement).src = '';
+                                (e.target as HTMLElement).classList.add('flex', 'items-center', 'justify-center');
+                                (e.target as HTMLElement).innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-lavender-600"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>';
                               }}
                             />
                           ) : (
@@ -468,14 +477,12 @@ const Blog = () => {
                         className="flex items-start space-x-3 group"
                       >
                         <div className="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
-                          {post.image_url ? (
+                          {post.image_url && !imageErrors[post.id] ? (
                             <img 
-                              src={getValidImageUrl(post.image_url)} 
+                              src={post.image_url} 
                               alt={post.title} 
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-                              }}
+                              onError={() => handleImageError(post.id)}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-lavender-100">
@@ -533,14 +540,12 @@ const Blog = () => {
                         className="flex items-start space-x-3 group"
                       >
                         <div className="w-12 h-12 rounded-lg bg-gray-200 flex-shrink-0 overflow-hidden">
-                          {post.image_url ? (
+                          {post.image_url && !imageErrors[post.id] ? (
                             <img 
-                              src={getValidImageUrl(post.image_url)} 
+                              src={post.image_url} 
                               alt={post.title} 
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-                              }}
+                              onError={() => handleImageError(post.id)}
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center bg-yellow-100">
@@ -562,6 +567,12 @@ const Blog = () => {
                         </div>
                       </Link>
                     ))}
+                  
+                  {posts.filter(post => post.metadata?.featured).length === 0 && (
+                    <div className="text-center py-4 text-gray-500 text-sm">
+                      Check back soon for featured posts!
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
