@@ -48,92 +48,6 @@ export const useBlog = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper function to generate signed URLs for images
-  const generateSignedUrl = async (imageUrl: any): Promise<string | null> => {
-    try {
-      // Add explicit validation at the beginning - check for non-string or empty values
-      if (typeof imageUrl !== 'string' || !imageUrl || imageUrl.trim() === '') {
-        console.log('Invalid or empty image URL:', imageUrl);
-        return null;
-      }
-
-      // Additional validation for URL format
-      let urlObj: URL;
-      try {
-        urlObj = new URL(imageUrl);
-      } catch (urlError) {
-        console.log('Failed to parse URL:', imageUrl, urlError);
-        return imageUrl; // Return the original URL if it's not a Supabase URL
-      }
-
-      // Check if this is a Supabase storage URL
-      if (!urlObj.pathname.includes('storage/v1/object/public')) {
-        console.log('Not a Supabase storage URL, returning as is:', imageUrl);
-        return imageUrl;
-      }
-
-      // Extract the bucket and object path from the URL
-      const pathParts = urlObj.pathname.split('/');
-      
-      // Find the index of 'storage/v1/object/public'
-      const publicIndex = pathParts.findIndex(part => part === 'public');
-      if (publicIndex === -1 || publicIndex >= pathParts.length - 2) {
-        console.log('Cannot extract bucket path from URL:', imageUrl);
-        return imageUrl; // Return the original URL
-      }
-      
-      // The bucket name should be right after 'public'
-      const bucketName = pathParts[publicIndex + 1];
-      
-      // The object path is everything after the bucket name
-      const objectPath = pathParts.slice(publicIndex + 2).join('/');
-      
-      if (!bucketName || !objectPath) {
-        console.log('Invalid bucket or object path:', { bucketName, objectPath });
-        return imageUrl; // Return the original URL
-      }
-      
-      console.log('Generating signed URL for:', { bucketName, objectPath });
-      
-      // Generate signed URL (valid for 1 hour)
-      const { data, error } = await supabase.storage
-        .from(bucketName)
-        .createSignedUrl(objectPath, 3600);
-      
-      if (error) {
-        console.error('Error creating signed URL:', error);
-        return imageUrl; // Return the original URL on error
-      }
-      
-      console.log('Generated signed URL successfully');
-      return data.signedUrl;
-    } catch (err) {
-      console.error('Error generating signed URL:', err);
-      return null; // Return null on error to ensure consistent return type
-    }
-  };
-
-  // Helper function to process posts and generate signed URLs for images
-  const processPostsWithSignedUrls = async (posts: BlogPost[]): Promise<BlogPost[]> => {
-    return Promise.all(
-      posts.map(async (post) => {
-        if (post.image_url) {
-          try {
-            const signedUrl = await generateSignedUrl(post.image_url);
-            return { 
-              ...post, 
-              image_url: signedUrl || post.image_url // Use original URL as fallback
-            };
-          } catch (error) {
-            console.error('Error processing post image:', error);
-            return post; // Return post with original URL on error
-          }
-        }
-        return post;
-      })
-    );
-  };
-
   // Fetch all published blog posts
   const fetchPosts = useCallback(async () => {
     try {
@@ -148,12 +62,11 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Process posts with signed URLs
-      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
-      setPosts(postsWithSignedUrls);
+      // Use posts directly without processing signed URLs for public images
+      setPosts(data || []);
       
       // Extract popular tags
-      const allTags = postsWithSignedUrls?.flatMap(post => post.tags || []) || [];
+      const allTags = data?.flatMap(post => post.tags || []) || [];
       const tagCounts = allTags.reduce((acc: Record<string, number>, tag: string) => {
         acc[tag] = (acc[tag] || 0) + 1;
         return acc;
@@ -167,7 +80,7 @@ export const useBlog = () => {
       setPopularTags(sortedTags);
       
       // Get featured posts
-      const featured = postsWithSignedUrls?.filter(post => post.metadata?.featured) || [];
+      const featured = data?.filter(post => post.metadata?.featured) || [];
       setFeaturedPosts(featured.slice(0, 3));
       
     } catch (err) {
@@ -194,9 +107,8 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Process posts with signed URLs
-      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
-      setUserPosts(postsWithSignedUrls);
+      // Use posts directly without processing signed URLs for public images
+      setUserPosts(data || []);
     } catch (err) {
       console.error('Error fetching user posts:', err);
       // Don't show toast for this error to avoid UI clutter
@@ -214,20 +126,8 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Process the single post with signed URL
+      // Use post data directly without processing signed URLs
       let processedPost = data;
-      if (data && data.image_url) {
-        try {
-          const signedUrl = await generateSignedUrl(data.image_url);
-          processedPost = { 
-            ...data, 
-            image_url: signedUrl || data.image_url // Use original URL as fallback
-          };
-        } catch (error) {
-          console.error('Error processing post image:', error);
-          processedPost = data; // Keep original data on error
-        }
-      }
       
       // Get author info from auth.users metadata
       if (processedPost) {
@@ -698,9 +598,8 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Process posts with signed URLs
-      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
-      return postsWithSignedUrls;
+      // Return posts directly without processing signed URLs
+      return data || [];
     } catch (err) {
       console.error('Error filtering posts by tag:', err);
       toast.error('Failed to filter posts');
@@ -720,9 +619,8 @@ export const useBlog = () => {
 
       if (error) throw error;
       
-      // Process posts with signed URLs
-      const postsWithSignedUrls = await processPostsWithSignedUrls(data || []);
-      return postsWithSignedUrls;
+      // Return posts directly without processing signed URLs
+      return data || [];
     } catch (err) {
       console.error('Error searching posts:', err);
       toast.error('Failed to search posts');
