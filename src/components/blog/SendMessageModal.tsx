@@ -1,105 +1,80 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, User, Search } from 'lucide-react';
-import Button from '../ui/Button';
-import { useBlogSocial, BlogMessage } from '../../hooks/useBlogSocial';
-import { useAuth } from '../../hooks/useAuth';
+import { X, Send, User, Search, Trash2, MessageSquare } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import Button from '../ui/Button';
+import { DirectMessage, useBlogSocial } from '../../hooks/useBlogSocial';
+import { useAuth } from '../../hooks/useAuth';
 
 interface SendMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  recipientId: string | null;
+  messages: DirectMessage[];
 }
 
-const SendMessageModal: React.FC<SendMessageModalProps> = ({ 
-  isOpen, 
-  onClose,
-  recipientId
-}) => {
+const SendMessageModal: React.FC<SendMessageModalProps> = ({ isOpen, onClose, messages }) => {
   const { user } = useAuth();
-  const { messages, following, sendMessage, markMessageAsRead, deleteMessage } = useBlogSocial();
+  const { sendMessage, markMessageAsRead, deleteMessage } = useBlogSocial();
   
-  const [selectedRecipient, setSelectedRecipient] = useState<string | null>(recipientId);
+  const [selectedUser, setSelectedUser] = useState<{id: string, name: string} | null>(null);
   const [messageText, setMessageText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeConversation, setActiveConversation] = useState<BlogMessage[]>([]);
+  const [activeConversations, setActiveConversations] = useState<{id: string, name: string, avatar?: string}[]>([]);
   
-  // Filter following users by search term
-  const filteredFollowing = following.filter(f => 
-    f.following?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Group messages by conversation
+  // Extract unique conversations from messages
   useEffect(() => {
-    if (selectedRecipient) {
-      const conversation = messages.filter(msg => 
-        (msg.sender_id === user?.id && msg.recipient_id === selectedRecipient) ||
-        (msg.sender_id === selectedRecipient && msg.recipient_id === user?.id)
-      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      
-      setActiveConversation(conversation);
-      
-      // Mark unread messages as read
-      conversation.forEach(msg => {
-        if (msg.recipient_id === user?.id && !msg.is_read) {
-          markMessageAsRead(msg.id);
-        }
-      });
-    } else {
-      setActiveConversation([]);
-    }
-  }, [selectedRecipient, messages, user, markMessageAsRead]);
-  
-  // Set recipient from prop if provided
-  useEffect(() => {
-    if (recipientId) {
-      setSelectedRecipient(recipientId);
-    }
-  }, [recipientId]);
-  
-  // Get unique conversation partners
-  const getConversationPartners = () => {
-    const partners = new Map();
+    if (!user) return;
+    
+    const conversations = new Map<string, {id: string, name: string, avatar?: string}>();
     
     messages.forEach(msg => {
-      const partnerId = msg.sender_id === user?.id ? msg.recipient_id : msg.sender_id;
-      const partner = msg.sender_id === user?.id ? msg.recipient : msg.sender;
-      
-      if (partnerId !== user?.id && partner) {
-        // Get the most recent message timestamp
-        const existingPartner = partners.get(partnerId);
-        if (!existingPartner || new Date(msg.created_at) > new Date(existingPartner.lastMessageAt)) {
-          partners.set(partnerId, {
-            id: partnerId,
-            full_name: partner.full_name,
-            avatar_url: partner.avatar_url,
-            lastMessageAt: msg.created_at,
-            unreadCount: msg.recipient_id === user?.id && !msg.is_read 
-              ? (existingPartner?.unreadCount || 0) + 1 
-              : (existingPartner?.unreadCount || 0)
+      if (msg.sender_id === user.id && msg.recipient) {
+        if (!conversations.has(msg.recipient_id)) {
+          conversations.set(msg.recipient_id, {
+            id: msg.recipient_id,
+            name: msg.recipient.full_name,
+            avatar: msg.recipient.avatar_url
+          });
+        }
+      } else if (msg.recipient_id === user.id && msg.sender) {
+        if (!conversations.has(msg.sender_id)) {
+          conversations.set(msg.sender_id, {
+            id: msg.sender_id,
+            name: msg.sender.full_name,
+            avatar: msg.sender.avatar_url
           });
         }
       }
     });
     
-    return Array.from(partners.values()).sort((a, b) => 
-      new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-    );
-  };
-  
-  const conversationPartners = getConversationPartners();
-  
+    setActiveConversations(Array.from(conversations.values()));
+  }, [messages, user]);
+
+  // Mark messages as read when conversation is selected
+  useEffect(() => {
+    if (selectedUser && user) {
+      const unreadMessages = messages.filter(
+        msg => msg.sender_id === selectedUser.id && 
+               msg.recipient_id === user.id && 
+               !msg.is_read
+      );
+      
+      unreadMessages.forEach(msg => {
+        markMessageAsRead(msg.id);
+      });
+    }
+  }, [selectedUser, messages, user, markMessageAsRead]);
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedRecipient || !messageText.trim() || isSubmitting) return;
+    if (!selectedUser || !messageText.trim() || isSubmitting) return;
     
     setIsSubmitting(true);
     
     try {
-      await sendMessage(selectedRecipient, messageText.trim());
+      await sendMessage(selectedUser.id, messageText.trim());
       setMessageText('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -107,26 +82,27 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
       setIsSubmitting(false);
     }
   };
-  
-  const handleSelectRecipient = (userId: string) => {
-    setSelectedRecipient(userId);
-    setSearchTerm('');
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (confirm('Are you sure you want to delete this message?')) {
+      await deleteMessage(messageId);
+    }
   };
-  
-  // Get recipient name
-  const getRecipientName = () => {
-    if (!selectedRecipient) return '';
-    
-    // Check in conversation partners
-    const partner = conversationPartners.find(p => p.id === selectedRecipient);
-    if (partner) return partner.full_name;
-    
-    // Check in following
-    const followingUser = following.find(f => f.following_id === selectedRecipient);
-    if (followingUser?.following) return followingUser.following.full_name;
-    
-    return 'User';
-  };
+
+  // Filter conversations by search term
+  const filteredConversations = searchTerm
+    ? activeConversations.filter(conv => 
+        conv.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : activeConversations;
+
+  // Get messages for selected conversation
+  const conversationMessages = selectedUser
+    ? messages.filter(msg => 
+        (msg.sender_id === user?.id && msg.recipient_id === selectedUser.id) ||
+        (msg.sender_id === selectedUser.id && msg.recipient_id === user?.id)
+      ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    : [];
 
   return (
     <AnimatePresence>
@@ -142,119 +118,85 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex h-full">
               {/* Conversations Sidebar */}
-              <div className="w-1/3 border-r border-gray-200 h-[80vh] flex flex-col">
+              <div className="w-1/3 border-r border-gray-200 flex flex-col">
                 <div className="p-4 border-b border-gray-200">
-                  <h3 className="font-semibold text-gray-900">Messages</h3>
-                </div>
-                
-                {/* Search Users */}
-                <div className="p-3 border-b border-gray-200">
-                  <div className="relative">
+                  <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <MessageSquare className="w-5 h-5 mr-2 text-lavender-600" />
+                    Messages
+                  </h2>
+                  <div className="mt-2 relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                     <input
                       type="text"
-                      placeholder="Search users..."
+                      placeholder="Search conversations..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent text-sm"
                     />
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
                   </div>
                 </div>
                 
-                {/* Conversations List */}
                 <div className="flex-1 overflow-y-auto">
-                  {searchTerm ? (
-                    // Show search results
-                    filteredFollowing.length > 0 ? (
-                      filteredFollowing.map(f => (
-                        <button
-                          key={f.following_id}
-                          onClick={() => handleSelectRecipient(f.following_id)}
-                          className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
-                            selectedRecipient === f.following_id ? 'bg-lavender-50' : ''
-                          }`}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
-                              {f.following?.avatar_url ? (
-                                <img 
-                                  src={f.following.avatar_url} 
-                                  alt={f.following.full_name} 
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-full h-full p-2 text-gray-400" />
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">{f.following?.full_name}</div>
-                              <div className="text-xs text-gray-500">Following</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No users found matching "{searchTerm}"
-                      </div>
-                    )
+                  {filteredConversations.length === 0 ? (
+                    <div className="p-4 text-center text-gray-500">
+                      {searchTerm ? 'No conversations match your search' : 'No conversations yet'}
+                    </div>
                   ) : (
-                    // Show conversation partners
-                    conversationPartners.length > 0 ? (
-                      conversationPartners.map(partner => (
+                    <div className="divide-y divide-gray-100">
+                      {filteredConversations.map(conv => (
                         <button
-                          key={partner.id}
-                          onClick={() => handleSelectRecipient(partner.id)}
-                          className={`w-full text-left p-3 hover:bg-gray-50 transition-colors ${
-                            selectedRecipient === partner.id ? 'bg-lavender-50' : ''
+                          key={conv.id}
+                          onClick={() => setSelectedUser({ id: conv.id, name: conv.name })}
+                          className={`w-full p-3 flex items-center space-x-3 hover:bg-gray-50 transition-colors text-left ${
+                            selectedUser?.id === conv.id ? 'bg-lavender-50' : ''
                           }`}
                         >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex-shrink-0 relative">
-                              {partner.avatar_url ? (
-                                <img 
-                                  src={partner.avatar_url} 
-                                  alt={partner.full_name} 
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-full h-full p-2 text-gray-400" />
-                              )}
-                              {partner.unreadCount > 0 && (
-                                <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
-                                  {partner.unreadCount > 9 ? '9+' : partner.unreadCount}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-gray-900 truncate">{partner.full_name}</div>
-                              <div className="text-xs text-gray-500">
-                                {formatDistanceToNow(new Date(partner.lastMessageAt), { addSuffix: true })}
-                              </div>
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                            {conv.avatar ? (
+                              <img 
+                                src={conv.avatar} 
+                                alt={conv.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <User className="w-full h-full p-2 text-lavender-600" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{conv.name}</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {getLastMessage(conv.id)}
                             </div>
                           </div>
+                          {getUnreadCount(conv.id) > 0 && (
+                            <div className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                              {getUnreadCount(conv.id)}
+                            </div>
+                          )}
                         </button>
-                      ))
-                    ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        No conversations yet
-                      </div>
-                    )
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
               
-              {/* Message Area */}
-              <div className="w-2/3 flex flex-col h-[80vh]">
+              {/* Conversation Area */}
+              <div className="w-2/3 flex flex-col">
                 {/* Header */}
                 <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                  <div className="font-semibold text-gray-900">
-                    {selectedRecipient ? getRecipientName() : 'New Message'}
+                  <div className="flex items-center space-x-3">
+                    {selectedUser ? (
+                      <>
+                        <h2 className="text-lg font-semibold text-gray-900">{selectedUser.name}</h2>
+                      </>
+                    ) : (
+                      <h2 className="text-lg font-semibold text-gray-900">Select a conversation</h2>
+                    )}
                   </div>
                   <button
                     onClick={onClose}
@@ -266,78 +208,78 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
                 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  {selectedRecipient ? (
-                    activeConversation.length > 0 ? (
-                      activeConversation.map(msg => (
-                        <div
-                          key={msg.id}
-                          className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div className={`max-w-[80%] ${
-                            msg.sender_id === user?.id 
-                              ? 'bg-lavender-500 text-white rounded-tl-lg rounded-tr-lg rounded-bl-lg' 
-                              : 'bg-gray-100 text-gray-800 rounded-tl-lg rounded-tr-lg rounded-br-lg'
-                          } p-3 relative group`}>
-                            <p>{msg.message}</p>
-                            <div className={`text-xs ${msg.sender_id === user?.id ? 'text-lavender-100' : 'text-gray-500'} mt-1`}>
-                              {format(new Date(msg.created_at), 'h:mm a')}
-                            </div>
-                            
-                            {msg.sender_id === user?.id && (
-                              <button
-                                onClick={() => deleteMessage(msg.id)}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Delete message"
-                              >
-                                <X size={12} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="h-full flex items-center justify-center">
-                        <div className="text-center text-gray-500">
-                          <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                          <p>No messages yet</p>
-                          <p className="text-sm">Start the conversation!</p>
-                        </div>
-                      </div>
-                    )
-                  ) : (
+                  {!selectedUser ? (
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center text-gray-500">
                         <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                        <p>Select a user to message</p>
-                        <p className="text-sm">or search for someone to start a new conversation</p>
+                        <p>Select a conversation to view messages</p>
                       </div>
                     </div>
+                  ) : conversationMessages.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                      <div className="text-center text-gray-500">
+                        <MessageSquare className="w-12 h-12 mx-auto text-gray-300 mb-2" />
+                        <p>No messages yet</p>
+                        <p className="text-sm mt-1">Start the conversation by sending a message below</p>
+                      </div>
+                    </div>
+                  ) : (
+                    conversationMessages.map(msg => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${msg.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div className={`max-w-[80%] group ${
+                          msg.sender_id === user?.id ? 'text-right' : 'text-left'
+                        }`}>
+                          <div className={`inline-block relative p-3 rounded-lg ${
+                            msg.sender_id === user?.id
+                              ? 'bg-lavender-500 text-white'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {msg.message}
+                            
+                            {msg.sender_id === user?.id && (
+                              <button
+                                onClick={() => handleDeleteMessage(msg.id)}
+                                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Delete message"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {format(new Date(msg.created_at), 'h:mm a')}
+                          </div>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
                 
                 {/* Message Input */}
-                {selectedRecipient && (
-                  <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
-                    <div className="flex space-x-2">
+                {selectedUser && (
+                  <div className="p-4 border-t border-gray-200">
+                    <form onSubmit={handleSendMessage} className="flex space-x-2">
                       <input
                         type="text"
                         value={messageText}
                         onChange={(e) => setMessageText(e.target.value)}
                         placeholder="Type your message..."
                         className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                        disabled={!selectedRecipient || isSubmitting}
                       />
                       <Button
                         type="submit"
                         variant="primary"
-                        disabled={!messageText.trim() || !selectedRecipient || isSubmitting}
+                        disabled={!messageText.trim() || isSubmitting}
                         isLoading={isSubmitting}
-                        className="bg-lavender-600 hover:bg-lavender-700"
+                        leftIcon={<Send size={16} />}
                       >
-                        <Send size={18} />
+                        Send
                       </Button>
-                    </div>
-                  </form>
+                    </form>
+                  </div>
                 )}
               </div>
             </div>
@@ -346,6 +288,34 @@ const SendMessageModal: React.FC<SendMessageModalProps> = ({
       )}
     </AnimatePresence>
   );
+
+  // Helper function to get last message for a conversation
+  function getLastMessage(userId: string): string {
+    const conversationMsgs = messages.filter(msg => 
+      (msg.sender_id === user?.id && msg.recipient_id === userId) ||
+      (msg.sender_id === userId && msg.recipient_id === user?.id)
+    ).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    if (conversationMsgs.length === 0) return 'No messages yet';
+    
+    const lastMsg = conversationMsgs[0];
+    const preview = lastMsg.message.length > 20 
+      ? lastMsg.message.substring(0, 20) + '...' 
+      : lastMsg.message;
+    
+    return lastMsg.sender_id === user?.id 
+      ? `You: ${preview}` 
+      : preview;
+  }
+
+  // Helper function to get unread count for a conversation
+  function getUnreadCount(userId: string): number {
+    return messages.filter(msg => 
+      msg.sender_id === userId && 
+      msg.recipient_id === user?.id && 
+      !msg.is_read
+    ).length;
+  }
 };
 
 export default SendMessageModal;

@@ -1,34 +1,51 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, UserPlus, UserMinus, MessageSquare } from 'lucide-react';
+import { X, User, Search, UserPlus, UserMinus, MessageSquare } from 'lucide-react';
 import Button from '../ui/Button';
-import { BlogFollower } from '../../hooks/useBlogSocial';
+import { Follower, Following, useBlogSocial } from '../../hooks/useBlogSocial';
 import { useAuth } from '../../hooks/useAuth';
 
 interface FollowersModalProps {
   isOpen: boolean;
   onClose: () => void;
-  followers: BlogFollower[];
-  following: BlogFollower[];
-  onMessage?: (userId: string) => void;
-  onFollow?: (userId: string) => void;
-  onUnfollow?: (userId: string) => void;
+  activeTab: 'followers' | 'following';
+  onChangeTab: (tab: 'followers' | 'following') => void;
+  followers: Follower[];
+  following: Following[];
 }
 
 const FollowersModal: React.FC<FollowersModalProps> = ({ 
   isOpen, 
-  onClose,
+  onClose, 
+  activeTab, 
+  onChangeTab,
   followers,
-  following,
-  onMessage,
-  onFollow,
-  onUnfollow
+  following
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'followers' | 'following'>('followers');
+  const { followUser, unfollowUser, isFollowing } = useBlogSocial();
+  
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const isFollowing = (userId: string) => {
-    return following.some(f => f.following_id === userId);
+  // Filter users by search term
+  const filteredFollowers = searchTerm
+    ? followers.filter(f => 
+        f.follower?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : followers;
+
+  const filteredFollowing = searchTerm
+    ? following.filter(f => 
+        f.following?.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : following;
+
+  const handleFollow = async (userId: string) => {
+    await followUser(userId);
+  };
+
+  const handleUnfollow = async (userId: string) => {
+    await unfollowUser(userId);
   };
 
   return (
@@ -45,169 +62,183 @@ const FollowersModal: React.FC<FollowersModalProps> = ({
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden"
+            className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-gray-900">Connections</h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {activeTab === 'followers' ? 'Followers' : 'Following'}
+                </h2>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-gray-200">
-              <button
-                onClick={() => setActiveTab('followers')}
-                className={`flex-1 py-3 text-sm font-medium ${
-                  activeTab === 'followers'
-                    ? 'text-lavender-600 border-b-2 border-lavender-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Followers ({followers.length})
-              </button>
-              <button
-                onClick={() => setActiveTab('following')}
-                className={`flex-1 py-3 text-sm font-medium ${
-                  activeTab === 'following'
-                    ? 'text-lavender-600 border-b-2 border-lavender-500'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Following ({following.length})
-              </button>
-            </div>
+            <div className="p-6">
+              {/* Tabs */}
+              <div className="flex border-b border-gray-200 mb-4">
+                <button
+                  onClick={() => onChangeTab('followers')}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    activeTab === 'followers'
+                      ? 'text-lavender-600 border-b-2 border-lavender-500'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Followers ({followers.length})
+                </button>
+                <button
+                  onClick={() => onChangeTab('following')}
+                  className={`px-4 py-2 font-medium text-sm ${
+                    activeTab === 'following'
+                      ? 'text-lavender-600 border-b-2 border-lavender-500'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Following ({following.length})
+                </button>
+              </div>
 
-            {/* User List */}
-            <div className="overflow-y-auto max-h-[60vh]">
-              {activeTab === 'followers' ? (
-                followers.length > 0 ? (
-                  followers.map(follower => (
-                    <div key={follower.id} className="p-4 border-b border-gray-100 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-                          {follower.follower?.avatar_url ? (
-                            <img 
-                              src={follower.follower.avatar_url} 
-                              alt={follower.follower.full_name} 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-full h-full p-2 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{follower.follower?.full_name}</div>
-                          <div className="text-xs text-gray-500">Follows you</div>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        {onMessage && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onMessage(follower.follower_id)}
-                            title="Send message"
-                          >
-                            <MessageSquare size={16} />
-                          </Button>
-                        )}
-                        {onFollow && follower.follower_id !== user?.id && (
-                          isFollowing(follower.follower_id) ? (
+              {/* Search */}
+              <div className="mb-4 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder={`Search ${activeTab}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* User List */}
+              <div className="max-h-96 overflow-y-auto">
+                {activeTab === 'followers' ? (
+                  filteredFollowers.length === 0 ? (
+                    <div className="text-center py-8">
+                      <User className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500">
+                        {searchTerm ? 'No followers match your search' : 'No followers yet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredFollowers.map(follower => (
+                        <div key={follower.id} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                              {follower.follower?.avatar_url ? (
+                                <img 
+                                  src={follower.follower.avatar_url} 
+                                  alt={follower.follower.full_name} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User className="w-full h-full p-2 text-lavender-600" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{follower.follower?.full_name}</div>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            {isFollowing(follower.follower_id) ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleUnfollow(follower.follower_id)}
+                                leftIcon={<UserMinus size={16} />}
+                              >
+                                Unfollow
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleFollow(follower.follower_id)}
+                                leftIcon={<UserPlus size={16} />}
+                              >
+                                Follow
+                              </Button>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onUnfollow && onUnfollow(follower.follower_id)}
-                              title="Unfollow"
+                              onClick={() => {
+                                // Open message modal with this user
+                                onClose();
+                                // You would need to implement this functionality
+                              }}
+                              leftIcon={<MessageSquare size={16} />}
                             >
-                              <UserMinus size={16} />
+                              Message
                             </Button>
-                          ) : (
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  filteredFollowing.length === 0 ? (
+                    <div className="text-center py-8">
+                      <User className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500">
+                        {searchTerm ? 'No following match your search' : 'Not following anyone yet'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredFollowing.map(follow => (
+                        <div key={follow.id} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                              {follow.following?.avatar_url ? (
+                                <img 
+                                  src={follow.following.avatar_url} 
+                                  alt={follow.following.full_name} 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <User className="w-full h-full p-2 text-lavender-600" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{follow.following?.full_name}</div>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
                             <Button
-                              variant="primary"
+                              variant="outline"
                               size="sm"
-                              onClick={() => onFollow(follower.follower_id)}
-                              title="Follow back"
+                              onClick={() => handleUnfollow(follow.following_id)}
+                              leftIcon={<UserMinus size={16} />}
                             >
-                              <UserPlus size={16} />
+                              Unfollow
                             </Button>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-gray-500">
-                    <User className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                    <p>No followers yet</p>
-                  </div>
-                )
-              ) : (
-                following.length > 0 ? (
-                  following.map(follow => (
-                    <div key={follow.id} className="p-4 border-b border-gray-100 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-                          {follow.following?.avatar_url ? (
-                            <img 
-                              src={follow.following.avatar_url} 
-                              alt={follow.following.full_name} 
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-full h-full p-2 text-gray-400" />
-                          )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                // Open message modal with this user
+                                onClose();
+                                // You would need to implement this functionality
+                              }}
+                              leftIcon={<MessageSquare size={16} />}
+                            >
+                              Message
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{follow.following?.full_name}</div>
-                          <div className="text-xs text-gray-500">You follow</div>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        {onMessage && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onMessage(follow.following_id)}
-                            title="Send message"
-                          >
-                            <MessageSquare size={16} />
-                          </Button>
-                        )}
-                        {onUnfollow && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onUnfollow(follow.following_id)}
-                            title="Unfollow"
-                          >
-                            <UserMinus size={16} />
-                          </Button>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-gray-500">
-                    <User className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                    <p>You're not following anyone yet</p>
-                  </div>
-                )
-              )}
-            </div>
-
-            <div className="p-4 border-t border-gray-200">
-              <Button
-                variant="outline"
-                fullWidth
-                onClick={onClose}
-              >
-                Close
-              </Button>
+                  )
+                )}
+              </div>
             </div>
           </motion.div>
         </motion.div>
