@@ -47,8 +47,9 @@ const Chat = () => {
     if (!input.trim() || chatLoading) return;
 
     try {
-      await sendMessage(input.trim());
-      setInput(""); // Clear input after sending
+      const currentInput = input.trim();
+      setInput(""); // Clear input immediately before sending
+      await sendMessage(currentInput);
     } catch (error) {
       console.error("Failed to send message:", error);
     }
