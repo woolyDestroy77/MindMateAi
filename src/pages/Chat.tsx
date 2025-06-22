@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Plus, Trash2, Settings, Volume2, VolumeX, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, Settings, Volume2, VolumeX, Send, Loader2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -14,9 +14,7 @@ const Chat = () => {
   const { 
     messages, 
     isLoading: chatLoading, 
-    sendMessage, 
-    deleteChatHistory, 
-    resetDailyChat 
+    sendMessage
   } = useAIChat(undefined, updateMood);
   
   const { updateMoodFromAI } = useDashboardData();
@@ -44,18 +42,6 @@ const Chat = () => {
       console.error('Error updating mood from chat:', error);
     }
   }
-
-  const handleClearChat = async () => {
-    if (window.confirm('Are you sure you want to clear this chat history? This cannot be undone.')) {
-      await deleteChatHistory();
-    }
-  };
-
-  const handleResetDailyChat = async () => {
-    if (window.confirm('Are you sure you want to reset today\'s chat? This will clear all messages from today.')) {
-      await resetDailyChat();
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!input.trim() || chatLoading) return;
@@ -113,24 +99,6 @@ const Chat = () => {
                       Stop Audio
                     </Button>
                   )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleClearChat}
-                    leftIcon={<Trash2 size={16} />}
-                    title="Clear chat history"
-                  >
-                    Clear
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleResetDailyChat}
-                    leftIcon={<Plus size={16} />}
-                    title="Reset daily chat"
-                  >
-                    Reset Chat
-                  </Button>
                 </div>
               </div>
 
