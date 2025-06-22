@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { User, Calendar, MapPin, Users, Heart, MessageSquare, Edit, UserPlus, UserMinus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Card from '../ui/Card';
@@ -185,6 +184,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
         onClose={() => setShowMessageModal(false)}
         recipientId={userId}
         recipientName={userName}
+        recipientAvatar={avatarUrl}
       />
     </Card>
   );

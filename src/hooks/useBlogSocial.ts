@@ -59,10 +59,7 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_followers')
-        .select(`
-          *,
-          follower:follower_id(*)
-        `)
+        .select('*, follower:follower_id(*)')
         .eq('following_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -71,11 +68,11 @@ export const useBlogSocial = () => {
       // Process the data to extract user metadata
       const processedFollowers = data.map((follower: any) => ({
         ...follower,
-        follower: {
+        follower: follower.follower ? {
           id: follower.follower.id,
           full_name: follower.follower.user_metadata?.full_name || 'Anonymous',
           avatar_url: follower.follower.user_metadata?.avatar_url
-        }
+        } : null
       }));
       
       setFollowers(processedFollowers);
@@ -91,10 +88,7 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_followers')
-        .select(`
-          *,
-          following:following_id(*)
-        `)
+        .select('*, following:following_id(*)')
         .eq('follower_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -103,11 +97,11 @@ export const useBlogSocial = () => {
       // Process the data to extract user metadata
       const processedFollowing = data.map((follow: any) => ({
         ...follow,
-        following: {
+        following: follow.following ? {
           id: follow.following.id,
           full_name: follow.following.user_metadata?.full_name || 'Anonymous',
           avatar_url: follow.following.user_metadata?.avatar_url
-        }
+        } : null
       }));
       
       setFollowing(processedFollowing);
@@ -257,11 +251,7 @@ export const useBlogSocial = () => {
     try {
       const { data, error } = await supabase
         .from('blog_direct_messages')
-        .select(`
-          *,
-          sender:sender_id(*),
-          recipient:recipient_id(*)
-        `)
+        .select('*, sender:sender_id(*), recipient:recipient_id(*)')
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
@@ -270,16 +260,16 @@ export const useBlogSocial = () => {
       // Process the data to extract user metadata
       const processedMessages = data.map((message: any) => ({
         ...message,
-        sender: {
+        sender: message.sender ? {
           id: message.sender.id,
           full_name: message.sender.user_metadata?.full_name || 'Anonymous',
           avatar_url: message.sender.user_metadata?.avatar_url
-        },
-        recipient: {
+        } : null,
+        recipient: message.recipient ? {
           id: message.recipient.id,
           full_name: message.recipient.user_metadata?.full_name || 'Anonymous',
           avatar_url: message.recipient.user_metadata?.avatar_url
-        }
+        } : null
       }));
       
       setMessages(processedMessages);
@@ -299,7 +289,7 @@ export const useBlogSocial = () => {
         const otherUserId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
         const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
         
-        if (!uniqueUsers.has(otherUserId)) {
+        if (!uniqueUsers.has(otherUserId) && otherUser) {
           uniqueUsers.add(otherUserId);
           
           // Find the latest message with this user
@@ -467,11 +457,11 @@ export const useBlogSocial = () => {
   }, [messages, user]);
 
   // Set active conversation
-  const setConversation = useCallback(async (userId: string) => {
+  const setConversation = useCallback(async (userId: string | null) => {
     setActiveConversation(userId);
     
     // Mark all messages from this user as read
-    if (user) {
+    if (user && userId) {
       await markAllMessagesAsRead(userId);
     }
   }, [user, markAllMessagesAsRead]);
