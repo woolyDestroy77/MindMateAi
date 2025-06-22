@@ -51,13 +51,22 @@ export const useBlog = () => {
   // Helper function to generate signed URLs for images
   const generateSignedUrl = async (imageUrl: string): Promise<string | null> => {
     try {
-      if (!imageUrl || typeof imageUrl !== 'string') {
-        console.log('Invalid image URL:', imageUrl);
+      // Add explicit validation at the beginning
+      if (!imageUrl || typeof imageUrl !== 'string' || imageUrl.trim() === '') {
+        console.log('Invalid or empty image URL:', imageUrl);
+        return null;
+      }
+
+      // Additional validation for URL format
+      let urlObj: URL;
+      try {
+        urlObj = new URL(imageUrl);
+      } catch (urlError) {
+        console.log('Failed to parse URL:', imageUrl, urlError);
         return null;
       }
 
       // Extract the bucket and object path from the URL
-      const urlObj = new URL(imageUrl);
       const pathParts = urlObj.pathname.split('/');
       
       // Find the index of 'storage/v1/object/public'
@@ -107,11 +116,15 @@ export const useBlog = () => {
             const signedUrl = await generateSignedUrl(post.image_url);
             return { 
               ...post, 
-              image_url: signedUrl || post.image_url // Keep original URL as fallback
+              // Explicitly set to null if signed URL generation failed
+              image_url: signedUrl || null
             };
           } catch (error) {
             console.error('Error processing post image:', error);
-            return post;
+            return {
+              ...post,
+              image_url: null // Ensure null instead of invalid URL
+            };
           }
         }
         return post;
@@ -206,10 +219,15 @@ export const useBlog = () => {
           const signedUrl = await generateSignedUrl(data.image_url);
           processedPost = { 
             ...data, 
-            image_url: signedUrl || data.image_url // Keep original URL as fallback
+            // Explicitly set to null if signed URL generation failed
+            image_url: signedUrl || null
           };
         } catch (error) {
           console.error('Error processing post image:', error);
+          processedPost = {
+            ...data,
+            image_url: null // Ensure null instead of invalid URL
+          };
         }
       }
       
