@@ -95,20 +95,6 @@ const Blog = () => {
       ...prev,
       [postId]: isLiked
     }));
-    
-    // Update post likes count in the UI
-    const updatedPosts = posts.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          likes: isLiked ? post.likes + 1 : post.likes - 1
-        };
-      }
-      return post;
-    });
-    
-    // Refresh posts to update like count
-    await fetchPosts();
   };
 
   // Get excerpt from content
@@ -601,6 +587,3 @@ const Blog = () => {
       </main>
     </div>
   );
-};
-
-export default Blog;

@@ -188,5 +188,3 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
     </motion.div>
   );
 };
-
-export default BlogCard;

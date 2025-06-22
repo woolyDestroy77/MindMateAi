@@ -156,59 +156,11 @@ export const useBlog = () => {
     }
   }, []);
 
-  // Convert data URL to File object
-  const dataURLtoFile = async (dataUrl: string, filename: string): Promise<File> => {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    return new File([blob], filename, { type: blob.type });
-  };
-
-  // Upload an image for a blog post
-  const uploadImage = useCallback(async (file: File): Promise<string | null> => {
-  try {
-    console.log('Starting image upload process...');
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) throw userError ?? new Error('User not authenticated');
-
-    if (file.size > 5 * 1024 * 1024) throw new Error('Image size must be less than 5MB');
-    if (!file.type.match('image.*')) throw new Error('Please select a valid image file');
-
-    const fileExt = file.name.split('.').pop() || 'png';
-    const filePath = `blog-images/${user.id}-${Date.now()}.${fileExt}`;
-
-    const { error: uploadError } = await supabase
-      .storage
-      .from('blogimages')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (uploadError) throw uploadError;
-
-    const { data: publicUrlData } = supabase
-      .storage
-      .from('blogimages')
-      .getPublicUrl(filePath);
-
-    if (!publicUrlData?.publicUrl) throw new Error('Failed to retrieve public URL');
-
-    return publicUrlData.publicUrl;
-  } catch (err) {
-    console.error('Error uploading image:', err);
-    toast.error(err instanceof Error ? err.message : 'Failed to upload image');
-    return null;
-  }
-}, []);
-
-
   // Create a new blog post
   const createPost = useCallback(async (
     title: string,
     content: string,
     tags: string[] = [],
-    imageFile?: File | string,
     metadata?: any,
     isPublished: boolean = true
   ): Promise<BlogPost | null> => {
@@ -219,41 +171,18 @@ export const useBlog = () => {
       if (userError) throw userError;
       if (!user) throw new Error('User not authenticated');
 
-      // Handle image upload if provided
-      let imageUrl = undefined;
-      
-      if (imageFile) {
-        console.log('Processing image for blog post:', typeof imageFile);
-        
-        if (imageFile instanceof File) {
-          // Direct file upload
-          console.log('Uploading file directly');
-          imageUrl = await uploadImage(imageFile);
-        } else if (typeof imageFile === 'string' && imageFile.startsWith('data:')) {
-          // Convert data URL to file and upload
-          console.log('Converting data URL to file');
-          const file = await dataURLtoFile(imageFile, `blog-image-${Date.now()}.png`);
-          imageUrl = await uploadImage(file);
-        } else if (typeof imageFile === 'string') {
-          // It's already a URL
-          console.log('Using existing URL');
-          imageUrl = imageFile;
-        }
-        
-        console.log('Final image URL:', imageUrl);
-      }
-
       const { data, error } = await supabase
         .from('blog_posts')
         .insert([
           {
             title,
             content,
-            image_url: imageUrl,
             user_id: user.id,
             tags,
             is_published: isPublished,
-            metadata
+            metadata,
+            likes: 0,
+            comments_count: 0
           }
         ])
         .select()
@@ -274,7 +203,7 @@ export const useBlog = () => {
       toast.error(err instanceof Error ? err.message : 'Failed to create blog post');
       return null;
     }
-  }, [fetchPosts, fetchUserPosts, uploadImage]);
+  }, [fetchPosts, fetchUserPosts]);
 
   // Update an existing blog post
   const updatePost = useCallback(async (
@@ -282,29 +211,9 @@ export const useBlog = () => {
     updates: Partial<BlogPost>
   ): Promise<BlogPost | null> => {
     try {
-      // Handle image upload if it's a File
-      let finalUpdates = { ...updates };
-      if (updates.image_url instanceof File) {
-        const imageUrl = await uploadImage(updates.image_url);
-        if (imageUrl) {
-          finalUpdates.image_url = imageUrl;
-        } else {
-          delete finalUpdates.image_url; // Remove if upload failed
-        }
-      } else if (typeof updates.image_url === 'string' && updates.image_url.startsWith('data:')) {
-        // Handle base64 image data
-        const file = await dataURLtoFile(updates.image_url, 'blog-image.png');
-        const imageUrl = await uploadImage(file);
-        if (imageUrl) {
-          finalUpdates.image_url = imageUrl;
-        } else {
-          delete finalUpdates.image_url; // Remove if upload failed
-        }
-      }
-
       const { data, error } = await supabase
         .from('blog_posts')
-        .update(finalUpdates)
+        .update(updates)
         .eq('id', postId)
         .select()
         .single();
@@ -322,7 +231,7 @@ export const useBlog = () => {
       toast.error(err instanceof Error ? err.message : 'Failed to update blog post');
       return null;
     }
-  }, [fetchPosts, fetchUserPosts, uploadImage]);
+  }, [fetchPosts, fetchUserPosts]);
 
   // Delete a blog post
   const deletePost = useCallback(async (postId: string): Promise<boolean> => {
@@ -382,6 +291,19 @@ export const useBlog = () => {
 
         if (updateError) throw updateError;
         
+        // Update local state
+        setPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+        ));
+        
+        setUserPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+        ));
+        
+        setFeaturedPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes - 1 } : post
+        ));
+        
         toast.success('Post unliked');
         return false;
       } else {
@@ -401,6 +323,19 @@ export const useBlog = () => {
           .eq('id', postId);
 
         if (updateError) throw updateError;
+        
+        // Update local state
+        setPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+        ));
+        
+        setUserPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+        ));
+        
+        setFeaturedPosts(prev => prev.map(post => 
+          post.id === postId ? { ...post, likes: post.likes + 1 } : post
+        ));
         
         toast.success('Post liked');
         return true;
@@ -461,6 +396,19 @@ export const useBlog = () => {
         .eq('id', postId);
 
       if (updateError) throw updateError;
+      
+      // Update local state
+      setPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+      ));
+      
+      setUserPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+      ));
+      
+      setFeaturedPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: post.comments_count + 1 } : post
+      ));
       
       toast.success('Comment added');
       
@@ -550,6 +498,19 @@ export const useBlog = () => {
 
       if (updateError) throw updateError;
       
+      // Update local state
+      setPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+      ));
+      
+      setUserPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+      ));
+      
+      setFeaturedPosts(prev => prev.map(post => 
+        post.id === postId ? { ...post, comments_count: Math.max(0, post.comments_count - 1) } : post
+      ));
+      
       toast.success('Comment deleted');
       return true;
     } catch (err) {
@@ -625,7 +586,6 @@ export const useBlog = () => {
     addComment,
     fetchComments,
     deleteComment,
-    uploadImage,
     filterPostsByTag,
     searchPosts
   };

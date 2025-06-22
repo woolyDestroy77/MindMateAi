@@ -542,5 +542,3 @@ const BlogPost = () => {
     </div>
   );
 };
-
-export default BlogPost;

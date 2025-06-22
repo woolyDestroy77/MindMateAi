@@ -1,13 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   BookOpen, 
-  Image as ImageIcon, 
   Tag, 
   X, 
-  Upload, 
-  Trash2, 
   ArrowLeft, 
   Heart, 
   MapPin, 
@@ -26,7 +23,7 @@ import { useNotificationContext } from '../components/notifications/Notification
 
 const CreateBlogPost = () => {
   const navigate = useNavigate();
-  const { createPost, uploadImage } = useBlog();
+  const { createPost } = useBlog();
   const { userAddictions } = useAddictionSupport();
   const { createAchievement } = useNotificationContext();
   
@@ -34,8 +31,6 @@ const CreateBlogPost = () => {
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
   const [metadata, setMetadata] = useState({
@@ -44,8 +39,6 @@ const CreateBlogPost = () => {
     recovery_day: userAddictions.length > 0 ? userAddictions[0].days_clean : undefined,
     privacy: 'public' as 'public' | 'private' | 'followers'
   });
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Common tags for addiction and mental health
   const commonTags = [
@@ -56,42 +49,6 @@ const CreateBlogPost = () => {
 
   // Moods
   const moods = ['😊', '😌', '😐', '😕', '😢', '😠', '😴', '🤔', '😰', '🥰', '🤩'];
-
-  // Handle file selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
-        return;
-      }
-      
-      setImageFile(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Trigger file input click
-  const handleImageUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Remove selected image
-  const handleRemoveImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
 
   // Add tag
   const handleAddTag = (e: React.KeyboardEvent) => {
@@ -128,12 +85,10 @@ const CreateBlogPost = () => {
     setIsSubmitting(true);
     
     try {
-      // Use the actual file for upload
       const newPost = await createPost(
         title.trim(),
         content.trim(),
         tags,
-        imageFile, // Pass the actual File object
         metadata
       );
       
@@ -201,71 +156,6 @@ const CreateBlogPost = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                   required
                 />
-              </div>
-
-              {/* Image Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Cover Image (Optional)
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                
-                {!imagePreview ? (
-                  <div 
-                    onClick={handleImageUploadClick}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-lavender-500 transition-colors"
-                  >
-                    <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600">
-                        Click to upload an image
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        PNG, JPG, GIF up to 5MB
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-100">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="w-full h-64 object-cover"
-                        onError={(e) => {
-                          console.error("Preview image failed to load");
-                          e.currentTarget.src = "https://images.pexels.com/photos/3560044/pexels-photo-3560044.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1";
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 transition-opacity flex items-center justify-center opacity-0 hover:opacity-100">
-                        <div className="flex space-x-2">
-                          <button
-                            type="button"
-                            onClick={handleImageUploadClick}
-                            className="p-2 bg-white rounded-full text-gray-700 hover:text-lavender-600"
-                            title="Change image"
-                          >
-                            <Upload size={18} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="p-2 bg-white rounded-full text-gray-700 hover:text-red-600"
-                            title="Remove image"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Content */}
@@ -522,5 +412,3 @@ const CreateBlogPost = () => {
     </div>
   );
 };
-
-export default CreateBlogPost;
