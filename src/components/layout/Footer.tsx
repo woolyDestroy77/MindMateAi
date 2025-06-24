@@ -61,9 +61,24 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="mt-8 pt-8 border-t border-gray-200">
-          <p className="text-gray-500 text-sm text-center">
-            © {new Date().getFullYear()} PureMind AI. All rights reserved. Made with <Heart size={14} className="inline text-red-500" /> for better mental wellness.
-          </p>
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-500 text-sm">
+              © {new Date().getFullYear()} PureMind AI. All rights reserved. Made with <Heart size={14} className="inline text-red-500" /> for better mental wellness.
+            </p>
+            <a 
+              href="https://bolt.new" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="flex items-center mt-4 md:mt-0 text-gray-500 hover:text-lavender-600 transition-colors text-sm"
+            >
+              Built with 
+              <img 
+                src="https://bolt.new/bolt-badge.svg" 
+                alt="Built with Bolt.new" 
+                className="h-4 ml-1" 
+              />
+            </a>
+          </div>
         </div>
       </div>
     </footer>
