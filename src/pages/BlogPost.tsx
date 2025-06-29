@@ -14,7 +14,6 @@ import {
   Trash2, 
   Share2, 
   AlertTriangle,
-  X,
   UserPlus,
   UserMinus,
   MessageCircle
@@ -23,8 +22,6 @@ import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import BlogHeader from '../components/blog/BlogHeader';
-import UserProfileCard from '../components/blog/UserProfileCard';
 import { useBlog, BlogPost as BlogPostType, BlogComment } from '../hooks/useBlog';
 import { useAuth } from '../hooks/useAuth';
 import { useBlogSocial } from '../hooks/useBlogSocial';
@@ -265,13 +262,14 @@ export default function BlogPost() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <BlogHeader />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavender-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading blog post...</p>
+        <div className="pt-16"> {/* Add padding to account for fixed navbar */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lavender-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Loading blog post...</p>
+            </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -280,22 +278,23 @@ export default function BlogPost() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
-        <BlogHeader />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Post Not Found</h2>
-            <p className="text-gray-600 mb-6">The blog post you're looking for doesn't exist or has been removed.</p>
-            <Link to="/blog">
-              <Button
-                variant="primary"
-                leftIcon={<ArrowLeft size={18} />}
-              >
-                Back to Blog
-              </Button>
-            </Link>
+        <div className="pt-16"> {/* Add padding to account for fixed navbar */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="text-center">
+              <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Post Not Found</h2>
+              <p className="text-gray-600 mb-6">The blog post you're looking for doesn't exist or has been removed.</p>
+              <Link to="/blog">
+                <Button
+                  variant="primary"
+                  leftIcon={<ArrowLeft size={18} />}
+                >
+                  Back to Blog
+                </Button>
+              </Link>
+            </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
@@ -303,276 +302,213 @@ export default function BlogPost() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <BlogHeader />
+      <div className="pt-16"> {/* Add padding to account for fixed navbar */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              {/* Back Button */}
+              <div className="mb-6">
+                <Link to="/blog" className="inline-flex items-center text-lavender-600 hover:text-lavender-800">
+                  <ArrowLeft size={18} className="mr-2" />
+                  Back to Blog
+                </Link>
+              </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {/* Back Button */}
-            <div className="mb-6">
-              <Link to="/blog" className="inline-flex items-center text-lavender-600 hover:text-lavender-800">
-                <ArrowLeft size={18} className="mr-2" />
-                Back to Blog
-              </Link>
-            </div>
-
-            {/* Post Content */}
-            <article className="bg-white rounded-lg shadow-md overflow-hidden">
-              {/* Featured Badge */}
-              {post.metadata?.featured && (
-                <div className="bg-yellow-500 text-white px-4 py-1 text-center text-sm font-medium">
-                  Featured Story
-                </div>
-              )}
-              
-              <div className="p-6 md:p-8">
-                {/* Author and Date */}
-                <div className="flex items-center space-x-4 mb-6">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                    {post.author?.avatar_url ? (
-                      <img 
-                        src={post.author.avatar_url} 
-                        alt={post.author.full_name} 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
-                        }}
-                      />
-                    ) : (
-                      <User className="w-full h-full p-2 text-lavender-600" />
-                    )}
+              {/* Post Content */}
+              <article className="bg-white rounded-lg shadow-md overflow-hidden">
+                {/* Featured Badge */}
+                {post.metadata?.featured && (
+                  <div className="bg-yellow-500 text-white px-4 py-1 text-center text-sm font-medium">
+                    Featured Story
                   </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
-                    <div className="text-sm text-gray-500 flex items-center">
-                      <Calendar size={14} className="mr-1" />
-                      {format(parseISO(post.created_at), 'MMMM d, yyyy')}
-                      <span className="mx-2">•</span>
-                      {formatDistanceToNow(parseISO(post.created_at), { addSuffix: true })}
+                )}
+                
+                <div className="p-6 md:p-8">
+                  {/* Author and Date */}
+                  <div className="flex items-center space-x-4 mb-6">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                      {post.author?.avatar_url ? (
+                        <img 
+                          src={post.author.avatar_url} 
+                          alt={post.author.full_name} 
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                          }}
+                        />
+                      ) : (
+                        <User className="w-full h-full p-2 text-lavender-600" />
+                      )}
                     </div>
-                  </div>
-                  
-                  {/* Follow/Message Author */}
-                  {user && post.author && user.id !== post.author.id && (
-                    <div className="ml-auto flex space-x-2">
-                      <Button
-                        variant={isFollowingAuthor ? "outline" : "primary"}
-                        size="sm"
-                        onClick={handleFollowAuthor}
-                        isLoading={isTogglingFollow}
-                        leftIcon={isFollowingAuthor ? <UserMinus size={16} /> : <UserPlus size={16} />}
-                      >
-                        {isFollowingAuthor ? 'Unfollow' : 'Follow'}
-                      </Button>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<MessageCircle size={16} />}
-                        onClick={handleMessageAuthor}
-                      >
-                        Message
-                      </Button>
+                    <div>
+                      <div className="font-medium text-gray-900">{post.author?.full_name || 'Anonymous'}</div>
+                      <div className="text-sm text-gray-500 flex items-center">
+                        <Calendar size={14} className="mr-1" />
+                        {format(parseISO(post.created_at), 'MMMM d, yyyy')}
+                        <span className="mx-2">•</span>
+                        {formatDistanceToNow(parseISO(post.created_at), { addSuffix: true })}
+                      </div>
                     </div>
-                  )}
-                  
-                  {/* Edit/Delete Options (if author) */}
-                  {user && user.id === post.user_id && (
-                    <div className="ml-auto flex space-x-2">
-                      <Link to={`/blog/edit/${post.id}`}>
+                    
+                    {/* Follow/Message Author */}
+                    {user && post.author && user.id !== post.author.id && (
+                      <div className="ml-auto flex space-x-2">
+                        <Button
+                          variant={isFollowingAuthor ? "outline" : "primary"}
+                          size="sm"
+                          onClick={handleFollowAuthor}
+                          isLoading={isTogglingFollow}
+                          leftIcon={isFollowingAuthor ? <UserMinus size={16} /> : <UserPlus size={16} />}
+                        >
+                          {isFollowingAuthor ? 'Unfollow' : 'Follow'}
+                        </Button>
+                        
                         <Button
                           variant="outline"
                           size="sm"
-                          leftIcon={<Edit size={16} />}
+                          leftIcon={<MessageCircle size={16} />}
+                          onClick={handleMessageAuthor}
                         >
-                          Edit
+                          Message
                         </Button>
-                      </Link>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        leftIcon={<Trash2 size={16} />}
-                        className="text-red-600 border-red-200 hover:bg-red-50"
-                        onClick={() => setShowDeleteConfirm(true)}
-                      >
-                        Delete
-                      </Button>
+                      </div>
+                    )}
+                    
+                    {/* Edit/Delete Options (if author) */}
+                    {user && user.id === post.user_id && (
+                      <div className="ml-auto flex space-x-2">
+                        <Link to={`/blog/edit/${post.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            leftIcon={<Edit size={16} />}
+                          >
+                            Edit
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          leftIcon={<Trash2 size={16} />}
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Title */}
+                  <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+                  
+                  {/* Tags */}
+                  {post.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {post.tags.map((tag) => (
+                        <Link
+                          key={tag}
+                          to={`/blog?tag=${tag}`}
+                          className="bg-lavender-50 text-lavender-700 px-3 py-1 rounded-full text-sm flex items-center hover:bg-lavender-100 transition-colors"
+                        >
+                          <Tag size={14} className="mr-1" />
+                          {tag}
+                        </Link>
+                      ))}
                     </div>
                   )}
-                </div>
-                
-                {/* Title */}
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
-                
-                {/* Tags */}
-                {post.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {post.tags.map((tag) => (
-                      <Link
-                        key={tag}
-                        to={`/blog?tag=${tag}`}
-                        className="bg-lavender-50 text-lavender-700 px-3 py-1 rounded-full text-sm flex items-center hover:bg-lavender-100 transition-colors"
-                      >
-                        <Tag size={14} className="mr-1" />
-                        {tag}
-                      </Link>
+                  
+                  {/* Content */}
+                  <div className="prose prose-lavender max-w-none mb-8">
+                    {post.content.split('\n').map((paragraph, index) => (
+                      paragraph ? <p key={index}>{paragraph}</p> : <br key={index} />
                     ))}
                   </div>
-                )}
-                
-                {/* Content */}
-                <div className="prose prose-lavender max-w-none mb-8">
-                  {post.content.split('\n').map((paragraph, index) => (
-                    paragraph ? <p key={index}>{paragraph}</p> : <br key={index} />
-                  ))}
-                </div>
-                
-                {/* Metadata */}
-                {post.metadata && (
-                  <div className="mb-8">
-                    {post.metadata.recovery_day !== undefined && (
-                      <div className="inline-flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-sm mr-3">
-                        <Heart size={14} className="mr-1" />
-                        Day {post.metadata.recovery_day} of Recovery
-                      </div>
-                    )}
-                    
-                    {post.metadata.mood && (
-                      <div className="inline-flex items-center bg-green-50 text-green-700 px-3 py-1 rounded-lg text-sm mr-3">
-                        Mood: {post.metadata.mood}
-                      </div>
-                    )}
-                    
-                    {post.metadata.location && (
-                      <div className="inline-flex items-center bg-yellow-50 text-yellow-700 px-3 py-1 rounded-lg text-sm">
-                        Location: {post.metadata.location}
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-6 border-t border-gray-100">
-                  <div className="flex space-x-6">
-                    <button
-                      onClick={handleLike}
-                      className={`flex items-center space-x-2 ${
-                        isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
-                      }`}
-                      disabled={!user}
-                      aria-label={isLiked ? "Unlike post" : "Like post"}
-                    >
-                      <Heart size={20} className={isLiked ? 'fill-current' : ''} />
-                      <span className="font-medium">{post.likes}</span>
-                    </button>
-                    
-                    <a 
-                      href="#comments"
-                      className="flex items-center space-x-2 text-gray-500 hover:text-lavender-600"
-                    >
-                      <MessageSquare size={20} />
-                      <span className="font-medium">{post.comments_count}</span>
-                    </a>
-                  </div>
                   
-                  <div>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.href);
-                        toast.success('Link copied to clipboard!');
-                      }}
-                      className="flex items-center space-x-1 text-gray-500 hover:text-lavender-600"
-                      aria-label="Share post"
-                    >
-                      <Share2 size={18} />
-                      <span className="text-sm">Share</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            {/* Comments Section */}
-            <section id="comments" className="mt-8">
-              <Card>
-                <div className="p-6">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                    <MessageSquare className="w-5 h-5 mr-2 text-lavender-600" />
-                    Comments ({post.comments_count})
-                  </h2>
-                  
-                  {/* Comment Form */}
-                  {user ? (
-                    <form onSubmit={handleSubmitComment} className="mb-8">
-                      <div className="flex space-x-4">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                          {user.user_metadata?.avatar_url ? (
-                            <img 
-                              src={user.user_metadata.avatar_url} 
-                              alt={user.user_metadata.full_name || 'User'} 
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => {
-                                e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
-                              }}
-                            />
-                          ) : (
-                            <User className="w-full h-full p-2 text-lavender-600" />
-                          )}
+                  {/* Metadata */}
+                  {post.metadata && (
+                    <div className="mb-8">
+                      {post.metadata.recovery_day !== undefined && (
+                        <div className="inline-flex items-center bg-blue-50 text-blue-700 px-3 py-1 rounded-lg text-sm mr-3">
+                          <Heart size={14} className="mr-1" />
+                          Day {post.metadata.recovery_day} of Recovery
                         </div>
-                        <div className="flex-1">
-                          <textarea
-                            value={commentText}
-                            onChange={(e) => setCommentText(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none"
-                            rows={3}
-                            required
-                          />
-                          <div className="mt-2 flex justify-end">
-                            <Button
-                              type="submit"
-                              variant="primary"
-                              disabled={!commentText.trim() || isSubmittingComment}
-                              isLoading={isSubmittingComment}
-                              leftIcon={<Send size={16} />}
-                            >
-                              Post Comment
-                            </Button>
-                          </div>
+                      )}
+                      
+                      {post.metadata.mood && (
+                        <div className="inline-flex items-center bg-green-50 text-green-700 px-3 py-1 rounded-lg text-sm mr-3">
+                          Mood: {post.metadata.mood}
                         </div>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="bg-lavender-50 p-4 rounded-lg mb-6">
-                      <p className="text-lavender-800 text-sm">
-                        Please <Link to="/" className="font-medium underline">sign in</Link> to leave a comment.
-                      </p>
+                      )}
+                      
+                      {post.metadata.location && (
+                        <div className="inline-flex items-center bg-yellow-50 text-yellow-700 px-3 py-1 rounded-lg text-sm">
+                          Location: {post.metadata.location}
+                        </div>
+                      )}
                     </div>
                   )}
                   
-                  {/* Comments List */}
-                  {comments.length === 0 ? (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg">
-                      <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-1">No Comments Yet</h3>
-                      <p className="text-gray-600">Be the first to share your thoughts on this post.</p>
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-100">
+                    <div className="flex space-x-6">
+                      <button
+                        onClick={handleLike}
+                        className={`flex items-center space-x-2 ${
+                          isLiked ? 'text-red-600' : 'text-gray-500 hover:text-red-600'
+                        }`}
+                        disabled={!user}
+                        aria-label={isLiked ? "Unlike post" : "Like post"}
+                      >
+                        <Heart size={20} className={isLiked ? 'fill-current' : ''} />
+                        <span className="font-medium">{post.likes}</span>
+                      </button>
+                      
+                      <a 
+                        href="#comments"
+                        className="flex items-center space-x-2 text-gray-500 hover:text-lavender-600"
+                      >
+                        <MessageSquare size={20} />
+                        <span className="font-medium">{post.comments_count}</span>
+                      </a>
                     </div>
-                  ) : (
-                    <div className="space-y-6">
-                      {comments.map((comment) => (
-                        <motion.div
-                          key={comment.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex space-x-4"
-                        >
+                    
+                    <div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href);
+                          toast.success('Link copied to clipboard!');
+                        }}
+                        className="flex items-center space-x-1 text-gray-500 hover:text-lavender-600"
+                        aria-label="Share post"
+                      >
+                        <Share2 size={18} />
+                        <span className="text-sm">Share</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Comments Section */}
+              <section id="comments" className="mt-8">
+                <Card>
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                      <MessageSquare className="w-5 h-5 mr-2 text-lavender-600" />
+                      Comments ({post.comments_count})
+                    </h2>
+                    
+                    {/* Comment Form */}
+                    {user ? (
+                      <form onSubmit={handleSubmitComment} className="mb-8">
+                        <div className="flex space-x-4">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
-                            {comment.author?.avatar_url ? (
+                            {user.user_metadata?.avatar_url ? (
                               <img 
-                                src={comment.author.avatar_url} 
-                                alt={comment.author.full_name} 
+                                src={user.user_metadata.avatar_url} 
+                                alt={user.user_metadata.full_name || 'User'} 
                                 className="w-full h-full object-cover"
                                 loading="lazy"
                                 onError={(e) => {
@@ -584,65 +520,177 @@ export default function BlogPost() {
                             )}
                           </div>
                           <div className="flex-1">
-                            <div className="bg-gray-50 rounded-lg p-4">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <div className="font-medium text-gray-900">
-                                    {comment.author?.full_name || 'Anonymous'}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    {formatDistanceToNow(parseISO(comment.created_at), { addSuffix: true })}
-                                  </div>
-                                </div>
-                                
-                                {/* Delete option (if author) */}
-                                {user && user.id === comment.user_id && (
-                                  <button
-                                    onClick={() => handleDeleteComment(comment.id)}
-                                    className="text-gray-400 hover:text-red-600 p-1"
-                                    title="Delete comment"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
-                              </div>
-                              <p className="mt-2 text-gray-700">{comment.content}</p>
+                            <textarea
+                              value={commentText}
+                              onChange={(e) => setCommentText(e.target.value)}
+                              placeholder="Add a comment..."
+                              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent resize-none"
+                              rows={3}
+                              required
+                            />
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                type="submit"
+                                variant="primary"
+                                disabled={!commentText.trim() || isSubmittingComment}
+                                isLoading={isSubmittingComment}
+                                leftIcon={<Send size={16} />}
+                              >
+                                Post Comment
+                              </Button>
                             </div>
                           </div>
-                        </motion.div>
-                      ))}
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="bg-lavender-50 p-4 rounded-lg mb-6">
+                        <p className="text-lavender-800 text-sm">
+                          Please <Link to="/" className="font-medium underline">sign in</Link> to leave a comment.
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Comments List */}
+                    {comments.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-lg">
+                        <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">No Comments Yet</h3>
+                        <p className="text-gray-600">Be the first to share your thoughts on this post.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {comments.map((comment) => (
+                          <motion.div
+                            key={comment.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex space-x-4"
+                          >
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100 flex-shrink-0">
+                              {comment.author?.avatar_url ? (
+                                <img 
+                                  src={comment.author.avatar_url} 
+                                  alt={comment.author.full_name} 
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
+                                  }}
+                                />
+                              ) : (
+                                <User className="w-full h-full p-2 text-lavender-600" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="bg-gray-50 rounded-lg p-4">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium text-gray-900">
+                                      {comment.author?.full_name || 'Anonymous'}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {formatDistanceToNow(parseISO(comment.created_at), { addSuffix: true })}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Delete option (if author) */}
+                                  {user && user.id === comment.user_id && (
+                                    <button
+                                      onClick={() => handleDeleteComment(comment.id)}
+                                      className="text-gray-400 hover:text-red-600 p-1"
+                                      title="Delete comment"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                                <p className="mt-2 text-gray-700">{comment.content}</p>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </section>
+            </div>
+            
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Author Profile */}
+              {post.author && (
+                <Card>
+                  <div className="p-6 pb-6">
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 rounded-full border-4 border-lavender-200 overflow-hidden bg-gray-100">
+                        {post.author.avatar_url ? (
+                          <img 
+                            src={post.author.avatar_url} 
+                            alt={post.author.full_name} 
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-lavender-100">
+                            <User size={40} className="text-lavender-500" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <h3 className="mt-4 text-xl font-semibold text-gray-900">
+                        {post.author.full_name}
+                      </h3>
+                      
+                      {post.created_at && (
+                        <p className="text-sm text-gray-500">
+                          Member since {format(parseISO(post.created_at), 'MMMM yyyy')}
+                        </p>
+                      )}
+                      
+                      {/* Follow/Message Buttons */}
+                      {user && user.id !== post.author.id && (
+                        <div className="mt-4 flex space-x-2 w-full">
+                          <Button
+                            variant={isFollowingAuthor ? "outline" : "primary"}
+                            size="sm"
+                            fullWidth
+                            onClick={handleFollowAuthor}
+                            isLoading={isTogglingFollow}
+                            leftIcon={isFollowingAuthor ? <UserMinus size={16} /> : <UserPlus size={16} />}
+                          >
+                            {isFollowingAuthor ? 'Unfollow' : 'Follow'}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            fullWidth
+                            onClick={handleMessageAuthor}
+                            leftIcon={<MessageCircle size={16} />}
+                          >
+                            Message
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                </Card>
+              )}
+              
+              {/* Related Posts */}
+              <Card>
+                <div className="p-5">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Posts</h3>
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    Coming soon!
+                  </div>
                 </div>
               </Card>
-            </section>
+            </div>
           </div>
-          
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Author Profile */}
-            {post.author && (
-              <UserProfileCard
-                userId={post.author.id}
-                userName={post.author.full_name}
-                avatarUrl={post.author.avatar_url}
-                createdAt={post.created_at}
-                postCount={1}
-              />
-            )}
-            
-            {/* Related Posts */}
-            <Card>
-              <div className="p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Related Posts</h3>
-                <div className="text-center py-4 text-gray-500 text-sm">
-                  Coming soon!
-                </div>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
