@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Apple } from 'lucide-react';
+import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
@@ -13,7 +13,7 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
-  const { signInWithGoogle, signInWithApple } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -24,7 +24,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isAppleLoading, setIsAppleLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -161,18 +160,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
     }
   };
 
-  const handleAppleSignIn = async () => {
-    try {
-      setIsAppleLoading(true);
-      await signInWithApple();
-      onClose();
-    } catch (error) {
-      console.error('Apple sign-in error:', error);
-    } finally {
-      setIsAppleLoading(false);
-    }
-  };
-
   return (
     <AnimatePresence>
       <motion.div
@@ -219,19 +206,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
               >
                 {!isGoogleLoading && <FcGoogle size={20} className="mr-2" />}
                 Continue with Google
-              </Button>
-              
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                fullWidth
-                onClick={handleAppleSignIn}
-                isLoading={isAppleLoading}
-                className="flex items-center justify-center"
-              >
-                {!isAppleLoading && <Apple size={20} className="mr-2 text-black" />}
-                Continue with Apple
               </Button>
             </div>
 

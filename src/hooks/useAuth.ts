@@ -13,6 +13,9 @@ export interface UserProfile {
   created_at?: string;
 }
 
+// Create a cache for user profiles to reduce database calls
+const profileCache = new Map<string, UserProfile>();
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -21,6 +24,13 @@ export const useAuth = () => {
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
+      // Check cache first
+      if (profileCache.has(userId)) {
+        const cachedProfile = profileCache.get(userId);
+        setUserProfile(cachedProfile || null);
+        return cachedProfile;
+      }
+
       setIsLoadingProfile(true);
       
       // Get user metadata from auth.users
@@ -28,8 +38,6 @@ export const useAuth = () => {
       
       if (userError) throw userError;
       if (!userData.user) return null;
-      
-      console.log('Fetched user data:', userData.user);
       
       // Create profile object from user metadata
       const profile: UserProfile = {
@@ -42,7 +50,9 @@ export const useAuth = () => {
         created_at: userData.user.created_at
       };
       
-      console.log('Created profile object:', profile);
+      // Cache the profile
+      profileCache.set(userId, profile);
+      
       setUserProfile(profile);
       return profile;
     } catch (error) {
@@ -73,6 +83,8 @@ export const useAuth = () => {
           await fetchUserProfile(session.user.id);
         } else {
           setUserProfile(null);
+          // Clear cache on logout
+          profileCache.clear();
         }
       });
 
@@ -92,10 +104,7 @@ export const useAuth = () => {
 
   const updateProfile = async (updates: Partial<UserProfile>): Promise<boolean> => {
     try {
-      console.log('Updating profile with:', updates);
-      
       if (!user) {
-        console.error('No user found for profile update');
         toast.error('You must be logged in to update your profile');
         return false;
       }
@@ -105,8 +114,6 @@ export const useAuth = () => {
         Object.entries(updates).filter(([_, v]) => v !== undefined && v !== '')
       );
       
-      console.log('Filtered updates:', filteredUpdates);
-      
       // Set loading state to show feedback to the user
       setIsLoadingProfile(true);
       
@@ -115,11 +122,8 @@ export const useAuth = () => {
       });
 
       if (error) {
-        console.error('Error in updateUser:', error);
         throw error;
       }
-      
-      console.log('Profile update response:', data);
       
       // Update local state with the new profile data
       if (userProfile) {
@@ -127,7 +131,10 @@ export const useAuth = () => {
           ...userProfile,
           ...filteredUpdates
         };
-        console.log('Setting updated profile:', updatedProfile);
+        
+        // Update cache
+        profileCache.set(user.id, updatedProfile);
+        
         setUserProfile(updatedProfile);
       }
       
@@ -158,26 +165,19 @@ export const useAuth = () => {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}-${Date.now()}.${fileExt}`;
       
-      console.log('Uploading file:', fileName);
-      
       const { error: uploadError, data: uploadData } = await supabase.storage
         .from('profile_images')
         .upload(fileName, file);
         
       if (uploadError) {
-        console.error('Upload error:', uploadError);
         throw uploadError;
       }
-      
-      console.log('Upload successful:', uploadData);
       
       // Get public URL
       const { data: publicUrlData } = supabase.storage
         .from('profile_images')
         .getPublicUrl(fileName);
         
-      console.log('Public URL:', publicUrlData.publicUrl);
-      
       // Update user profile with image URL
       const { error: updateError } = await supabase.auth.updateUser({
         data: { 
@@ -186,13 +186,16 @@ export const useAuth = () => {
       });
       
       if (updateError) {
-        console.error('Update error:', updateError);
         throw updateError;
       }
       
       // Update local state
       if (userProfile) {
-        setUserProfile({ ...userProfile, avatar_url: publicUrlData.publicUrl });
+        const updatedProfile = { ...userProfile, avatar_url: publicUrlData.publicUrl };
+        setUserProfile(updatedProfile);
+        
+        // Update cache
+        profileCache.set(user.id, updatedProfile);
       }
       
       toast.success('Profile picture updated successfully');
@@ -210,6 +213,8 @@ export const useAuth = () => {
     try {
       await supabase.auth.signOut();
       setUserProfile(null);
+      // Clear cache on logout
+      profileCache.clear();
       toast.success('Signed out successfully');
     } catch (error) {
       toast.error('Error signing out');
@@ -232,22 +237,6 @@ export const useAuth = () => {
     }
   };
 
-  const signInWithApple = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: window.location.origin
-        }
-      });
-      
-      if (error) throw error;
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Apple');
-      throw error;
-    }
-  };
-
   return {
     user,
     userProfile,
@@ -257,7 +246,6 @@ export const useAuth = () => {
     updateProfile,
     updateAvatar,
     signInWithGoogle,
-    signInWithApple,
     refreshProfile: () => user ? fetchUserProfile(user.id) : Promise.resolve(null)
   };
 };

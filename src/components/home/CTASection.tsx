@@ -1,11 +1,10 @@
 import React from 'react';
 import { FcGoogle } from 'react-icons/fc';
-import { Apple } from 'lucide-react';
 import Button from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 
 const CTASection: React.FC = () => {
-  const { signInWithGoogle, signInWithApple } = useAuth();
+  const { signInWithGoogle } = useAuth();
   
   return (
     <section className="py-16 bg-gradient-to-r from-lavender-600 to-sage-500">
@@ -36,16 +35,6 @@ const CTASection: React.FC = () => {
             >
               <FcGoogle size={20} className="mr-2" />
               Sign up with Google
-            </Button>
-            
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white text-white hover:bg-white/10 flex items-center justify-center"
-              onClick={signInWithApple}
-            >
-              <Apple size={20} className="mr-2" />
-              Sign up with Apple
             </Button>
           </div>
           
