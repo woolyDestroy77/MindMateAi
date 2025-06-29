@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from './useAuth';
@@ -62,7 +62,7 @@ export const useBlogSocial = () => {
   const [following, setFollowing] = useState<Following[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationUsers, setConversationUsers] = useState<ConversationUser[]>([]);
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
@@ -72,6 +72,7 @@ export const useBlogSocial = () => {
     if (!user) return [];
     
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('blog_followers')
         .select(`
@@ -82,11 +83,14 @@ export const useBlogSocial = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      setFollowers(data || []);
       return data || [];
     } catch (err) {
       console.error('Error fetching followers:', err);
       setError('Error fetching followers: ' + (err instanceof Error ? err.message : String(err)));
       return [];
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -95,6 +99,7 @@ export const useBlogSocial = () => {
     if (!user) return [];
     
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('blog_followers')
         .select(`
@@ -105,11 +110,14 @@ export const useBlogSocial = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      setFollowing(data || []);
       return data || [];
     } catch (err) {
       console.error('Error fetching following:', err);
       setError('Error fetching following: ' + (err instanceof Error ? err.message : String(err)));
       return [];
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -118,6 +126,7 @@ export const useBlogSocial = () => {
     if (!user) return [];
     
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('blog_direct_messages')
         .select(`
@@ -136,6 +145,7 @@ export const useBlogSocial = () => {
       ).length || 0;
       
       setUnreadCount(unread);
+      setMessages(data || []);
       
       // Process conversation users
       processConversationUsers(data || []);
@@ -145,6 +155,8 @@ export const useBlogSocial = () => {
       console.error('Error fetching messages:', err);
       setError('Error fetching messages: ' + (err instanceof Error ? err.message : String(err)));
       return [];
+    } finally {
+      setIsLoading(false);
     }
   }, [user]);
 
@@ -209,18 +221,7 @@ export const useBlogSocial = () => {
     }
     
     try {
-      // Check if already following
-      const { data: existingFollow } = await supabase
-        .from('blog_followers')
-        .select('*')
-        .eq('follower_id', user.id)
-        .eq('following_id', userId)
-        .maybeSingle();
-      
-      if (existingFollow) {
-        toast.error('You are already following this user');
-        return false;
-      }
+      setIsLoading(true);
       
       // Create follow relationship
       const { error } = await supabase
@@ -229,7 +230,14 @@ export const useBlogSocial = () => {
           { follower_id: user.id, following_id: userId }
         ]);
       
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          // This is a unique constraint violation - already following
+          toast.error('You are already following this user');
+          return false;
+        }
+        throw error;
+      }
       
       // Refresh following list
       const newFollowing = await fetchFollowing();
@@ -259,6 +267,8 @@ export const useBlogSocial = () => {
       console.error('Error following user:', err);
       toast.error('Failed to follow user');
       return false;
+    } finally {
+      setIsLoading(false);
     }
   }, [user, fetchFollowing]);
 
@@ -270,6 +280,7 @@ export const useBlogSocial = () => {
     }
     
     try {
+      setIsLoading(true);
       const { error } = await supabase
         .from('blog_followers')
         .delete()
@@ -288,6 +299,8 @@ export const useBlogSocial = () => {
       console.error('Error unfollowing user:', err);
       toast.error('Failed to unfollow user');
       return false;
+    } finally {
+      setIsLoading(false);
     }
   }, [user, fetchFollowing]);
 
@@ -295,38 +308,6 @@ export const useBlogSocial = () => {
   const isFollowing = useCallback((userId: string) => {
     return following.some(f => f.following_id === userId);
   }, [following]);
-
-  // Get follower count for a user
-  const getFollowerCount = useCallback(async (userId: string) => {
-    try {
-      const { count, error } = await supabase
-        .from('blog_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', userId);
-      
-      if (error) throw error;
-      return count || 0;
-    } catch (err) {
-      console.error('Error getting follower count:', err);
-      return 0;
-    }
-  }, []);
-
-  // Get following count for a user
-  const getFollowingCount = useCallback(async (userId: string) => {
-    try {
-      const { count, error } = await supabase
-        .from('blog_followers')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', userId);
-      
-      if (error) throw error;
-      return count || 0;
-    } catch (err) {
-      console.error('Error getting following count:', err);
-      return 0;
-    }
-  }, []);
 
   // Send a direct message
   const sendMessage = useCallback(async (recipientId: string, message: string) => {
@@ -336,6 +317,7 @@ export const useBlogSocial = () => {
     }
     
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('blog_direct_messages')
         .insert([
@@ -356,8 +338,7 @@ export const useBlogSocial = () => {
       if (error) throw error;
       
       // Refresh messages
-      const newMessages = await fetchMessages();
-      setMessages(newMessages);
+      await fetchMessages();
       
       // Send notification to recipient
       try {
@@ -383,6 +364,8 @@ export const useBlogSocial = () => {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
       return null;
+    } finally {
+      setIsLoading(false);
     }
   }, [user, fetchMessages]);
 
@@ -397,35 +380,11 @@ export const useBlogSocial = () => {
       if (error) throw error;
       
       // Refresh messages
-      const newMessages = await fetchMessages();
-      setMessages(newMessages);
+      await fetchMessages();
       
       return true;
     } catch (err) {
       console.error('Error marking message as read:', err);
-      return false;
-    }
-  }, [fetchMessages]);
-
-  // Delete a message
-  const deleteMessage = useCallback(async (messageId: string) => {
-    try {
-      const { error } = await supabase
-        .from('blog_direct_messages')
-        .delete()
-        .eq('id', messageId);
-      
-      if (error) throw error;
-      
-      // Refresh messages
-      const newMessages = await fetchMessages();
-      setMessages(newMessages);
-      
-      toast.success('Message deleted');
-      return true;
-    } catch (err) {
-      console.error('Error deleting message:', err);
-      toast.error('Failed to delete message');
       return false;
     }
   }, [fetchMessages]);
@@ -442,24 +401,6 @@ export const useBlogSocial = () => {
     );
   }, [user, messages]);
 
-  // Set active conversation
-  const setConversation = useCallback((userId: string | null) => {
-    setActiveConversation(userId);
-    
-    // Mark messages as read when opening conversation
-    if (userId && user) {
-      const unreadMessages = messages.filter(
-        msg => msg.sender_id === userId && 
-               msg.recipient_id === user.id && 
-               !msg.is_read
-      );
-      
-      unreadMessages.forEach(msg => {
-        markMessageAsRead(msg.id);
-      });
-    }
-  }, [user, messages, markMessageAsRead]);
-
   // Load all data
   const loadData = useCallback(async () => {
     if (!user) {
@@ -471,15 +412,11 @@ export const useBlogSocial = () => {
     setError(null);
     
     try {
-      const [followingData, followersData, messagesData] = await Promise.all([
+      await Promise.all([
         fetchFollowing(),
         fetchFollowers(),
         fetchMessages()
       ]);
-      
-      setFollowing(followingData);
-      setFollowers(followersData);
-      setMessages(messagesData);
     } catch (err) {
       console.error('Error loading social data:', err);
       setError('Failed to load social data');
@@ -505,13 +442,10 @@ export const useBlogSocial = () => {
     isFollowing,
     sendMessage,
     markMessageAsRead,
-    deleteMessage,
     refreshData: loadData,
-    getFollowerCount,
-    getFollowingCount,
     conversationUsers,
     activeConversation,
-    setConversation,
+    setConversation: setActiveConversation,
     getConversationMessages,
     refreshMessages: fetchMessages
   };

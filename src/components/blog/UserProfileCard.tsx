@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Calendar, MapPin, Users, Heart, MessageSquare, Edit, UserPlus, UserMinus } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { useBlogSocial } from '../../hooks/useBlogSocial';
-import SendMessageModal from './SendMessageModal';
 import { toast } from 'react-hot-toast';
 
 interface UserProfileCardProps {
@@ -41,7 +40,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
   const [showMessageModal, setShowMessageModal] = useState(false);
   
   // Check if current user is following this profile
-  useEffect(() => {
+  React.useEffect(() => {
     setIsFollowingUser(isFollowing(userId));
   }, [userId, isFollowing]);
   
@@ -68,6 +67,12 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
     }
   };
   
+  // Handle message user
+  const handleMessageUser = () => {
+    // This will be implemented in a separate component
+    window.location.href = `/blog/messages?user=${userId}`;
+  };
+  
   const isCurrentUser = user?.id === userId;
   
   return (
@@ -81,6 +86,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
                 src={avatarUrl} 
                 alt={userName} 
                 className="w-full h-full object-cover"
+                loading="lazy"
                 onError={(e) => {
                   e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
                 }}
@@ -107,7 +113,7 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMessageModal(true)}
+                onClick={handleMessageUser}
                 leftIcon={<MessageSquare size={16} />}
               >
                 Message
@@ -166,15 +172,6 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
           </div>
         </div>
       </div>
-      
-      {/* Message Modal */}
-      <SendMessageModal
-        isOpen={showMessageModal}
-        onClose={() => setShowMessageModal(false)}
-        recipientId={userId}
-        recipientName={userName}
-        recipientAvatar={avatarUrl}
-      />
     </Card>
   );
 };

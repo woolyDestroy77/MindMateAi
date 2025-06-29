@@ -25,7 +25,6 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import BlogHeader from '../components/blog/BlogHeader';
 import UserProfileCard from '../components/blog/UserProfileCard';
-import SendMessageModal from '../components/blog/SendMessageModal';
 import { useBlog, BlogPost as BlogPostType, BlogComment } from '../hooks/useBlog';
 import { useAuth } from '../hooks/useAuth';
 import { useBlogSocial } from '../hooks/useBlogSocial';
@@ -55,7 +54,6 @@ export default function BlogPost() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const [isTogglingFollow, setIsTogglingFollow] = useState(false);
-  const [showMessageModal, setShowMessageModal] = useState(false);
 
   // Load post and comments
   useEffect(() => {
@@ -260,7 +258,7 @@ export default function BlogPost() {
   // Handle message author
   const handleMessageAuthor = () => {
     if (!post?.author || !user || post.author.id === user.id) return;
-    setShowMessageModal(true);
+    window.location.href = `/blog/messages?user=${post.author.id}`;
   };
 
   if (isLoading) {
@@ -336,6 +334,7 @@ export default function BlogPost() {
                         src={post.author.avatar_url} 
                         alt={post.author.full_name} 
                         className="w-full h-full object-cover"
+                        loading="lazy"
                         onError={(e) => {
                           e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
                         }}
@@ -513,6 +512,7 @@ export default function BlogPost() {
                               src={user.user_metadata.avatar_url} 
                               alt={user.user_metadata.full_name || 'User'} 
                               className="w-full h-full object-cover"
+                              loading="lazy"
                               onError={(e) => {
                                 e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
                               }}
@@ -574,6 +574,7 @@ export default function BlogPost() {
                                 src={comment.author.avatar_url} 
                                 alt={comment.author.full_name} 
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                                 onError={(e) => {
                                   e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
                                 }}
@@ -692,17 +693,6 @@ export default function BlogPost() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Message Modal */}
-      {post?.author && (
-        <SendMessageModal
-          isOpen={showMessageModal}
-          onClose={() => setShowMessageModal(false)}
-          recipientId={post.author.id}
-          recipientName={post.author.full_name}
-          recipientAvatar={post.author.avatar_url}
-        />
-      )}
     </div>
   );
 }

@@ -76,6 +76,7 @@ const Footer: React.FC = () => {
                 src="https://bolt.new/bolt-badge.svg" 
                 alt="Built with Bolt.new" 
                 className="h-4 ml-1" 
+                loading="lazy"
               />
             </a>
           </div>

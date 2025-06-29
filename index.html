@@ -7,14 +7,38 @@
     <title>PureMind AI - Emotion-Aware Mental Wellness</title>
     <meta name="description" content="PureMind AI uses emotion detection to provide personalized mental wellness support through AI chat, voice responses, and mood tracking.">
     
-    <!-- Dappier Ask AI Widget Script -->
+    <!-- Preload critical assets -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Dappier Ask AI Widget Script - Load asynchronously -->
     <script
       src="https://assets.dappier.com/widget/dappier-loader.min.js"
       widget-id="wd_01jxpzftx6e3ntsgzwtgbze71c"
+      async
     ></script>
+    
+    <!-- Bolt.new badge -->
+    <link rel="preload" href="https://bolt.new/bolt-badge.svg" as="image">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Built with Bolt.new badge -->
+    <a 
+      href="https://bolt.new" 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      style="position: fixed; bottom: 10px; right: 10px; z-index: 10; opacity: 0.8;"
+    >
+      <img 
+        src="https://bolt.new/bolt-badge.svg" 
+        alt="Built with Bolt.new" 
+        width="120" 
+        height="30"
+        loading="lazy"
+      />
+    </a>
   </body>
 </html>

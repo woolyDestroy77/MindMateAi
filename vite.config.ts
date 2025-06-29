@@ -7,4 +7,27 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    // Optimize build for production
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    },
+    // Split chunks for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          ui: ['react-hot-toast', 'framer-motion'],
+          charts: ['chart.js', 'react-chartjs-2', 'recharts'],
+          icons: ['lucide-react', 'react-icons']
+        }
+      }
+    }
+  }
 });

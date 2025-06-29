@@ -23,7 +23,7 @@ interface BlogHeaderProps {
 
 const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
   const { user, userProfile } = useAuth();
-  const { unreadCount, followers, following, messages } = useBlogSocial();
+  const { unreadCount } = useBlogSocial();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -103,11 +103,6 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                   className="relative p-2 text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 rounded-full transition-colors"
                 >
                   <Users size={20} />
-                  {followers.length > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-lavender-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {followers.length > 9 ? '9+' : followers.length}
-                    </span>
-                  )}
                 </button>
 
                 {/* Following */}
@@ -119,9 +114,6 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                   className="relative p-2 text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 rounded-full transition-colors"
                 >
                   <Heart size={20} />
-                  <span className="absolute -top-1 -right-1 bg-lavender-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {following.length > 9 ? '9+' : following.length}
-                  </span>
                 </button>
 
                 {/* Profile */}
@@ -132,6 +124,7 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                         src={userProfile.avatar_url} 
                         alt={userProfile.full_name} 
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                     ) : (
                       <User className="w-4 h-4 text-lavender-600" />
@@ -209,7 +202,7 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                     }}
                     className="flex items-center space-x-2 text-gray-700 hover:text-lavender-600 transition-colors"
                   >
-                    <MessageSquare size={18} />
+                    <MessageSquare size={16} />
                     <span>Messages</span>
                     {unreadCount > 0 && (
                       <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
@@ -226,9 +219,8 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                     }}
                     className="flex items-center space-x-2 text-gray-700 hover:text-lavender-600 transition-colors"
                   >
-                    <Users size={18} />
+                    <Users size={16} />
                     <span>Followers</span>
-                    <span className="text-gray-500 text-sm">({followers.length})</span>
                   </button>
 
                   <button
@@ -239,9 +231,8 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
                     }}
                     className="flex items-center space-x-2 text-gray-700 hover:text-lavender-600 transition-colors"
                   >
-                    <Heart size={18} />
+                    <Heart size={16} />
                     <span>Following</span>
-                    <span className="text-gray-500 text-sm">({following.length})</span>
                   </button>
                 </>
               )}
@@ -271,7 +262,7 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
           <SendMessageModal
             isOpen={showMessagesModal}
             onClose={() => setShowMessagesModal(false)}
-            messages={messages}
+            messages={[]}
           />
           
           <FollowersModal
@@ -279,8 +270,8 @@ const BlogHeader: React.FC<BlogHeaderProps> = ({ onSearch }) => {
             onClose={() => setShowFollowersModal(false)}
             activeTab={activeTab}
             onChangeTab={setActiveTab}
-            followers={followers}
-            following={following}
+            followers={[]}
+            following={[]}
           />
         </>
       )}

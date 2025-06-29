@@ -49,6 +49,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
                 src={post.author.avatar_url} 
                 alt={post.author.full_name} 
                 className="w-full h-full object-cover"
+                loading="lazy"
                 onError={(e) => {
                   e.currentTarget.src = "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=200";
                 }}
@@ -86,7 +87,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
         {/* Tags */}
         {post.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
-            {post.tags.map((tag) => (
+            {post.tags.slice(0, 3).map((tag) => (
               <Link
                 key={tag}
                 to={`/blog?tag=${tag}`}
@@ -96,6 +97,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, onLike, isLiked }) => {
                 {tag}
               </Link>
             ))}
+            {post.tags.length > 3 && (
+              <span className="text-xs text-gray-500">+{post.tags.length - 3} more</span>
+            )}
           </div>
         )}
         
