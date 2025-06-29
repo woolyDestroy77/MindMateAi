@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Settings, Clock, Calendar, CheckCircle, AlertTriangle, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Bell, X, Settings, Clock, Calendar, CheckCircle, AlertTriangle, ToggleLeft, ToggleRight, Heart, Brain, Trophy, Computer, Mail } from 'lucide-react';
 import Button from '../ui/Button';
 
 interface NotificationSettingsProps {
