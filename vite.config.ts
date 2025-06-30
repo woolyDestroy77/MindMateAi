@@ -9,13 +9,7 @@ export default defineConfig({
   },
   build: {
     // Optimize build for production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    },
+    minify: true,
     // Split chunks for better caching
     rollupOptions: {
       output: {
