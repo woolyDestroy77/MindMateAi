@@ -25,6 +25,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   
   // Use a ref to track which notifications have been shown as toasts
   const shownNotificationsRef = useRef<Set<string>>(new Set());
+  // Track notification processing to prevent duplicates
+  const processingNotificationRef = useRef<Set<string>>(new Set());
 
   // Set up reminder check interval
   useEffect(() => {
@@ -113,6 +115,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         // Show toast for new notification
         const newNotification = payload.new as any;
         if (newNotification) {
+          // Generate a unique key for this notification to prevent duplicates
+          const notificationKey = `${newNotification.id}-${newNotification.created_at}`;
+          
+          // Check if we're already processing this notification
+          if (processingNotificationRef.current.has(notificationKey)) {
+            return;
+          }
+          
+          // Mark as processing
+          processingNotificationRef.current.add(notificationKey);
+          
           toast.custom((t) => (
             <NotificationToast
               notification={{
@@ -126,8 +139,16 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 actionText: newNotification.action_text,
                 created_at: newNotification.created_at
               }}
-              onClose={() => toast.dismiss(t.id)}
-              onAction={() => markAsRead(newNotification.id)}
+              onClose={() => {
+                toast.dismiss(t.id);
+                // Remove from processing set when dismissed
+                processingNotificationRef.current.delete(notificationKey);
+              }}
+              onAction={() => {
+                markAsRead(newNotification.id);
+                // Remove from processing set when acted upon
+                processingNotificationRef.current.delete(notificationKey);
+              }}
             />
           ));
         }
@@ -151,14 +172,36 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       // Mark as shown in our ref
       shownNotificationsRef.current.add(notification.id);
       
+      // Generate a unique key for this notification to prevent duplicates
+      const notificationKey = `${notification.id}-${notification.created_at}`;
+      
+      // Check if we're already processing this notification
+      if (processingNotificationRef.current.has(notificationKey)) {
+        return;
+      }
+      
+      // Mark as processing
+      processingNotificationRef.current.add(notificationKey);
+      
       // Show custom toast
       toast.custom((t) => (
         <NotificationToast
           notification={notification}
-          onClose={() => toast.dismiss(t.id)}
-          onAction={() => markAsRead(notification.id)}
+          onClose={() => {
+            toast.dismiss(t.id);
+            // Remove from processing set when dismissed
+            processingNotificationRef.current.delete(notificationKey);
+          }}
+          onAction={() => {
+            markAsRead(notification.id);
+            // Remove from processing set when acted upon
+            processingNotificationRef.current.delete(notificationKey);
+          }}
         />
-      ));
+      ), {
+        // Use the notification ID as the toast ID to prevent duplicates
+        id: notification.id
+      });
     });
   }, [notifications, markAsRead]);
 

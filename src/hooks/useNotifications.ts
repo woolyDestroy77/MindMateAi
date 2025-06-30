@@ -27,6 +27,8 @@ export const useNotifications = () => {
   
   // Use a ref to track notification IDs to prevent duplicates
   const notificationIdsRef = useRef<Set<string>>(new Set());
+  // Track recently created notifications to prevent duplicates
+  const recentNotificationsRef = useRef<Map<string, number>>(new Map());
 
   // Check notification permission
   useEffect(() => {
@@ -301,22 +303,28 @@ export const useNotifications = () => {
       // Create a unique ID for the notification
       const notificationId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Check if we've already created a similar notification recently
-      // This helps prevent duplicates when components re-render
+      // Create a deduplication key based on content
       const dedupeKey = `${title}_${message}`.replace(/\s+/g, '').toLowerCase();
-      const recentNotificationKey = `recent_notification_${dedupeKey}`;
-      const recentNotification = localStorage.getItem(recentNotificationKey);
       
-      if (recentNotification) {
+      // Check if we've recently created a similar notification
+      const now = Date.now();
+      const recentTimestamp = recentNotificationsRef.current.get(dedupeKey);
+      
+      if (recentTimestamp && (now - recentTimestamp) < 60000) { // 1 minute deduplication window
         console.log('Skipping duplicate notification:', title);
         return null;
       }
       
       // Mark this notification as recently created (expires in 1 minute)
-      localStorage.setItem(recentNotificationKey, 'true');
-      setTimeout(() => {
-        localStorage.removeItem(recentNotificationKey);
-      }, 60000);
+      recentNotificationsRef.current.set(dedupeKey, now);
+      
+      // Clean up old entries from the recent notifications map
+      const cleanupTime = now - 60000; // 1 minute ago
+      recentNotificationsRef.current.forEach((timestamp, key) => {
+        if (timestamp < cleanupTime) {
+          recentNotificationsRef.current.delete(key);
+        }
+      });
 
       // Create notification object
       const newNotification: Notification = {
@@ -360,7 +368,9 @@ export const useNotifications = () => {
                 type === 'like' ? '❤️' :
                 type === 'comment' ? '💬' :
                 type === 'message' ? '✉️' : 'ℹ️',
-          duration: 5000
+          duration: 5000,
+          // Use the notification ID as the toast ID to prevent duplicates
+          id: notificationId
         });
       }
 
