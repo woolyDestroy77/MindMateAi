@@ -69,13 +69,12 @@ const Footer: React.FC = () => {
               href="https://bolt.new" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="flex items-center mt-4 md:mt-0 text-gray-500 hover:text-lavender-600 transition-colors text-sm"
+              className="mt-4 md:mt-0"
             >
-              Built with 
               <img 
-                src="https://bolt.new/bolt-badge.svg" 
+                src="https://media2.dev.to/dynamic/image/width=1080,height=1080,fit=cover,gravity=auto,format=auto/https%3A%2F%2Fdev-to-uploads.s3.amazonaws.com%2Fuploads%2Farticles%2Flo8pspnr7gbffknixrk4.jpg" 
                 alt="Built with Bolt.new" 
-                className="h-4 ml-1" 
+                className="h-10 hover:opacity-90 transition-opacity" 
                 loading="lazy"
               />
             </a>
