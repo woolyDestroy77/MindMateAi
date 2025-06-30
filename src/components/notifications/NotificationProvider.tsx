@@ -150,7 +150,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
                 processingNotificationRef.current.delete(notificationKey);
               }}
             />
-          ));
+          ), {
+            id: newNotification.id // Use notification ID as toast ID to prevent duplicates
+          });
         }
       })
       .subscribe();

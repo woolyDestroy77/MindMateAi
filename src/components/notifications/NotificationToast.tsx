@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, X, CheckCircle, Clock, AlertTriangle, Heart, MessageSquare, User, UserPlus } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -20,7 +20,7 @@ const NotificationToast: React.FC<NotificationToastProps> = ({
   const { title, message, type, actionUrl, actionText } = notification;
 
   // Auto-close after duration
-  React.useEffect(() => {
+  useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
     }, duration);

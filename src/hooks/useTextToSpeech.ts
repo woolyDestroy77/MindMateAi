@@ -105,9 +105,8 @@ export const useTextToSpeech = () => {
     console.log('🎵 Initializing speech synthesis...');
     
     if (!('speechSynthesis' in window)) {
-      console.warn('❌ Speech synthesis not supported');
+      console.warn('Speech synthesis not supported');
       setIsSupported(false);
-      toast.error('Voice playback is not supported in your browser. Try Chrome, Safari, or Edge for the best experience.');
       return;
     }
 
@@ -220,12 +219,10 @@ export const useTextToSpeech = () => {
     console.log('🎵 Attempting to speak:', { messageId, textLength: text.length, isSupported, isInitialized });
 
     if (!isSupported) {
-      toast.error('Voice playback is not supported in your browser');
       return;
     }
 
     if (!isInitialized) {
-      toast.error('Voice system is still initializing. Please try again in a moment.');
       return;
     }
 
@@ -244,7 +241,6 @@ export const useTextToSpeech = () => {
     const cleanText = cleanTextForSpeech(text);
 
     if (!cleanText || cleanText.length < 2) {
-      toast.error('No text to speak');
       return;
     }
 
@@ -300,28 +296,6 @@ export const useTextToSpeech = () => {
           setCurrentMessageId(null);
           utteranceRef.current = null;
           
-          // Provide specific error messages
-          let errorMessage = 'Voice playback failed';
-          switch (event.error) {
-            case 'network':
-              errorMessage = 'Network error - check your internet connection';
-              break;
-            case 'synthesis-failed':
-              errorMessage = 'Speech synthesis failed - try a different voice';
-              break;
-            case 'synthesis-unavailable':
-              errorMessage = 'Speech synthesis unavailable - try refreshing the page';
-              break;
-            case 'audio-busy':
-              errorMessage = 'Audio system busy - try again in a moment';
-              break;
-            case 'not-allowed':
-              errorMessage = 'Voice playback not allowed - check browser permissions';
-              break;
-          }
-          
-          toast.error(errorMessage);
-          
           if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
@@ -365,7 +339,6 @@ export const useTextToSpeech = () => {
       
     } catch (error) {
       console.error('🎵 Error creating speech utterance:', error);
-      toast.error('Failed to start voice playback');
       setIsPlaying(false);
       setCurrentMessageId(null);
     }
