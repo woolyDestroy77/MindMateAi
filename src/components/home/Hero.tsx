@@ -2,8 +2,19 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, PenTool, BarChart, Mic } from 'lucide-react';
 import Button from '../ui/Button';
+import { useAuth } from '../../hooks/useAuth';
 
 const Hero: React.FC = () => {
+  const { user } = useAuth();
+  
+  const handleSignupClick = () => {
+    // Find the Sign Up button in the navbar and click it
+    const signUpButton = document.querySelector('button:has(.lucide-user-plus)') as HTMLButtonElement;
+    if (signUpButton) {
+      signUpButton.click();
+    }
+  };
+
   return (
     <div className="relative bg-gradient-to-b from-white to-lavender-50 overflow-hidden">
       {/* Animation elements */}
@@ -82,6 +93,7 @@ const Hero: React.FC = () => {
                     variant="primary" 
                     size="lg"
                     rightIcon={<ArrowRight size={18} />}
+                    onClick={handleSignupClick}
                   >
                     Start Your Journey
                   </Button>
@@ -90,6 +102,12 @@ const Hero: React.FC = () => {
                   <Button 
                     variant="outline" 
                     size="lg"
+                    onClick={() => {
+                      const featuresSection = document.getElementById('features');
+                      if (featuresSection) {
+                        featuresSection.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
                   >
                     Learn More
                   </Button>

@@ -6,6 +6,14 @@ import { useAuth } from '../../hooks/useAuth';
 const CTASection: React.FC = () => {
   const { signInWithGoogle } = useAuth();
   
+  const handleSignupClick = () => {
+    // Find the Sign Up button in the navbar and click it
+    const signUpButton = document.querySelector('button:has(.lucide-user-plus)') as HTMLButtonElement;
+    if (signUpButton) {
+      signUpButton.click();
+    }
+  };
+  
   return (
     <section className="py-16 bg-gradient-to-r from-lavender-600 to-sage-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -22,7 +30,7 @@ const CTASection: React.FC = () => {
               variant="primary"
               size="lg"
               className="bg-white text-lavender-600 hover:bg-gray-100 hover:text-lavender-700"
-              onClick={() => {}}
+              onClick={handleSignupClick}
             >
               Try PureMind AI for Free
             </Button>
