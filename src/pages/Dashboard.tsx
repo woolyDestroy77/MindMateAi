@@ -39,6 +39,7 @@ import SuicidePreventionCard from '../components/dashboard/SuicidePreventionCard
 import AchievementsCard from '../components/dashboard/AchievementsCard';
 import PhotoMemoriesCard from '../components/dashboard/PhotoMemoriesCard';
 import UpcomingEventsCard from '../components/anxiety/UpcomingEventsCard';
+import AIGoalsCard from '../components/dashboard/AIGoalsCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
@@ -668,6 +669,15 @@ const Dashboard = () => {
                 </Button>
               </div>
             </Card>
+          </motion.div>
+
+          {/* AI-Generated Goals */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.35 }}
+          >
+            <AIGoalsCard />
           </motion.div>
 
           {/* Upcoming Events Card */}
