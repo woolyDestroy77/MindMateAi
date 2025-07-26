@@ -101,6 +101,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   useEffect(() => {
     if (!user) return;
     
+    // Track processed notifications to prevent duplicates
+    const processedNotifications = new Set<string>();
+    
     const notificationsSubscription = supabase
       .channel('user_notifications_changes')
       .on('postgres_changes', {
@@ -110,7 +113,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         console.log('New notification received:', payload);
-        notificationService.refreshNotifications();
         
         // Show toast for new notification
         const newNotification = payload.new as any;
@@ -118,41 +120,44 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
           // Generate a unique key for this notification to prevent duplicates
           const notificationKey = `${newNotification.id}-${newNotification.created_at}`;
           
-          // Check if we're already processing this notification
-          if (processingNotificationRef.current.has(notificationKey)) {
+          // Check if we've already processed this notification
+          if (processedNotifications.has(notificationKey)) {
             return;
           }
           
-          // Mark as processing
-          processingNotificationRef.current.add(notificationKey);
+          // Mark as processed
+          processedNotifications.add(notificationKey);
           
-          toast.custom((t) => (
-            <NotificationToast
-              notification={{
-                id: newNotification.id,
-                title: newNotification.title,
-                message: newNotification.message,
-                type: newNotification.type,
-                priority: newNotification.priority,
-                read: false,
-                actionUrl: newNotification.action_url,
-                actionText: newNotification.action_text,
-                created_at: newNotification.created_at
-              }}
-              onClose={() => {
-                toast.dismiss(t.id);
-                // Remove from processing set when dismissed
-                processingNotificationRef.current.delete(notificationKey);
-              }}
-              onAction={() => {
-                markAsRead(newNotification.id);
-                // Remove from processing set when acted upon
-                processingNotificationRef.current.delete(notificationKey);
-              }}
-            />
-          ), {
-            id: newNotification.id // Use notification ID as toast ID to prevent duplicates
-          });
+          // Only show toast for high priority notifications
+          if (newNotification.priority === 'high') {
+            toast.custom((t) => (
+              <NotificationToast
+                notification={{
+                  id: newNotification.id,
+                  title: newNotification.title,
+                  message: newNotification.message,
+                  type: newNotification.type,
+                  priority: newNotification.priority,
+                  read: false,
+                  actionUrl: newNotification.action_url,
+                  actionText: newNotification.action_text,
+                  created_at: newNotification.created_at
+                }}
+                onClose={() => {
+                  toast.dismiss(t.id);
+                }}
+                onAction={() => {
+                  markAsRead(newNotification.id);
+                }}
+              />
+            ), {
+              id: newNotification.id,
+              duration: 6000
+            });
+          }
+          
+          // Refresh notifications list
+          notificationService.refreshNotifications();
         }
       })
       .subscribe();
@@ -162,50 +167,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     };
   }, [user, notificationService, markAsRead]);
 
-  // Custom toast renderer for notifications
-  useEffect(() => {
-    // Find unread notifications that haven't been shown as toast yet
-    const unshownNotifications = notifications.filter(n => 
-      !n.read && !shownNotificationsRef.current.has(n.id)
-    );
-    
-    // Show toast for each unshown notification
-    unshownNotifications.forEach(notification => {
-      // Mark as shown in our ref
-      shownNotificationsRef.current.add(notification.id);
-      
-      // Generate a unique key for this notification to prevent duplicates
-      const notificationKey = `${notification.id}-${notification.created_at}`;
-      
-      // Check if we're already processing this notification
-      if (processingNotificationRef.current.has(notificationKey)) {
-        return;
-      }
-      
-      // Mark as processing
-      processingNotificationRef.current.add(notificationKey);
-      
-      // Show custom toast
-      toast.custom((t) => (
-        <NotificationToast
-          notification={notification}
-          onClose={() => {
-            toast.dismiss(t.id);
-            // Remove from processing set when dismissed
-            processingNotificationRef.current.delete(notificationKey);
-          }}
-          onAction={() => {
-            markAsRead(notification.id);
-            // Remove from processing set when acted upon
-            processingNotificationRef.current.delete(notificationKey);
-          }}
-        />
-      ), {
-        // Use the notification ID as the toast ID to prevent duplicates
-        id: notification.id
-      });
-    });
-  }, [notifications, markAsRead]);
 
   return (
     <NotificationContext.Provider value={notificationService}>

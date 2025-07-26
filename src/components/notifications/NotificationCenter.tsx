@@ -127,7 +127,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-lg overflow-hidden z-50"
+            className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-lg shadow-lg overflow-hidden z-50 max-w-[calc(100vw-2rem)] sm:max-w-none"
           >
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -152,10 +152,10 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex border-b border-gray-200">
+            <div className="flex border-b border-gray-200 overflow-x-auto">
               <button
                 onClick={() => setFilter('all')}
-                className={`flex-1 py-2 text-sm font-medium ${
+                className={`flex-1 py-2 px-2 text-sm font-medium whitespace-nowrap ${
                   filter === 'all'
                     ? 'text-lavender-600 border-b-2 border-lavender-500'
                     : 'text-gray-500 hover:text-gray-700'
@@ -165,17 +165,17 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
               </button>
               <button
                 onClick={() => setFilter('unread')}
-                className={`flex-1 py-2 text-sm font-medium ${
+                className={`flex-1 py-2 px-2 text-sm font-medium whitespace-nowrap ${
                   filter === 'unread'
                     ? 'text-lavender-600 border-b-2 border-lavender-500'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Unread
+                Unread ({unreadCount})
               </button>
               <button
                 onClick={() => setFilter('reminders')}
-                className={`flex-1 py-2 text-sm font-medium ${
+                className={`flex-1 py-2 px-2 text-sm font-medium whitespace-nowrap ${
                   filter === 'reminders'
                     ? 'text-lavender-600 border-b-2 border-lavender-500'
                     : 'text-gray-500 hover:text-gray-700'
@@ -185,7 +185,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
               </button>
               <button
                 onClick={() => setFilter('alerts')}
-                className={`flex-1 py-2 text-sm font-medium ${
+                className={`flex-1 py-2 px-2 text-sm font-medium whitespace-nowrap ${
                   filter === 'alerts'
                     ? 'text-lavender-600 border-b-2 border-lavender-500'
                     : 'text-gray-500 hover:text-gray-700'
@@ -196,7 +196,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
             </div>
 
             {/* Notification List */}
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto">
               {filteredNotifications.length === 0 ? (
                 <div className="py-8 text-center">
                   <BellOff className="mx-auto h-10 w-10 text-gray-300" />
@@ -207,18 +207,18 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ className = '' 
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 ${getNotificationStyle(notification)}`}
+                      className={`p-3 sm:p-4 ${getNotificationStyle(notification)}`}
                     >
                       <div className="flex">
-                        <div className="flex-shrink-0 mr-3">
+                        <div className="flex-shrink-0 mr-2 sm:mr-3">
                           {getNotificationIcon(notification.type)}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between">
-                            <p className={`text-sm font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                            <p className={`text-sm font-medium pr-2 ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
                               {notification.title}
                             </p>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 flex-shrink-0">
                               {formatNotificationTime(notification.created_at)}
                             </span>
                           </div>
