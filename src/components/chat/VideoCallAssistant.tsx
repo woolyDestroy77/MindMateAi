@@ -13,7 +13,8 @@ import {
   Loader2,
   Brain,
   Waves,
-  AlertCircle
+  AlertCircle,
+  MessageCircle
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
