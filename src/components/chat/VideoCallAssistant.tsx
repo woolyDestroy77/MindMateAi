@@ -19,6 +19,7 @@ import {
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import { supabase } from '../../lib/supabase';
+import AIAvatar from './AIAvatar';
 
 interface VideoCallAssistantProps {
   onMoodUpdate?: (sentiment: string, userMessage: string, aiResponse: string) => void;
@@ -686,8 +687,18 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                   className="text-red-600 border-red-300 hover:bg-red-50"
                 >
                   Clear Conversation
-                </Button>
-              </div>
+          <div className="flex items-center justify-center w-full h-full">
+            {/* Show AI Avatar when camera is off */}
+            <div className="text-center">
+              <AIAvatar 
+                isSpeaking={isSpeaking}
+                currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
+                  ? messages[messages.length - 1].content 
+                  : ''
+                }
+                className="mb-4"
+              />
+              <p className="text-white text-lg">Camera is off</p>
             </div>
           </Card>
         )}
@@ -765,20 +776,15 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
           </div>
 
           {/* AI Avatar/Animation */}
+          {/* AI Avatar */}
           <div className="absolute top-4 right-4">
-            <motion.div
-              animate={{ 
-                scale: isSpeaking ? [1, 1.2, 1] : 1,
-                opacity: isSpeaking ? [0.8, 1, 0.8] : 0.9
-              }}
-              transition={{ 
-                duration: isSpeaking ? 0.5 : 0,
-                repeat: isSpeaking ? Infinity : 0
-              }}
-              className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center shadow-lg"
-            >
-              <Brain className="w-8 h-8 text-white" />
-            </motion.div>
+            <AIAvatar 
+              isSpeaking={isSpeaking}
+              currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
+                ? messages[messages.length - 1].content 
+                : ''
+              }
+            />
           </div>
 
           {/* Current Transcript */}
