@@ -43,7 +43,17 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    // Load saved conversation from localStorage
+    try {
+      const today = new Date().toDateString();
+      const savedMessages = localStorage.getItem(`video_chat_messages_${today}`);
+      return savedMessages ? JSON.parse(savedMessages) : [];
+    } catch (error) {
+      console.error('Error loading saved video chat messages:', error);
+      return [];
+    }
+  });
   const [error, setError] = useState<string | null>(null);
   
   // Refs
@@ -55,6 +65,15 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const today = new Date().toDateString();
+      localStorage.setItem(`video_chat_messages_${today}`, JSON.stringify(messages));
+    } catch (error) {
+      console.error('Error saving video chat messages:', error);
+    }
+  }, [messages]);
   // Check browser support
   const checkBrowserSupport = useCallback(() => {
     const hasWebRTC = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
@@ -129,23 +148,28 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       await initializeMediaStream();
       setIsCallActive(true);
       
-      // Add welcome message
-      const welcomeMessage: ChatMessage = {
-        id: `welcome-${Date.now()}`,
-        role: 'assistant',
-        content: 'Hello! I\'m your AI wellness companion. I can see and hear you now. How are you feeling today?',
-        timestamp: new Date()
-      };
-      
-      setMessages([welcomeMessage]);
-      
-      // Start with AI speaking the welcome message
-      await speakText(welcomeMessage.content);
+      // Add welcome message only if no previous conversation exists
+      if (messages.length === 0) {
+        const welcomeMessage: ChatMessage = {
+          id: `welcome-${Date.now()}`,
+          role: 'assistant',
+          content: 'Hello! I\'m your AI wellness companion. I can see and hear you now. How are you feeling today?',
+          timestamp: new Date()
+        };
+        
+        setMessages([welcomeMessage]);
+        
+        // Start with AI speaking the welcome message
+        await speakText(welcomeMessage.content);
+      } else {
+        // If continuing conversation, just say a brief reconnection message
+        await speakText('Welcome back! I\'m ready to continue our conversation.');
+      }
       
     } catch (error) {
       console.error('Failed to start call:', error);
     }
-  }, [checkBrowserSupport, initializeMediaStream]);
+  }, [checkBrowserSupport, initializeMediaStream, messages.length]);
 
   // End call
   const endCall = useCallback(() => {
@@ -476,61 +500,121 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
 
   if (!isCallActive) {
     return (
-      <Card className="text-center">
-        <div className="space-y-6 p-8">
-          <div className="flex justify-center">
-            <motion.div
-              animate={{ 
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
-              }}
-              transition={{ 
-                duration: 2,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-              className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center shadow-lg"
-            >
-              <Brain className="w-12 h-12 text-white" />
-            </motion.div>
-          </div>
-          
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Video Assistant</h2>
-            <p className="text-gray-600 mb-6">
-              Start a video call with your AI wellness companion for a more personal conversation experience.
-            </p>
-          </div>
+      <div className="space-y-6">
+        {/* Video Call Start Interface */}
+        <Card className="text-center">
+          <div className="space-y-6 p-8">
+            <div className="flex justify-center">
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  rotate: [0, 5, -5, 0]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center shadow-lg"
+              >
+                <Brain className="w-12 h-12 text-white" />
+              </motion.div>
+            </div>
+            
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Video Assistant</h2>
+              <p className="text-gray-600 mb-6">
+                Start a video call with your AI wellness companion for a more personal conversation experience.
+              </p>
+            </div>
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center space-x-2 text-red-800">
-                <AlertCircle size={20} />
-                <span className="text-sm">{error}</span>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center space-x-2 text-red-800">
+                  <AlertCircle size={20} />
+                  <span className="text-sm">{error}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-center">
+              <div className="space-y-4">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={startCall}
+                  isLoading={isConnecting}
+                  leftIcon={<Video size={20} />}
+                  className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-8 py-4"
+                >
+                  {isConnecting ? 'Connecting...' : messages.length > 0 ? 'Resume Video Call' : 'Start Video Call'}
+                </Button>
+                
+                <div className="text-xs text-gray-500 space-y-1 text-center">
+                  <p>• Make sure your camera and microphone are connected</p>
+                  <p>• Allow browser permissions when prompted</p>
+                  <p>• Speak naturally - the AI will respond with voice</p>
+                </div>
               </div>
             </div>
-          )}
-
-          <div className="space-y-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={startCall}
-              isLoading={isConnecting}
-              leftIcon={<Video size={20} />}
-              className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
-            >
-              {isConnecting ? 'Connecting...' : 'Start Video Call'}
-            </Button>
-            
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>• Make sure your camera and microphone are connected</p>
-              <p>• Allow browser permissions when prompted</p>
-              <p>• Speak naturally - the AI will respond with voice</p>
-            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+
+        {/* Previous Conversation */}
+        {messages.length > 0 && (
+          <Card>
+            <div className="p-4">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                <MessageCircle className="w-5 h-5 mr-2 text-purple-600" />
+                Previous Video Conversation
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        message.role === 'user'
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <p className="text-sm">{message.content}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        {message.isVoice && (
+                          <div className="flex items-center text-xs opacity-75">
+                            <Waves size={12} className="mr-1" />
+                            <span>Voice message</span>
+                          </div>
+                        )}
+                        <span className="text-xs opacity-75">
+                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const today = new Date().toDateString();
+                    localStorage.removeItem(`video_chat_messages_${today}`);
+                    setMessages([]);
+                  }}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  Clear Conversation
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     );
   }
 
