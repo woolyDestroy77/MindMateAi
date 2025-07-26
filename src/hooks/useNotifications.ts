@@ -296,7 +296,7 @@ export const useNotifications = () => {
         actionText,
         expiresIn,
         metadata = {},
-        showToast = true,
+        showToast = false, // Disable toast by default to prevent duplicates
         showDesktopNotification = true
       } = options;
 
@@ -310,16 +310,16 @@ export const useNotifications = () => {
       const now = Date.now();
       const recentTimestamp = recentNotificationsRef.current.get(dedupeKey);
       
-      if (recentTimestamp && (now - recentTimestamp) < 60000) { // 1 minute deduplication window
+      if (recentTimestamp && (now - recentTimestamp) < 300000) { // 5 minute deduplication window
         console.log('Skipping duplicate notification:', title);
         return null;
       }
       
-      // Mark this notification as recently created (expires in 1 minute)
+      // Mark this notification as recently created (expires in 5 minutes)
       recentNotificationsRef.current.set(dedupeKey, now);
       
-      // Clean up old entries from the recent notifications map
-      const cleanupTime = now - 60000; // 1 minute ago
+      // Clean up old entries from the recent notifications map  
+      const cleanupTime = now - 300000; // 5 minutes ago
       recentNotificationsRef.current.forEach((timestamp, key) => {
         if (timestamp < cleanupTime) {
           recentNotificationsRef.current.delete(key);
