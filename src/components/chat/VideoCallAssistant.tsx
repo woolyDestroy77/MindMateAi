@@ -49,7 +49,15 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
     try {
       const today = new Date().toDateString();
       const savedMessages = localStorage.getItem(`video_chat_messages_${today}`);
-      return savedMessages ? JSON.parse(savedMessages) : [];
+      if (savedMessages) {
+        const parsedMessages = JSON.parse(savedMessages);
+        // Convert timestamp strings back to Date objects
+        return parsedMessages.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }));
+      }
+      return [];
     } catch (error) {
       console.error('Error loading saved video chat messages:', error);
       return [];
