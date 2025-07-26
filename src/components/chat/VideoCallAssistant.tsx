@@ -65,6 +65,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
     }
   });
   const [error, setError] = useState<string | null>(null);
+  const [aiEmotion, setAiEmotion] = useState<'neutral' | 'happy' | 'sad' | 'concerned' | 'excited' | 'calm'>('neutral');
   
   // Refs
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -390,6 +391,10 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
   // Get AI response using existing Dappier chat system
   const getAIResponse = useCallback(async (userMessage: string): Promise<string | null> => {
     try {
+      // Analyze user message for emotional context
+      const userEmotion = analyzeUserEmotion(userMessage);
+      setAiEmotion(getAppropriateAIEmotion(userEmotion, userMessage));
+      
       // Use the existing Supabase chat function that connects to Dappier
       const { data, error } = await supabase.functions.invoke("chat", {
         body: {
@@ -423,6 +428,55 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       return "I understand you're sharing something important with me. I'm here to listen and support you. Can you tell me more about how you're feeling?";
     }
   }, [messages]);
+
+  // Analyze user emotion from speech
+  const analyzeUserEmotion = useCallback((text: string): string => {
+    const lowerText = text.toLowerCase();
+    
+    // Emotional keyword analysis
+    const emotions = {
+      happy: ['happy', 'great', 'wonderful', 'amazing', 'excited', 'joy', 'love', 'fantastic', 'awesome', 'good'],
+      sad: ['sad', 'depressed', 'down', 'upset', 'hurt', 'crying', 'terrible', 'awful', 'bad', 'disappointed'],
+      anxious: ['anxious', 'worried', 'nervous', 'scared', 'afraid', 'panic', 'stress', 'overwhelmed'],
+      angry: ['angry', 'mad', 'furious', 'frustrated', 'annoyed', 'hate', 'irritated'],
+      excited: ['excited', 'thrilled', 'pumped', 'energetic', 'enthusiastic', 'amazing', 'incredible']
+    };
+    
+    let maxScore = 0;
+    let detectedEmotion = 'neutral';
+    
+    Object.entries(emotions).forEach(([emotion, keywords]) => {
+      const score = keywords.filter(keyword => lowerText.includes(keyword)).length;
+      if (score > maxScore) {
+        maxScore = score;
+        detectedEmotion = emotion;
+      }
+    });
+    
+    return detectedEmotion;
+  }, []);
+
+  // Get appropriate AI emotional response
+  const getAppropriateAIEmotion = useCallback((userEmotion: string, userMessage: string): 'neutral' | 'happy' | 'sad' | 'concerned' | 'excited' | 'calm' => {
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // AI should mirror and respond appropriately to user emotions
+    if (userEmotion === 'happy' || userEmotion === 'excited') {
+      return Math.random() > 0.3 ? 'happy' : 'excited'; // Be positive back
+    } else if (userEmotion === 'sad') {
+      return 'concerned'; // Show empathy
+    } else if (userEmotion === 'anxious') {
+      return 'calm'; // Be calming presence
+    } else if (userEmotion === 'angry') {
+      return 'calm'; // Stay calm to de-escalate
+    } else if (lowerMessage.includes('help') || lowerMessage.includes('support')) {
+      return 'concerned'; // Show care
+    } else if (lowerMessage.includes('thank') || lowerMessage.includes('appreciate')) {
+      return 'happy'; // Respond warmly to gratitude
+    } else {
+      return 'neutral'; // Default neutral
+    }
+  }, []);
 
   // Text-to-Speech using Web Speech API (free browser-based)
   const speakText = useCallback(async (text: string) => {
@@ -473,14 +527,15 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         // Enhanced voice selection for more human-like speech
         const voices = speechSynthesis.getVoices();
         
-        // Priority order for most natural voices
+        // Priority order for most natural, empathetic voices
         const voicePreferences = [
-          // High-quality female voices
+          // High-quality female voices (more empathetic)
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('samantha') && v.lang.startsWith('en'),
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('karen') && v.lang.startsWith('en'),
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('susan') && v.lang.startsWith('en'),
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('zira') && v.lang.startsWith('en'),
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('female') && v.lang.startsWith('en'),
-          // High-quality male voices
+          // Warm male voices
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('daniel') && v.lang.startsWith('en'),
           (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('alex') && v.lang.startsWith('en'),
           // Any English voice
@@ -499,6 +554,20 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         if (preferredVoice) {
           utterance.voice = preferredVoice;
           console.log('Using voice:', preferredVoice.name);
+        } else {
+          console.log('Using default voice');
+        }
+        
+        // Adjust speech parameters based on AI emotion
+        if (aiEmotion === 'happy' || aiEmotion === 'excited') {
+          utterance.rate = 0.95;
+          utterance.pitch = 1.1;
+        } else if (aiEmotion === 'sad' || aiEmotion === 'concerned') {
+          utterance.rate = 0.75;
+          utterance.pitch = 0.9;
+        } else if (aiEmotion === 'calm') {
+          utterance.rate = 0.8;
+          utterance.pitch = 0.95;
         }
         
         utterance.onend = () => {
@@ -708,12 +777,14 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                 ? messages[messages.length - 1].content 
                 : ''
               }
+              emotion={aiEmotion}
+              intensity={isSpeaking ? 0.8 : 0.3}
               className="w-full h-full max-w-md max-h-md"
             />
           </div>
           
           {/* Your Camera - Small top-right box */}
-          <div className="absolute top-4 right-4 w-64 h-48 bg-gray-900 rounded-lg border-4 border-white shadow-lg z-30 overflow-hidden">
+          <div className="absolute top-4 right-4 w-80 h-60 bg-gray-900 rounded-lg border-4 border-white shadow-lg z-30 overflow-hidden">
             <video
               ref={localVideoRef}
               autoPlay
@@ -721,7 +792,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
               muted
               className={`w-full h-full object-cover bg-gray-800 ${!isVideoEnabled ? 'hidden' : ''}`}
               style={{ transform: 'scaleX(-1)' }}
-              onClick={async () => {
+              onClick={async (e) => {
                 // Handle user interaction for autoplay
                 if (localVideoRef.current && localVideoRef.current.paused) {
                   try {
@@ -729,6 +800,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                     await new Promise(resolve => setTimeout(resolve, 50));
                     await localVideoRef.current.play();
                     setError(null);
+                    e.stopPropagation();
                     console.log('Manual video play successful');
                   } catch (err) {
                     const error = err as Error;
