@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   Brain, 
   CheckCircle, 
@@ -14,7 +15,8 @@ import {
   Clock,
   Star,
   Info,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
@@ -26,6 +28,7 @@ const AIGoalsCard: React.FC = () => {
     aiGoals, 
     userProfile, 
     isGenerating, 
+    needsDailyChat,
     generateDailyAIGoals, 
     completeAIGoal, 
     removeAIGoal 
@@ -174,17 +177,38 @@ const AIGoalsCard: React.FC = () => {
               <Brain className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No AI Goals Yet</h3>
               <p className="text-gray-600 mb-4 text-sm">
-                Let our AI analyze your mental health data and generate personalized daily goals.
+                Start your daily chat so AI can analyze your mood and generate personalized goals.
               </p>
               <Button
                 variant="primary"
-                onClick={generateDailyAIGoals}
+                onClick={() => window.location.href = '/chat'}
                 isLoading={isGenerating}
-                leftIcon={<Zap size={18} />}
+                leftIcon={<MessageSquare size={18} />}
                 className="bg-gradient-to-r from-purple-500 to-blue-500"
               >
-                Generate AI Goals
+                Start Daily Chat
               </Button>
+            </div>
+          ) : needsDailyChat && aiGoals.length === 1 && aiGoals[0].text.includes('daily wellness chat') ? (
+            // Special case: Show chat prompt
+            <div className="text-center py-8">
+              <MessageSquare className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Ready for Your Daily Check-in?</h3>
+              <p className="text-gray-600 mb-4 text-sm">
+                Chat with our AI about your current mood and feelings to unlock personalized goals for today.
+              </p>
+              <Link to="/chat">
+                <Button
+                  variant="primary"
+                  leftIcon={<MessageSquare size={18} />}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500"
+                >
+                  Start Daily Chat
+                </Button>
+              </Link>
+              <div className="mt-4 text-xs text-gray-500">
+                💡 Once you share your mood, I'll create 3-4 personalized goals just for you
+              </div>
             </div>
           ) : (
             <>
@@ -209,7 +233,15 @@ const AIGoalsCard: React.FC = () => {
                         <div className={`p-1.5 rounded-lg ${getGoalColor(goal.type)}`}>
                           {getGoalIcon(goal.type)}
                         </div>
-                        <h4 className="font-medium text-gray-900 text-sm">{goal.text}</h4>
+                        <h4 className="font-medium text-gray-900 text-sm">
+                          {goal.text.includes('daily wellness chat') ? (
+                            <Link to="/chat" className="text-blue-600 hover:text-blue-800">
+                              {goal.text}
+                            </Link>
+                          ) : (
+                            goal.text
+                          )}
+                        </h4>
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2 mb-2">
