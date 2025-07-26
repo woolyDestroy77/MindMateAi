@@ -231,21 +231,21 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
         animate={{
           x: headPosition.x,
           y: headPosition.y,
-          scale: isSpeaking ? [1, 1.02, 1] : 1
+          scale: isSpeaking ? [1, 1.05, 1] : 1
         }}
         transition={{
           x: { duration: 2, ease: "easeInOut" },
           y: { duration: 2, ease: "easeInOut" },
-          scale: { duration: 0.5, repeat: isSpeaking ? Infinity : 0 }
+          scale: { duration: 0.8, repeat: isSpeaking ? Infinity : 0, ease: "easeInOut" }
         }}
         className="relative"
       >
         {/* AI Avatar SVG */}
         <svg
-          width="160"
-          height="200"
+          width="100%"
+          height="100%"
           viewBox="0 0 100 120"
-          className="drop-shadow-lg"
+          className="drop-shadow-lg max-w-full max-h-full"
         >
           {/* Background circle */}
           <circle

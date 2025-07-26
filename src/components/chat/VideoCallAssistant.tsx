@@ -112,10 +112,10 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
+          width: { ideal: 640, min: 320 },
+          height: { ideal: 480, min: 240 },
           facingMode: 'user',
-          frameRate: { ideal: 30, min: 15 }
+          frameRate: { ideal: 24, min: 15 }
         },
         audio: {
           echoCancellation: true,
@@ -136,23 +136,21 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         localVideoRef.current.playsInline = true;
         localVideoRef.current.autoplay = true;
         
+        // Wait for metadata to load before playing
+        await new Promise((resolve) => {
+          if (localVideoRef.current) {
+            localVideoRef.current.onloadedmetadata = resolve;
+          }
+        });
+        
         // Force video to play and handle any errors
         try {
           await localVideoRef.current.play();
           console.log('Video playing successfully');
         } catch (playError) {
           console.warn('Video autoplay failed, trying manual play:', playError);
-          // Try to play again after a short delay
-          setTimeout(async () => {
-            try {
-              if (localVideoRef.current) {
-                await localVideoRef.current.play();
-                console.log('Manual video play successful');
-              }
-            } catch (retryError) {
-              console.error('Manual video play also failed:', retryError);
-            }
-          }, 500);
+          // User interaction required for autoplay
+          setError('Click anywhere on the video to start the camera');
         }
       }
 
@@ -707,28 +705,48 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             autoPlay
             playsInline
             muted
-            className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+            className={`absolute inset-0 w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
             style={{ transform: 'scaleX(-1)' }}
+            onClick={async () => {
+              // Handle user interaction for autoplay
+              if (localVideoRef.current && localVideoRef.current.paused) {
+                try {
+                  await localVideoRef.current.play();
+                  setError(null);
+                } catch (err) {
+                  console.error('Manual play failed:', err);
+                }
+              }
+            }}
             onLoadedMetadata={() => {
               console.log('Video metadata loaded');
-              if (localVideoRef.current) {
-                localVideoRef.current.play().catch(console.error);
-              }
             }}
             onCanPlay={() => {
               console.log('Video can play');
             }}
             onError={(e) => {
               console.error('Video error:', e);
+              setError('Camera error occurred. Please check your camera permissions.');
             }}
           />
           
           {/* Video disabled overlay */}
           {!isVideoEnabled && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 z-20">
               <div className="text-center text-white">
                 <VideoOff className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <p className="text-lg">Camera is off</p>
+                {/* Show AI Avatar when camera is off */}
+                <div className="mt-8">
+                  <AIAvatar 
+                    isSpeaking={isSpeaking}
+                    currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
+                      ? messages[messages.length - 1].content 
+                      : ''
+                    }
+                    className="w-40 h-48 mx-auto"
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -766,14 +784,14 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
           </div>
 
           {/* AI Avatar/Animation */}
-          {/* AI Avatar */}
-          <div className="absolute top-4 right-4">
+          <div className="absolute top-4 right-4 z-10">
             <AIAvatar 
               isSpeaking={isSpeaking}
               currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
                 ? messages[messages.length - 1].content 
                 : ''
               }
+              className="w-32 h-40"
             />
           </div>
 
