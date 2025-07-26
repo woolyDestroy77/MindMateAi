@@ -112,10 +112,10 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640, min: 320 },
-          height: { ideal: 480, min: 240 },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
           facingMode: 'user',
-          frameRate: { ideal: 24, min: 15 }
+          frameRate: { ideal: 30, min: 24 }
         },
         audio: {
           echoCancellation: true,
@@ -131,27 +131,23 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         console.log('Setting video source...');
         localVideoRef.current.srcObject = stream;
         
-        // Enhanced video setup
-        localVideoRef.current.muted = true; // Prevent feedback
+        // Force immediate video setup
+        localVideoRef.current.muted = true;
         localVideoRef.current.playsInline = true;
         localVideoRef.current.autoplay = true;
         
-        // Wait for metadata to load before playing
-        await new Promise((resolve) => {
+        // Force play immediately
+        setTimeout(async () => {
           if (localVideoRef.current) {
-            localVideoRef.current.onloadedmetadata = resolve;
+            try {
+              await localVideoRef.current.play();
+              console.log('Video started successfully');
+            } catch (error) {
+              console.error('Video play error:', error);
+              setError('Click on your video to enable camera display');
+            }
           }
-        });
-        
-        // Force video to play and handle any errors
-        try {
-          await localVideoRef.current.play();
-          console.log('Video playing successfully');
-        } catch (playError) {
-          console.warn('Video autoplay failed, trying manual play:', playError);
-          // User interaction required for autoplay
-          setError('Click anywhere on the video to start the camera');
-        }
+        }, 100);
       }
 
       // Initialize audio context for better audio processing
@@ -712,13 +708,13 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
           </div>
           
           {/* Your Camera - Small top-right box */}
-          <div className="absolute top-4 right-4 w-48 h-36 bg-gray-800 rounded-lg border-4 border-white shadow-lg z-30 overflow-hidden">
+          <div className="absolute top-4 right-4 w-64 h-48 bg-gray-900 rounded-lg border-4 border-white shadow-lg z-30 overflow-hidden">
             <video
               ref={localVideoRef}
               autoPlay
               playsInline
               muted
-              className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+              className={`w-full h-full object-cover bg-gray-800 ${!isVideoEnabled ? 'hidden' : ''}`}
               style={{ transform: 'scaleX(-1)' }}
               onClick={async () => {
                 // Handle user interaction for autoplay
@@ -726,16 +722,30 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                   try {
                     await localVideoRef.current.play();
                     setError(null);
+                    console.log('Manual video play successful');
                   } catch (err) {
                     console.error('Manual play failed:', err);
+                    setError('Camera access failed. Please check permissions.');
                   }
                 }
               }}
-              onLoadedMetadata={() => {
-                console.log('Video metadata loaded');
+              onLoadedMetadata={async () => {
+                console.log('Video metadata loaded, attempting autoplay...');
+                if (localVideoRef.current) {
+                  try {
+                    await localVideoRef.current.play();
+                    console.log('Autoplay successful');
+                  } catch (error) {
+                    console.log('Autoplay blocked, user interaction required');
+                  }
+                }
               }}
               onCanPlay={() => {
                 console.log('Video can play');
+              }}
+              onPlaying={() => {
+                console.log('Video is now playing');
+                setError(null);
               }}
               onError={(e) => {
                 console.error('Video error:', e);
@@ -745,7 +755,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             
             {/* Your Camera Label */}
             <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-white text-xs font-medium text-center py-1 rounded">
-              You
+              You {isVideoEnabled ? '(Camera On)' : '(Camera Off)'}
             </div>
             
             {/* Camera disabled overlay for small box */}
@@ -754,6 +764,15 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                 <div className="text-center text-white">
                   <VideoOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-xs">Camera Off</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Debug info for camera */}
+            {error && error.includes('Camera') && (
+              <div className="absolute inset-0 flex items-center justify-center bg-red-900/90">
+                <div className="text-center text-white text-xs p-2">
+                  <p>Click to enable camera</p>
                 </div>
               </div>
             )}
