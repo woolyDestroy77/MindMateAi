@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Settings, Volume2, VolumeX, Send, Loader2 } from 'lucide-react';
+import { MessageSquare, Settings, Volume2, VolumeX, Send, Loader2, Video, MessageCircle } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import ChatInterface from '../components/chat/ChatInterface';
 import VoiceSettingsModal from '../components/chat/VoiceSettingsModal';
+import VideoCallAssistant from '../components/chat/VideoCallAssistant';
 import { useAIChat } from '../hooks/useAIChat';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
@@ -33,6 +34,7 @@ const Chat = () => {
   const [showChatInterface, setShowChatInterface] = useState(false);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [input, setInput] = useState("");
+  const [activeMode, setActiveMode] = useState<'text' | 'video'>('text');
 
   // Function to update mood from chat
   async function updateMood(sentiment: string, userMessage: string, aiResponse: string) {
@@ -61,8 +63,39 @@ const Chat = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="flex flex-col space-y-6">
+          {/* Mode Selector */}
+          <div className="flex justify-center">
+            <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-200">
+              <div className="flex space-x-1">
+                <button
+                  onClick={() => setActiveMode('text')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeMode === 'text'
+                      ? 'bg-lavender-100 text-lavender-800'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  <MessageCircle size={16} />
+                  <span>Text Chat</span>
+                </button>
+                <button
+                  onClick={() => setActiveMode('video')}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    activeMode === 'video'
+                      ? 'bg-lavender-100 text-lavender-800'
+                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                  }`}
+                >
+                  <Video size={16} />
+                  <span>Video Call</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* Main Chat Area */}
-          <div className="flex-1">
+          {activeMode === 'text' && (
+            <div className="flex-1">
             <Card className="h-[calc(100vh-200px)] flex flex-col">
               {/* Chat Header */}
               <div className="p-4 border-b flex justify-between items-center bg-lavender-50">
@@ -201,6 +234,14 @@ const Chat = () => {
               </div>
             </Card>
           </div>
+          )}
+
+          {/* Video Call Assistant */}
+          {activeMode === 'video' && (
+            <div className="flex-1">
+              <VideoCallAssistant onMoodUpdate={updateMood} />
+            </div>
+          )}
         </div>
       </main>
 
