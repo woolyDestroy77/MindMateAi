@@ -469,7 +469,7 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
               <stop offset="0%" stopColor="#FD79A8" />
               <stop offset="50%" stopColor="#E84393" />
               <stop offset="100%" stopColor="#C0392B" />
-            </radialGradient>
+            </linearGradient>
             <radialGradient id="cheekGradient" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#FF7675" />
               <stop offset="100%" stopColor="#E17055" />
