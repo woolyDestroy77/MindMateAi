@@ -720,6 +720,8 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                 // Handle user interaction for autoplay
                 if (localVideoRef.current && localVideoRef.current.paused) {
                   try {
+                    // Add delay to ensure video element is stable in DOM
+                    await new Promise(resolve => setTimeout(resolve, 50));
                     await localVideoRef.current.play();
                     setError(null);
                     console.log('Manual video play successful');
