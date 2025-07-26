@@ -14,27 +14,12 @@ A comprehensive mental health support platform with AI-powered chat, video calli
 
 ## Video Call AI Setup
 
-To enable the video call AI assistant, you need to set up the following environment variables:
+The video call AI assistant uses free, browser-based technologies:
 
-```bash
-# OpenAI API Key (for GPT-4o chat responses)
-OPENAI_API_KEY=your_openai_api_key_here
-
-# ElevenLabs API Key (for speech synthesis and recognition)
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
-```
-
-### Getting API Keys:
-
-1. **OpenAI API Key**:
-   - Go to [OpenAI Platform](https://platform.openai.com/api-keys)
-   - Create a new API key
-   - Make sure you have access to GPT-4o model
-
-2. **ElevenLabs API Key**:
-   - Go to [ElevenLabs](https://elevenlabs.io/)
-   - Sign up for an account
-   - Get your API key from the profile section
+- **Speech Recognition**: Browser's Web Speech API (free)
+- **Text-to-Speech**: Browser's Speech Synthesis API (free)
+- **AI Chat**: Existing Dappier integration (already configured)
+- **Video/Audio**: WebRTC (free browser technology)
 
 ### Browser Requirements:
 
@@ -43,6 +28,12 @@ ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
 - **Firefox**: Basic support (may have speech recognition limitations)
 - **Mobile browsers**: Limited support for video calls
 
+### Features:
+- Real-time video/audio conversation with AI
+- Natural speech recognition and synthesis
+- Mood analysis integration
+- No API keys required - uses free browser technologies
+- Works offline for speech processing
 ## Development
 
 ```bash

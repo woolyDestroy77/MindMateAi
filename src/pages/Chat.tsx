@@ -10,6 +10,7 @@ import VideoCallAssistant from '../components/chat/VideoCallAssistant';
 import { useAIChat } from '../hooks/useAIChat';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
+import { supabase } from '../lib/supabase';
 
 const Chat = () => {
   const { 
