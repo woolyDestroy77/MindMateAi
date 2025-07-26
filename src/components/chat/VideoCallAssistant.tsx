@@ -80,7 +80,11 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       setError(null);
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: isVideoEnabled,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
         audio: true
       });
 
@@ -88,6 +92,12 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
 
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
+        // Ensure video plays
+        try {
+          await localVideoRef.current.play();
+        } catch (playError) {
+          console.warn('Video autoplay failed:', playError);
+        }
       }
 
       // Initialize audio context for better audio processing
@@ -109,7 +119,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
     } finally {
       setIsConnecting(false);
     }
-  }, [isVideoEnabled]);
+  }, []);
 
   // Start call
   const startCall = useCallback(async () => {
@@ -139,22 +149,33 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
 
   // End call
   const endCall = useCallback(() => {
+    // Stop any current speech immediately
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+    
+    // Stop any playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+
     // Stop all media tracks
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
+    }
+    
+    // Clear video element
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
     }
 
     // Stop speech recognition
     if (speechRecognitionRef.current) {
       speechRecognitionRef.current.stop();
       speechRecognitionRef.current = null;
-    }
-
-    // Stop any playing audio
-    if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current = null;
     }
 
     // Reset states
@@ -365,6 +386,9 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         // Cancel any existing speech
         speechSynthesis.cancel();
         
+        // Small delay to ensure cancellation is processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const utterance = new SpeechSynthesisUtterance(cleanedText);
         utterance.rate = 0.9;
         utterance.pitch = 1.0;
@@ -381,11 +405,26 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
           utterance.voice = preferredVoice;
         }
         
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => {
+          setIsSpeaking(false);
+        };
+        
+        utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
+          setIsSpeaking(false);
+        };
+        
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+        };
         
         speechSynthesis.speak(utterance);
+        
+        // Store reference for potential cancellation
+        currentAudioRef.current = { 
+          pause: () => speechSynthesis.cancel(),
+          currentTime: 0
+        } as HTMLAudioElement;
       } else {
         throw new Error('Speech synthesis not supported');
       }
@@ -504,9 +543,11 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
           <video
             ref={localVideoRef}
             autoPlay
-            muted
             playsInline
+            muted
+            controls={false}
             className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+            style={{ transform: 'scaleX(-1)' }}
           />
           
           {/* Video disabled overlay */}
