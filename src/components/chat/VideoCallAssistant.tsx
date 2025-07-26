@@ -310,88 +310,88 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
     }
   }, [isProcessing, onMoodUpdate]);
 
-  // Get AI response from OpenAI
+  // Get AI response using existing Dappier chat system
   const getAIResponse = useCallback(async (userMessage: string): Promise<string | null> => {
     try {
-      // In a real implementation, this would call your backend API
-      // which would then call OpenAI with your API key
-      const response = await fetch('/api/openai-chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Use the existing Supabase chat function that connects to Dappier
+      const { data, error } = await supabase.functions.invoke("chat", {
+        body: {
           message: userMessage,
-          context: messages.slice(-5), // Send last 5 messages for context
-          isVideoCall: true
-        }),
+          context: messages.slice(-5).map(msg => ({
+            role: msg.role,
+            content: msg.content
+          }))
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
+      if (error) {
+        console.error('Dappier chat error:', error);
+        throw error;
       }
 
-      const data = await response.json();
-      return data.response;
+      if (!data?.response) {
+        throw new Error('No response from AI service');
+      }
+
+      // Extract the response content
+      const responseContent = typeof data.response === 'string' 
+        ? data.response 
+        : data.response.message || data.response;
+
+      return responseContent;
     } catch (error) {
       console.error('Error getting AI response:', error);
       
-      // Fallback response for demo purposes
-      return "I understand you're sharing something important with me. While I'm having trouble connecting to my full AI capabilities right now, I want you to know that I'm here to listen and support you. Can you tell me more about how you're feeling?";
+      // Fallback response
+      return "I understand you're sharing something important with me. I'm here to listen and support you. Can you tell me more about how you're feeling?";
     }
   }, [messages]);
 
-  // Text-to-Speech using ElevenLabs
+  // Text-to-Speech using Web Speech API (free browser-based)
   const speakText = useCallback(async (text: string) => {
     try {
       setIsSpeaking(true);
 
-      // In a real implementation, this would call your backend API
-      // which would then call ElevenLabs with your API key
-      const response = await fetch('/api/elevenlabs-tts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text,
-          voice_id: 'default', // You can customize this
-        }),
-      });
+      // Clean text for better speech synthesis
+      const cleanedText = text
+        .replace(/[*_`]/g, '') // Remove markdown
+        .replace(/\n+/g, '. ') // Replace line breaks with pauses
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .trim();
 
-      if (response.ok) {
-        const audioBlob = await response.blob();
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        const audio = new Audio(audioUrl);
-        currentAudioRef.current = audio;
-        
-        audio.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          currentAudioRef.current = null;
-        };
-        
-        await audio.play();
-      } else {
-        throw new Error('Failed to generate speech');
-      }
-    } catch (error) {
-      console.error('Error with text-to-speech:', error);
-      setIsSpeaking(false);
-      
-      // Fallback: Use browser's built-in speech synthesis
+      // Use browser's built-in Web Speech API (free)
       if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Cancel any existing speech
+        speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(cleanedText);
         utterance.rate = 0.9;
         utterance.pitch = 1.0;
         utterance.volume = 0.8;
         
+        // Try to use a good voice
+        const voices = speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && 
+          (voice.name.includes('Female') || voice.name.includes('Samantha') || voice.name.includes('Karen'))
+        ) || voices.find(voice => voice.lang.startsWith('en'));
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+        
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
+        utterance.onstart = () => setIsSpeaking(true);
         
         speechSynthesis.speak(utterance);
+      } else {
+        throw new Error('Speech synthesis not supported');
       }
+    } catch (error) {
+      console.error('Error with text-to-speech:', error);
+      setIsSpeaking(false);
+      setError('Speech synthesis failed. Please check your browser settings.');
     }
   }, []);
 
