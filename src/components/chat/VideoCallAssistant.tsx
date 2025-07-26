@@ -699,65 +699,70 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       {/* Video Call Interface */}
       <Card className="overflow-hidden">
         <div className="relative bg-gray-900 aspect-video">
-          {/* Local Video */}
-          <video
-            ref={localVideoRef}
-            autoPlay
-            playsInline
-            muted
-            className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
-            style={{ transform: 'scaleX(-1)' }}
-            onClick={async () => {
-              // Handle user interaction for autoplay
-              if (localVideoRef.current && localVideoRef.current.paused) {
-                try {
-                  await localVideoRef.current.play();
-                  setError(null);
-                } catch (err) {
-                  console.error('Manual play failed:', err);
-                }
+          {/* AI Person - Main video area */}
+          <div className="w-full h-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+            <AIAvatar 
+              isSpeaking={isSpeaking}
+              currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
+                ? messages[messages.length - 1].content 
+                : ''
               }
-            }}
-            onLoadedMetadata={() => {
-              console.log('Video metadata loaded');
-            }}
-            onCanPlay={() => {
-              console.log('Video can play');
-            }}
-            onError={(e) => {
-              console.error('Video error:', e);
-              setError('Camera error occurred. Please check your camera permissions.');
-            }}
-          />
+              className="w-full h-full max-w-md max-h-md"
+            />
+          </div>
           
-          {/* AI Person - Always visible and prominent */}
-          <div className="absolute top-4 right-4 w-48 h-60 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg border-4 border-white shadow-lg z-30">
-            <div className="w-full h-full flex items-center justify-center">
-              <AIAvatar 
-                isSpeaking={isSpeaking}
-                currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
-                  ? messages[messages.length - 1].content 
-                  : ''
+          {/* Your Camera - Small top-right box */}
+          <div className="absolute top-4 right-4 w-48 h-36 bg-gray-800 rounded-lg border-4 border-white shadow-lg z-30 overflow-hidden">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+              style={{ transform: 'scaleX(-1)' }}
+              onClick={async () => {
+                // Handle user interaction for autoplay
+                if (localVideoRef.current && localVideoRef.current.paused) {
+                  try {
+                    await localVideoRef.current.play();
+                    setError(null);
+                  } catch (err) {
+                    console.error('Manual play failed:', err);
+                  }
                 }
-                className="w-full h-full"
-              />
+              }}
+              onLoadedMetadata={() => {
+                console.log('Video metadata loaded');
+              }}
+              onCanPlay={() => {
+                console.log('Video can play');
+              }}
+              onError={(e) => {
+                console.error('Video error:', e);
+                setError('Camera error occurred. Please check your camera permissions.');
+              }}
+            />
+            
+            {/* Your Camera Label */}
+            <div className="absolute bottom-1 left-1 right-1 bg-black/70 text-white text-xs font-medium text-center py-1 rounded">
+              You
             </div>
-            {/* AI Name Label */}
-            <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs font-medium text-center py-1 rounded">
-              AI Assistant
-            </div>
+            
+            {/* Camera disabled overlay for small box */}
+            {!isVideoEnabled && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-800/90">
+                <div className="text-center text-white">
+                  <VideoOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Camera Off</p>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Video disabled overlay */}
-          {!isVideoEnabled && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800/90 z-10">
-              <div className="text-center text-white">
-                <VideoOff className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Your Camera is Off</p>
-                <p className="text-sm opacity-75 mt-2">Click the camera button to turn it back on</p>
-              </div>
-            </div>
-          )}
+          {/* AI Name Label for main area */}
+          <div className="absolute bottom-20 left-4 bg-black/70 text-white text-sm font-medium px-3 py-1 rounded-full">
+            🤖 AI Wellness Assistant
+          </div>
 
           {/* AI Status Overlay */}
           <div className="absolute top-4 left-4 space-y-2">
