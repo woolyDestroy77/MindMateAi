@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { supabase } from '../../lib/supabase';
 
 interface VideoCallAssistantProps {
   onMoodUpdate?: (sentiment: string, userMessage: string, aiResponse: string) => void;
