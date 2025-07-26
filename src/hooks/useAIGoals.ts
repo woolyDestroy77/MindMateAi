@@ -40,6 +40,7 @@ export const useAIGoals = () => {
   const [aiGoals, setAiGoals] = useState<AIGoal[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [userProfile, setUserProfile] = useState<UserMentalHealthProfile | null>(null);
+  const [needsDailyChat, setNeedsDailyChat] = useState(false);
 
   // Generate user mental health profile
   const generateUserProfile = useCallback(async (): Promise<UserMentalHealthProfile | null> => {
@@ -88,9 +89,12 @@ export const useAIGoals = () => {
         .from('dappier_chat_history')
         .select('created_at')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .gte('created_at', new Date().toISOString().split('T')[0]) // Today's chats only
+        .order('created_at', { ascending: false });
 
+      // Check if user has chatted today
+      const hasChatToday = chatData && chatData.length > 0;
+      
       // Build profile
       const profile: UserMentalHealthProfile = {
         currentMood: moodData?.current_mood || '😐',
@@ -104,7 +108,7 @@ export const useAIGoals = () => {
         addictionTypes: addictionData?.map(a => a.addiction_type?.name || 'Unknown') || [],
         daysClean: addictionData?.[0]?.days_clean || 0,
         recentJournalEntries: journalData?.length || 0,
-        lastChatDate: chatData?.[0]?.created_at || '',
+        lastChatDate: hasChatToday ? chatData[0].created_at : '',
         stressLevel: moodData?.sentiment === 'negative' ? 7 : moodData?.sentiment === 'positive' ? 3 : 5,
         sleepQuality: 7, // Default - could be enhanced with sleep tracking
         socialConnections: 5, // Default - could be enhanced with social tracking
@@ -115,6 +119,9 @@ export const useAIGoals = () => {
         triggers: addictionData?.[0]?.personal_triggers || []
       };
 
+      // Set if user needs to chat today
+      setNeedsDailyChat(!hasChatToday);
+      
       setUserProfile(profile);
       return profile;
     } catch (error) {
@@ -125,42 +132,301 @@ export const useAIGoals = () => {
 
   // AI goal generation based on user profile
   const generateAIGoals = useCallback(async (profile: UserMentalHealthProfile): Promise<AIGoal[]> => {
-    const goals: AIGoal[] = [];
-    const today = new Date().toDateString();
+    // If user hasn't chatted today, return a single goal to start daily chat
+    if (!profile.lastChatDate) {
+      return [{
+        id: `ai_daily_chat_${Date.now()}`,
+        text: 'Start your daily wellness chat to unlock personalized goals',
+        type: 'mental_health',
+        priority: 'high',
+        pointsValue: 10,
+        reasoning: 'I need to analyze your current mood and feelings through our daily conversation to generate personalized goals that match your emotional state today.',
+        category: 'Mood Assessment',
+        estimatedTime: '5-10 min',
+        difficulty: 'easy',
+        completed: false
+      }];
+    }
 
-    // Mental Health Goals
-    if (profile.wellnessScore < 60) {
+    const goals: AIGoal[] = [];
+
+    // Generate goals based on current mood and sentiment from today's chat
+    const currentMood = profile.moodName.toLowerCase();
+    const sentiment = profile.sentiment.toLowerCase();
+    const wellnessScore = profile.wellnessScore;
+
+    // Mood-specific goal generation
+    if (currentMood === 'sad' || currentMood === 'depressed' || sentiment === 'negative') {
       goals.push({
-        id: `ai_mood_boost_${Date.now()}`,
-        text: 'Practice 5 minutes of mindful breathing',
+        id: `ai_mood_lift_${Date.now()}`,
+        text: 'Practice gratitude - write 3 things you\'re thankful for',
         type: 'mental_health',
         priority: 'high',
         pointsValue: 8,
-        reasoning: `Your wellness score is ${profile.wellnessScore}. Mindful breathing can help improve mood and reduce stress.`,
+        reasoning: `Your current mood is ${currentMood} with ${sentiment} sentiment. Gratitude practice can help shift your perspective and improve mood naturally.`,
         category: 'Mood Enhancement',
         estimatedTime: '5 min',
         difficulty: 'easy',
         completed: false
       });
-    }
 
-    if (profile.sentiment === 'negative') {
       goals.push({
-        id: `ai_gratitude_${Date.now()}`,
-        text: 'Write down 3 things you\'re grateful for today',
-        type: 'mental_health',
+        id: `ai_gentle_activity_${Date.now()}`,
+        text: 'Do something gentle and nurturing for yourself',
+        type: 'self_care',
         priority: 'medium',
         pointsValue: 6,
-        reasoning: 'Recent sentiment analysis shows negative patterns. Gratitude practice can help shift perspective.',
-        category: 'Positive Psychology',
+        reasoning: 'When feeling down, gentle self-care activities can provide comfort and help you feel more grounded.',
+        category: 'Self-Compassion',
+        estimatedTime: '15 min',
+        difficulty: 'easy',
+        completed: false
+      });
+    }
+
+    if (currentMood === 'anxious' || currentMood === 'worried' || currentMood === 'stressed') {
+      goals.push({
+        id: `ai_anxiety_relief_${Date.now()}`,
+        text: 'Practice 4-7-8 breathing exercise',
+        type: 'anxiety_management',
+        priority: 'high',
+        pointsValue: 8,
+        reasoning: `You're feeling ${currentMood} today. The 4-7-8 breathing technique activates your parasympathetic nervous system to reduce anxiety naturally.`,
+        category: 'Anxiety Relief',
+        estimatedTime: '5 min',
+        difficulty: 'easy',
+        completed: false
+      });
+
+      goals.push({
+        id: `ai_grounding_${Date.now()}`,
+        text: 'Use the 5-4-3-2-1 grounding technique',
+        type: 'anxiety_management',
+        priority: 'medium',
+        pointsValue: 7,
+        reasoning: 'Grounding techniques help bring your attention to the present moment and reduce anxious thoughts.',
+        category: 'Mindfulness',
         estimatedTime: '3 min',
         difficulty: 'easy',
         completed: false
       });
     }
 
-    // Anxiety Management Goals
-    if (profile.recentAnxietyLevel && profile.recentAnxietyLevel > 6) {
+    if (currentMood === 'angry' || currentMood === 'frustrated' || currentMood === 'irritated') {
+      goals.push({
+        id: `ai_anger_management_${Date.now()}`,
+        text: 'Take a 10-minute walk to cool down',
+        type: 'physical_wellness',
+        priority: 'high',
+        pointsValue: 8,
+        reasoning: `You're feeling ${currentMood}. Physical movement helps process anger and releases tension naturally.`,
+        category: 'Emotional Regulation',
+        estimatedTime: '10 min',
+        difficulty: 'easy',
+        completed: false
+      });
+
+      goals.push({
+        id: `ai_anger_journal_${Date.now()}`,
+        text: 'Write about what\'s bothering you',
+        type: 'mental_health',
+        priority: 'medium',
+        pointsValue: 7,
+        reasoning: 'Journaling helps process angry feelings and can provide clarity about what\'s really bothering you.',
+        category: 'Emotional Processing',
+        estimatedTime: '8 min',
+        difficulty: 'medium',
+        completed: false
+      });
+    }
+
+    if (currentMood === 'happy' || currentMood === 'excited' || sentiment === 'positive') {
+      goals.push({
+        id: `ai_positive_momentum_${Date.now()}`,
+        text: 'Share your positive energy with someone',
+        type: 'social_connection',
+        priority: 'medium',
+        pointsValue: 8,
+        reasoning: `You're feeling ${currentMood} today! Sharing positive emotions strengthens relationships and amplifies good feelings.`,
+        category: 'Social Connection',
+        estimatedTime: '10 min',
+        difficulty: 'easy',
+        completed: false
+      });
+
+      goals.push({
+        id: `ai_gratitude_positive_${Date.now()}`,
+        text: 'Reflect on what made you feel good today',
+        type: 'mental_health',
+        priority: 'low',
+        pointsValue: 5,
+        reasoning: 'When feeling good, reflecting on positive experiences helps reinforce what brings you joy.',
+        category: 'Positive Psychology',
+        estimatedTime: '5 min',
+        difficulty: 'easy',
+        completed: false
+      });
+    }
+
+    if (currentMood === 'tired' || currentMood === 'exhausted') {
+      goals.push({
+        id: `ai_rest_recovery_${Date.now()}`,
+        text: 'Take a 15-minute power nap or rest',
+        type: 'self_care',
+        priority: 'high',
+        pointsValue: 6,
+        reasoning: `You're feeling ${currentMood}. Rest is essential for mental health - your body is telling you what it needs.`,
+        category: 'Self-Care',
+        estimatedTime: '15 min',
+        difficulty: 'easy',
+        completed: false
+      });
+
+      goals.push({
+        id: `ai_gentle_stretch_${Date.now()}`,
+        text: 'Do gentle stretches or light movement',
+        type: 'physical_wellness',
+        priority: 'medium',
+        pointsValue: 5,
+        reasoning: 'Gentle movement can help boost energy levels without overwhelming your tired body.',
+        category: 'Physical Wellness',
+        estimatedTime: '5 min',
+        difficulty: 'easy',
+        completed: false
+      });
+    }
+
+    if (currentMood === 'calm' || currentMood === 'peaceful') {
+      goals.push({
+        id: `ai_maintain_calm_${Date.now()}`,
+        text: 'Practice mindful meditation to maintain inner peace',
+        type: 'mental_health',
+        priority: 'medium',
+        pointsValue: 7,
+        reasoning: `You're feeling ${currentMood} - this is a perfect state for deepening mindfulness and maintaining emotional balance.`,
+        category: 'Mindfulness',
+        estimatedTime: '10 min',
+        difficulty: 'medium',
+        completed: false
+      });
+    }
+
+    // Always add wellness score-based goals
+    if (profile.wellnessScore < 60) {
+      goals.push({
+        id: `ai_wellness_boost_${Date.now()}`,
+        text: 'Do one small thing that usually makes you feel better',
+        type: 'mental_health',
+        priority: 'medium',
+        pointsValue: 6,
+        reasoning: `Your wellness score is ${profile.wellnessScore}/100. Small positive actions can help improve your overall wellbeing.`,
+        category: 'Wellness Boost',
+        estimatedTime: '10 min',
+        difficulty: 'easy',
+        completed: false
+      });
+    }
+
+    // Recovery-specific goals (if applicable)
+    if (profile.hasAddictions && profile.daysClean >= 0) {
+      goals.push({
+        id: `ai_recovery_check_${Date.now()}`,
+        text: 'Check in with your recovery support network',
+        type: 'recovery',
+        priority: 'medium',
+        pointsValue: 10,
+        reasoning: `You're on day ${profile.daysClean} of recovery. Regular support contact strengthens your recovery foundation.`,
+        category: 'Recovery Support',
+        estimatedTime: '10 min',
+        difficulty: 'medium',
+        completed: false
+      });
+    }
+
+    // Limit to 3-4 goals to avoid overwhelming
+    return goals.slice(0, 4);
+  }, []);
+
+  // Generate daily AI goals
+  const generateDailyAIGoals = useCallback(async () => {
+    try {
+      setIsGenerating(true);
+      
+      // Check if we've already generated goals today
+      const today = new Date().toDateString();
+      const lastGenerationDate = localStorage.getItem('ai_goals_last_generated');
+      
+      if (lastGenerationDate === today) {
+        // Load existing goals from localStorage
+        const savedGoals = localStorage.getItem(`ai_goals_${today}`);
+        if (savedGoals) {
+          setAiGoals(JSON.parse(savedGoals));
+          return;
+        }
+      }
+
+      // Generate user profile
+      const profile = await generateUserProfile();
+      if (!profile) {
+        console.error('Could not generate user profile');
+        return;
+      }
+
+      // Generate AI goals based on profile
+      const newGoals = await generateAIGoals(profile);
+      
+      // Save goals to localStorage
+      localStorage.setItem(`ai_goals_${today}`, JSON.stringify(newGoals));
+      localStorage.setItem('ai_goals_last_generated', today);
+      
+      setAiGoals(newGoals);
+      
+      if (newGoals.length === 1 && newGoals[0].text.includes('daily wellness chat')) {
+        // Don't show success message for chat prompt
+        return;
+      }
+      
+      toast.success(`🤖 AI generated ${newGoals.length} personalized goals based on your mood!`, {
+        duration: 4000,
+        icon: '🎯'
+      });
+
+    } catch (error) {
+      console.error('Error generating AI goals:', error);
+      toast.error('Failed to generate AI goals');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [generateUserProfile, generateAIGoals]);
+
+  // Auto-generate goals when component mounts or when mood data changes
+  useEffect(() => {
+    const today = new Date().toDateString();
+    const savedGoals = localStorage.getItem(`ai_goals_${today}`);
+    
+    if (savedGoals) {
+      try {
+        setAiGoals(JSON.parse(savedGoals));
+      } catch (error) {
+        console.error('Error loading saved AI goals:', error);
+      }
+    } else {
+      // Auto-generate if no goals exist for today
+      generateDailyAIGoals();
+    }
+  }, [generateDailyAIGoals]);
+
+  return {
+    aiGoals,
+    userProfile,
+    isGenerating,
+    needsDailyChat,
+    generateDailyAIGoals,
+    completeAIGoal,
+    removeAIGoal,
+    generateUserProfile
+  };
+};
       goals.push({
         id: `ai_anxiety_relief_${Date.now()}`,
         text: 'Complete a 10-minute guided meditation',
