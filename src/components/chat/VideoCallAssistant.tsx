@@ -98,24 +98,51 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
       setIsConnecting(true);
       setError(null);
 
+      console.log('Requesting media access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user'
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          facingMode: 'user',
+          frameRate: { ideal: 30, min: 15 }
         },
-        audio: true
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
       });
 
+      console.log('Media stream obtained:', stream);
       mediaStreamRef.current = stream;
 
       if (localVideoRef.current) {
+        console.log('Setting video source...');
         localVideoRef.current.srcObject = stream;
-        // Ensure video plays
+        
+        // Enhanced video setup
+        localVideoRef.current.muted = true; // Prevent feedback
+        localVideoRef.current.playsInline = true;
+        localVideoRef.current.autoplay = true;
+        
+        // Force video to play and handle any errors
         try {
           await localVideoRef.current.play();
+          console.log('Video playing successfully');
         } catch (playError) {
-          console.warn('Video autoplay failed:', playError);
+          console.warn('Video autoplay failed, trying manual play:', playError);
+          // Try to play again after a short delay
+          setTimeout(async () => {
+            try {
+              if (localVideoRef.current) {
+                await localVideoRef.current.play();
+                console.log('Manual video play successful');
+              }
+            } catch (retryError) {
+              console.error('Manual video play also failed:', retryError);
+            }
+          }, 500);
         }
       }
 
@@ -400,9 +427,29 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
 
       // Clean text for better speech synthesis
       const cleanedText = text
-        .replace(/[*_`]/g, '') // Remove markdown
+        // Remove all emojis (comprehensive emoji regex)
+        .replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '')
+        // Remove other Unicode symbols and pictographs
+        .replace(/[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]|[\u{2B50}]|[\u{2B55}]|[\u{2934}-\u{2935}]|[\u{2B05}-\u{2B07}]|[\u{2B1B}-\u{2B1C}]|[\u{3030}]|[\u{303D}]|[\u{3297}]|[\u{3299}]/gu, '')
+        // Remove markdown formatting
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold markdown
+        .replace(/\*(.*?)\*/g, '$1') // Remove italic markdown
+        .replace(/`(.*?)`/g, '$1') // Remove code markdown
+        .replace(/#{1,6}\s/g, '') // Remove heading markdown
+        .replace(/[-•*]\s/g, '') // Remove bullet points
+        .replace(/\d+\.\s/g, '') // Remove numbered lists
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove markdown links
+        // Improve sentence flow for natural speech
         .replace(/\n+/g, '. ') // Replace line breaks with pauses
         .replace(/\s+/g, ' ') // Normalize whitespace
+        .replace(/([.!?])\s*([A-Z])/g, '$1 $2') // Add pauses between sentences
+        // Remove common text artifacts
+        .replace(/\s*\.\s*\.\s*\./g, '.') // Remove multiple dots
+        .replace(/\s*,\s*,/g, ',') // Remove multiple commas
+        .replace(/\s*;\s*;/g, ';') // Remove multiple semicolons
+        // Clean up extra spaces and punctuation
+        .replace(/\s+([.!?,:;])/g, '$1') // Remove spaces before punctuation
+        .replace(/([.!?])\s*([.!?])/g, '$1') // Remove duplicate punctuation
         .trim();
 
       // Use browser's built-in Web Speech API (free)
@@ -414,19 +461,40 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         await new Promise(resolve => setTimeout(resolve, 100));
         
         const utterance = new SpeechSynthesisUtterance(cleanedText);
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 0.8;
+        // More natural speech settings
+        utterance.rate = 0.85; // Slightly slower for more natural pace
+        utterance.pitch = 1.0; // Natural pitch
+        utterance.volume = 0.9; // Clear volume
         
-        // Try to use a good voice
+        // Enhanced voice selection for more human-like speech
         const voices = speechSynthesis.getVoices();
-        const preferredVoice = voices.find(voice => 
-          voice.lang.startsWith('en') && 
-          (voice.name.includes('Female') || voice.name.includes('Samantha') || voice.name.includes('Karen'))
-        ) || voices.find(voice => voice.lang.startsWith('en'));
+        
+        // Priority order for most natural voices
+        const voicePreferences = [
+          // High-quality female voices
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('samantha') && v.lang.startsWith('en'),
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('karen') && v.lang.startsWith('en'),
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('susan') && v.lang.startsWith('en'),
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('female') && v.lang.startsWith('en'),
+          // High-quality male voices
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('daniel') && v.lang.startsWith('en'),
+          (v: SpeechSynthesisVoice) => v.name.toLowerCase().includes('alex') && v.lang.startsWith('en'),
+          // Any English voice
+          (v: SpeechSynthesisVoice) => v.lang.startsWith('en-US'),
+          (v: SpeechSynthesisVoice) => v.lang.startsWith('en'),
+          // Fallback to any voice
+          () => true
+        ];
+        
+        let preferredVoice = null;
+        for (const preference of voicePreferences) {
+          preferredVoice = voices.find(preference);
+          if (preferredVoice) break;
+        }
         
         if (preferredVoice) {
           utterance.voice = preferredVoice;
+          console.log('Using voice:', preferredVoice.name);
         }
         
         utterance.onend = () => {
@@ -629,9 +697,20 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             autoPlay
             playsInline
             muted
-            controls={false}
             className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
             style={{ transform: 'scaleX(-1)' }}
+            onLoadedMetadata={() => {
+              console.log('Video metadata loaded');
+              if (localVideoRef.current) {
+                localVideoRef.current.play().catch(console.error);
+              }
+            }}
+            onCanPlay={() => {
+              console.log('Video can play');
+            }}
+            onError={(e) => {
+              console.error('Video error:', e);
+            }}
           />
           
           {/* Video disabled overlay */}
