@@ -687,18 +687,8 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                   className="text-red-600 border-red-300 hover:bg-red-50"
                 >
                   Clear Conversation
-          <div className="flex items-center justify-center w-full h-full">
-            {/* Show AI Avatar when camera is off */}
-            <div className="text-center">
-              <AIAvatar 
-                isSpeaking={isSpeaking}
-                currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
-                  ? messages[messages.length - 1].content 
-                  : ''
-                }
-                className="mb-4"
-              />
-              <p className="text-white text-lg">Camera is off</p>
+                </Button>
+              </div>
             </div>
           </Card>
         )}
