@@ -177,38 +177,38 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
   const getMouthPath = (viseme: string): string => {
     switch (viseme) {
       case 'aa': // Open vowels like "ah"
-        return 'M 40 45 Q 50 55 60 45 Q 50 50 40 45';
+        return 'M 52 72 Q 60 82 68 72 Q 60 77 52 72';
       case 'eh': // Mid vowels like "eh"
-        return 'M 42 47 Q 50 52 58 47 Q 50 49 42 47';
+        return 'M 54 74 Q 60 79 66 74 Q 60 76 54 74';
       case 'ih': // High vowels like "ee"
-        return 'M 44 48 Q 50 50 56 48 Q 50 49 44 48';
+        return 'M 56 75 Q 60 77 64 75 Q 60 76 56 75';
       case 'oh': // Rounded vowels like "oh"
-        return 'M 45 46 Q 50 52 55 46 Q 50 48 45 46';
+        return 'M 55 73 Q 60 79 65 73 Q 60 75 55 73';
       case 'uu': // Rounded vowels like "oo"
-        return 'M 46 47 Q 50 51 54 47 Q 50 48 46 47';
+        return 'M 56 74 Q 60 78 64 74 Q 60 75 56 74';
       case 'pp': // Bilabial consonants (p, b, m)
-        return 'M 47 48 L 53 48';
+        return 'M 57 75 L 63 75';
       case 'ff': // Labiodental consonants (f, v)
-        return 'M 45 48 Q 50 46 55 48';
+        return 'M 55 75 Q 60 73 65 75';
       case 'dd': // Alveolar consonants (t, d, n, l)
-        return 'M 46 48 Q 50 49 54 48';
+        return 'M 56 75 Q 60 76 64 75';
       case 'th': // Dental consonants (th)
-        return 'M 45 48 Q 50 47 55 48';
+        return 'M 55 75 Q 60 74 65 75';
       case 'ss': // Sibilants (s, z)
-        return 'M 47 48 Q 50 47 53 48';
+        return 'M 57 75 Q 60 74 63 75';
       case 'ch': // Affricates (ch, j, sh)
-        return 'M 46 47 Q 50 49 54 47';
+        return 'M 56 74 Q 60 76 64 74';
       case 'kk': // Velar consonants (k, g)
-        return 'M 46 48 Q 50 50 54 48';
+        return 'M 56 75 Q 60 77 64 75';
       case 'rr': // R sound
-        return 'M 45 48 Q 50 49 55 48';
+        return 'M 55 75 Q 60 76 65 75';
       case 'ww': // W sound
-        return 'M 46 47 Q 50 50 54 47';
+        return 'M 56 74 Q 60 77 64 74';
       case 'sil': // Silence
-        return 'M 47 48 L 53 48';
+        return 'M 57 75 L 63 75';
       case 'neutral':
       default:
-        return 'M 46 48 Q 50 49 54 48';
+        return 'M 56 75 Q 60 76 64 75';
     }
   };
 
@@ -231,12 +231,12 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
         animate={{
           x: headPosition.x,
           y: headPosition.y,
-          scale: isSpeaking ? [1, 1.05, 1] : 1
+          scale: isSpeaking ? [1, 1.02, 1] : 1
         }}
         transition={{
           x: { duration: 2, ease: "easeInOut" },
           y: { duration: 2, ease: "easeInOut" },
-          scale: { duration: 0.8, repeat: isSpeaking ? Infinity : 0, ease: "easeInOut" }
+          scale: { duration: 1.2, repeat: isSpeaking ? Infinity : 0, ease: "easeInOut" }
         }}
         className="relative"
       >
@@ -244,14 +244,14 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
         <svg
           width="100%"
           height="100%"
-          viewBox="0 0 100 120"
+          viewBox="0 0 120 140"
           className="drop-shadow-lg max-w-full max-h-full"
         >
           {/* Background circle */}
           <circle
-            cx="50"
-            cy="60"
-            r="45"
+            cx="60"
+            cy="70"
+            r="55"
             fill="url(#avatarGradient)"
             className="filter drop-shadow-md"
           />
@@ -259,30 +259,30 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
           {/* Gradient definitions */}
           <defs>
             <linearGradient id="avatarGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#E0E7FF" />
-              <stop offset="50%" stopColor="#C7D2FE" />
-              <stop offset="100%" stopColor="#A5B4FC" />
+              <stop offset="0%" stopColor="#F3E8FF" />
+              <stop offset="50%" stopColor="#E9D5FF" />
+              <stop offset="100%" stopColor="#C4B5FD" />
             </linearGradient>
             <linearGradient id="skinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FBBF24" />
-              <stop offset="100%" stopColor="#F59E0B" />
+              <stop offset="0%" stopColor="#FDE68A" />
+              <stop offset="100%" stopColor="#FBBF24" />
             </linearGradient>
           </defs>
           
           {/* Face */}
           <ellipse
-            cx="50"
-            cy="55"
-            rx="25"
-            ry="30"
+            cx="60"
+            cy="65"
+            rx="30"
+            ry="35"
             fill="url(#skinGradient)"
             className="filter drop-shadow-sm"
           />
           
           {/* Hair */}
           <path
-            d="M 25 35 Q 50 20 75 35 Q 75 45 70 50 Q 50 25 30 50 Q 25 45 25 35"
-            fill="#4B5563"
+            d="M 30 40 Q 60 25 90 40 Q 90 50 85 55 Q 60 30 35 55 Q 30 50 30 40"
+            fill="#374151"
             className="filter drop-shadow-sm"
           />
           
@@ -294,29 +294,29 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
             transition={{ duration: 0.1 }}
           >
             {/* Left eye */}
-            <ellipse cx="42" cy="45" rx="4" ry="3" fill="white" />
-            <circle cx="42" cy="45" r="2" fill="#1F2937" />
-            <circle cx="43" cy="44" r="0.8" fill="white" />
+            <ellipse cx="50" cy="55" rx="5" ry="4" fill="white" />
+            <circle cx="50" cy="55" r="2.5" fill="#1F2937" />
+            <circle cx="51" cy="54" r="1" fill="white" />
             
             {/* Right eye */}
-            <ellipse cx="58" cy="45" rx="4" ry="3" fill="white" />
-            <circle cx="58" cy="45" r="2" fill="#1F2937" />
-            <circle cx="59" cy="44" r="0.8" fill="white" />
+            <ellipse cx="70" cy="55" rx="5" ry="4" fill="white" />
+            <circle cx="70" cy="55" r="2.5" fill="#1F2937" />
+            <circle cx="71" cy="54" r="1" fill="white" />
           </motion.g>
           
           {/* Eyebrows */}
-          <path d="M 37 40 Q 42 38 47 40" stroke="#4B5563" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M 53 40 Q 58 38 63 40" stroke="#4B5563" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M 44 48 Q 50 46 56 48" stroke="#374151" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <path d="M 64 48 Q 70 46 76 48" stroke="#374151" strokeWidth="2.5" fill="none" strokeLinecap="round" />
           
           {/* Nose */}
-          <path d="M 50 50 L 48 54 Q 50 55 52 54 Z" fill="#D97706" opacity="0.6" />
+          <path d="M 60 62 L 58 66 Q 60 67 62 66 Z" fill="#D97706" opacity="0.6" />
           
           {/* Mouth with lip sync */}
           <motion.path
             d={getMouthPath(currentViseme)}
             fill="#DC2626"
             stroke="#B91C1C"
-            strokeWidth="0.5"
+            strokeWidth="1"
             animate={{
               d: getMouthPath(currentViseme)
             }}
@@ -324,21 +324,21 @@ const AIAvatar: React.FC<AIAvatarProps> = ({
           />
           
           {/* Cheeks (subtle) */}
-          <circle cx="35" cy="52" r="3" fill="#F59E0B" opacity="0.3" />
-          <circle cx="65" cy="52" r="3" fill="#F59E0B" opacity="0.3" />
+          <circle cx="42" cy="62" r="4" fill="#F59E0B" opacity="0.3" />
+          <circle cx="78" cy="62" r="4" fill="#F59E0B" opacity="0.3" />
           
           {/* Neck */}
-          <rect x="45" y="80" width="10" height="15" fill="url(#skinGradient)" />
+          <rect x="54" y="95" width="12" height="18" fill="url(#skinGradient)" />
           
           {/* Shoulders */}
-          <ellipse cx="50" cy="105" rx="20" ry="8" fill="#6366F1" />
+          <ellipse cx="60" cy="125" rx="25" ry="10" fill="#6366F1" />
           
           {/* Speaking indicator */}
           {isSpeaking && (
             <motion.circle
-              cx="50"
-              cy="110"
-              r="2"
+              cx="60"
+              cy="130"
+              r="3"
               fill="#10B981"
               animate={{
                 scale: [1, 1.5, 1],

@@ -705,7 +705,7 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             autoPlay
             playsInline
             muted
-            className={`absolute inset-0 w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+            className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
             style={{ transform: 'scaleX(-1)' }}
             onClick={async () => {
               // Handle user interaction for autoplay
@@ -730,23 +730,31 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             }}
           />
           
+          {/* AI Person - Always visible and prominent */}
+          <div className="absolute top-4 right-4 w-48 h-60 bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg border-4 border-white shadow-lg z-30">
+            <div className="w-full h-full flex items-center justify-center">
+              <AIAvatar 
+                isSpeaking={isSpeaking}
+                currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
+                  ? messages[messages.length - 1].content 
+                  : ''
+                }
+                className="w-full h-full"
+              />
+            </div>
+            {/* AI Name Label */}
+            <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs font-medium text-center py-1 rounded">
+              AI Assistant
+            </div>
+          </div>
+
           {/* Video disabled overlay */}
           {!isVideoEnabled && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 z-20">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-800/90 z-10">
               <div className="text-center text-white">
                 <VideoOff className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p className="text-lg">Camera is off</p>
-                {/* Show AI Avatar when camera is off */}
-                <div className="mt-8">
-                  <AIAvatar 
-                    isSpeaking={isSpeaking}
-                    currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
-                      ? messages[messages.length - 1].content 
-                      : ''
-                    }
-                    className="w-40 h-48 mx-auto"
-                  />
-                </div>
+                <p className="text-lg">Your Camera is Off</p>
+                <p className="text-sm opacity-75 mt-2">Click the camera button to turn it back on</p>
               </div>
             </div>
           )}
@@ -783,17 +791,6 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
             )}
           </div>
 
-          {/* AI Avatar/Animation */}
-          <div className="absolute top-4 right-4 z-10">
-            <AIAvatar 
-              isSpeaking={isSpeaking}
-              currentText={messages.length > 0 && messages[messages.length - 1].role === 'assistant' 
-                ? messages[messages.length - 1].content 
-                : ''
-              }
-              className="w-32 h-40"
-            />
-          </div>
 
           {/* Current Transcript */}
           {currentTranscript && (
