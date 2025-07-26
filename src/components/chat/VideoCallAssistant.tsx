@@ -506,7 +506,12 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
         };
         
         utterance.onerror = (event) => {
-          console.error('Speech synthesis error:', event);
+          if (event.error === 'interrupted') {
+            console.warn('Speech synthesis interrupted (expected behavior)');
+          } else {
+            console.error('Speech synthesis error:', event);
+            setError('Speech synthesis failed. Please check your browser settings.');
+          }
           setIsSpeaking(false);
         };
         
@@ -726,8 +731,13 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                     setError(null);
                     console.log('Manual video play successful');
                   } catch (err) {
-                    console.error('Manual play failed:', err);
-                    setError('Camera access failed. Please check permissions.');
+                    const error = err as Error;
+                    if (error.name === 'AbortError' || error.message.includes('media was removed from the document')) {
+                      console.warn('Video play interrupted (expected behavior)');
+                    } else {
+                      console.error('Manual play failed:', err);
+                      setError('Camera access failed. Please check permissions.');
+                    }
                   }
                 }
               }}
