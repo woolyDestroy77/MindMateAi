@@ -802,8 +802,12 @@ const VideoCallAssistant: React.FC<VideoCallAssistantProps> = ({ onMoodUpdate })
                     console.log('Manual video play successful');
                     setError(null);
                   } catch (err) {
-                    console.error('Manual play failed:', err);
-                    setError('Camera access failed. Please check permissions.');
+                    if ((err as any).name === 'AbortError') {
+                      console.warn('Video play interrupted (element removed from DOM)');
+                    } else {
+                      console.error('Manual play failed:', err);
+                      setError('Camera access failed. Please check permissions.');
+                    }
                   }
                 }
               }}
