@@ -221,6 +221,17 @@ export const useAuth = () => {
     }
   };
 
+  const signOutTherapist = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success('Therapist signed out successfully');
+      // Redirect to therapist portal
+      window.location.href = '/become-therapist';
+    } catch (error) {
+      toast.error('Error signing out');
+    }
+  };
+
   const signInWithGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({

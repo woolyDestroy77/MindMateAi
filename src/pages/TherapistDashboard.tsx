@@ -23,6 +23,7 @@ import Card from '../components/ui/Card';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface TherapistStats {
   totalSessions: number;
@@ -34,7 +35,9 @@ interface TherapistStats {
 }
 
 const TherapistDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [therapistUser, setTherapistUser] = useState<any>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [stats, setStats] = useState<TherapistStats>({
     totalSessions: 0,
     upcomingSessions: 0,
@@ -47,10 +50,43 @@ const TherapistDashboard: React.FC = () => {
   const [therapistProfile, setTherapistProfile] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
+    const checkTherapistAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user) {
+          const userType = user.user_metadata?.user_type;
+          const isTherapist = user.user_metadata?.is_therapist;
+          
+          if (userType === 'therapist' || isTherapist) {
+            setTherapistUser(user);
+          } else {
+            // Not a therapist account, redirect
+            navigate('/become-therapist');
+            return;
+          }
+        } else {
+          // Not signed in, redirect
+          navigate('/become-therapist');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking therapist auth:', error);
+        navigate('/become-therapist');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkTherapistAuth();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (therapistUser) {
       fetchTherapistData();
     }
-  }, [user]);
+  }, [therapistUser]);
 
   const fetchTherapistData = async () => {
     try {
@@ -60,7 +96,7 @@ const TherapistDashboard: React.FC = () => {
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', therapistUser?.id)
         .single();
 
       if (profileError) {
@@ -142,25 +178,15 @@ const TherapistDashboard: React.FC = () => {
     }
   };
 
-  if (!user) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <Card className="text-center py-12">
-            <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
-            <p className="text-gray-600 mb-6">
-              You need to be signed in to access the therapist dashboard.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => window.location.href = '/'}
-              className="bg-gradient-to-r from-blue-500 to-purple-500"
-            >
-              Go to Sign In
-            </Button>
-          </Card>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Checking therapist authentication...</p>
+          </div>
         </main>
       </div>
     );
@@ -191,14 +217,13 @@ const TherapistDashboard: React.FC = () => {
             <p className="text-gray-600 mb-6">
               You need to complete your therapist registration to access the dashboard.
             </p>
-            <Link to="/become-therapist">
-              <Button
-                variant="primary"
-                className="bg-gradient-to-r from-blue-500 to-purple-500"
-              >
-                Complete Registration
-              </Button>
-            </Link>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/become-therapist')}
+              className="bg-gradient-to-r from-blue-500 to-purple-500"
+            >
+              Complete Registration
+            </Button>
           </Card>
         </main>
       </div>

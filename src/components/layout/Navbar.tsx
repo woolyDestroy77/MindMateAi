@@ -346,6 +346,13 @@ const Navbar: React.FC<NavbarProps> = ({
                             <Shield size={16} />
                             <span>Become a Therapist</span>
                           </Link>
+                          <Link
+                            to="/admin"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                          >
+                            <Settings size={16} />
+                            <span>Admin Panel</span>
+                          </Link>
                         </div>
                       </div>
                       

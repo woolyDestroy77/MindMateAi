@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -22,11 +22,14 @@ import {
   MapPin,
   Clock,
   Star,
-  Info
+  Info,
+  LogIn,
+  UserPlus
 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import TherapistAuthModal from '../components/auth/TherapistAuthModal';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
@@ -79,8 +82,112 @@ interface RegistrationData {
 }
 
 const TherapistRegistration: React.FC = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
+  const [therapistUser, setTherapistUser] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState<'signin' | 'signup' | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check if user is signed in as therapist
+  useEffect(() => {
+    const checkTherapistAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user) {
+          const userType = user.user_metadata?.user_type;
+          const isTherapist = user.user_metadata?.is_therapist;
+          
+          if (userType === 'therapist' || isTherapist) {
+            setTherapistUser(user);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking therapist auth:', error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkTherapistAuth();
+  }, []);
+
+  const handleAuthSuccess = () => {
+    // Refresh the page to check auth status
+    window.location.reload();
+  };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Checking authentication...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // If not signed in as therapist, show auth options
+  if (!therapistUser) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="max-w-2xl mx-auto">
+            <Card className="text-center py-12">
+              <Shield className="w-16 h-16 text-blue-600 mx-auto mb-6" />
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                Therapist Portal Access Required
+              </h1>
+              <p className="text-gray-600 mb-8">
+                To become a therapist on our platform, you need a dedicated therapist account. 
+                This is separate from patient accounts to maintain professional boundaries and compliance.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => setShowAuthModal('signup')}
+                  leftIcon={<UserPlus size={18} />}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500"
+                >
+                  Create Therapist Account
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => setShowAuthModal('signin')}
+                  leftIcon={<LogIn size={18} />}
+                >
+                  Sign In as Therapist
+                </Button>
+              </div>
+              
+              <div className="mt-8 text-sm text-gray-500">
+                <p>Already have a patient account? <a href="/" className="text-blue-600 hover:text-blue-700">Go to patient portal</a></p>
+              </div>
+            </Card>
+          </div>
+        </main>
+        
+        {/* Therapist Auth Modal */}
+        {showAuthModal && (
+          <TherapistAuthModal
+            mode={showAuthModal}
+            onClose={() => setShowAuthModal(null)}
+            onSuccess={handleAuthSuccess}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // Rest of the existing registration component for authenticated therapists
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
@@ -259,7 +366,7 @@ const TherapistRegistration: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!user) {
+    if (!therapistUser) {
       toast.error('You must be logged in to register as a therapist');
       return;
     }
@@ -271,7 +378,7 @@ const TherapistRegistration: React.FC = () => {
       const { data: therapistProfile, error: profileError } = await supabase
         .from('therapist_profiles')
         .insert([{
-          user_id: user.id,
+          user_id: therapistUser.id,
           license_number: registrationData.licenseNumber,
           license_state: registrationData.licenseState,
           license_expiry: registrationData.licenseExpiry,
@@ -326,7 +433,7 @@ const TherapistRegistration: React.FC = () => {
               background_check_completed: true,
               background_check_date: new Date().toISOString().split('T')[0]
             })
-            .eq('id', data.id);
+            .eq('user_id', therapistUser.id);
 
           if (!autoApproveError) {
             toast.success('🚀 Auto-approved for testing! You can now access your therapist dashboard.');
@@ -364,30 +471,6 @@ const TherapistRegistration: React.FC = () => {
         return true;
     }
   };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <Card className="text-center py-12">
-            <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In Required</h2>
-            <p className="text-gray-600 mb-6">
-              You need to be signed in to register as a therapist on our platform.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => navigate('/')}
-              className="bg-gradient-to-r from-blue-500 to-purple-500"
-            >
-              Go to Sign In
-            </Button>
-          </Card>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
