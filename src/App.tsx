@@ -17,6 +17,7 @@ const CreateBlogPost = lazy(() => import('./pages/CreateBlogPost'));
 const TherapistPlatform = lazy(() => import('./pages/TherapistPlatform'));
 const TherapistRegistration = lazy(() => import('./pages/TherapistRegistration'));
 const TherapistDashboard = lazy(() => import('./pages/TherapistDashboard'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -113,6 +114,13 @@ function App() {
             user ? (
               <Suspense fallback={<LoadingFallback />}>
                 <TherapistDashboard />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
+          <Route path="/admin" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <AdminPanel />
               </Suspense>
             ) : <Navigate to="/" replace />
           } />

@@ -16,6 +16,31 @@ export const useTherapistPlatform = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-approve therapist for testing
+  const autoApproveTherapist = useCallback(async (therapistId: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('therapist_profiles')
+        .update({ 
+          verification_status: 'verified',
+          hipaa_training_completed: true,
+          hipaa_training_date: new Date().toISOString().split('T')[0],
+          background_check_completed: true,
+          background_check_date: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', therapistId);
+
+      if (error) throw error;
+
+      toast.success('Therapist auto-approved for testing!');
+      return true;
+    } catch (err) {
+      console.error('Error auto-approving therapist:', err);
+      toast.error('Failed to auto-approve therapist');
+      return false;
+    }
+  }, []);
+
   // Search and filter therapists
   const searchTherapists = useCallback(async (filters: TherapistSearchFilters = {}) => {
     try {
@@ -372,6 +397,7 @@ export const useTherapistPlatform = () => {
     cancelSession,
     submitReview,
     getTherapistReviews,
-    getUserSessions
+    getUserSessions,
+    autoApproveTherapist
   };
 };
