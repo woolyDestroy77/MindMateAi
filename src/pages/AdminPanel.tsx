@@ -23,6 +23,8 @@ import Card from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface PendingTherapist {
   id: string;
@@ -46,13 +48,45 @@ interface PendingTherapist {
 }
 
 const AdminPanel: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [pendingTherapists, setPendingTherapists] = useState<PendingTherapist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTherapist, setSelectedTherapist] = useState<PendingTherapist | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Check if user is authorized admin
+  useEffect(() => {
+    const checkAdminAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user && user.email === 'youssef.arafat09@gmail.com') {
+          setIsAuthorized(true);
+        } else {
+          // Not authorized, redirect to dashboard
+          toast.error('Access denied. Admin privileges required.');
+          navigate('/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking admin auth:', error);
+        navigate('/dashboard');
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAdminAuth();
+  }, [navigate]);
 
   useEffect(() => {
-    fetchPendingTherapists();
-  }, []);
+    if (isAuthorized) {
+      fetchPendingTherapists();
+    }
+  }, [isAuthorized]);
 
   const fetchPendingTherapists = async () => {
     try {
@@ -169,6 +203,24 @@ const AdminPanel: React.FC = () => {
       default: return <AlertTriangle className="w-4 h-4" />;
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Checking admin authorization...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return null; // Will redirect in useEffect
+  }
 
   if (isLoading) {
     return (

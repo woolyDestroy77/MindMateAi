@@ -25,6 +25,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [accountType, setAccountType] = useState<'patient' | 'therapist'>('patient');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +88,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           options: {
             data: {
               full_name: name,
+              user_type: accountType,
+              is_therapist: accountType === 'therapist',
               birthdate,
               location,
               bio
@@ -95,6 +98,38 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
         });
 
         if (signUpError) throw signUpError;
+
+        // If therapist account, create therapist profile
+        if (accountType === 'therapist' && signUpData.user) {
+          const { error: profileError } = await supabase
+            .from('therapist_profiles')
+            .insert([{
+              user_id: signUpData.user.id,
+              license_number: 'TEMP-' + Date.now(), // Temporary, will be updated in registration
+              license_state: 'CA', // Temporary, will be updated in registration
+              license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              verification_status: 'pending',
+              professional_title: 'Licensed Therapist',
+              years_experience: 1,
+              education: [],
+              certifications: [],
+              bio: 'Professional therapist ready to help clients.',
+              approach_description: 'Evidence-based therapeutic approaches.',
+              languages_spoken: ['English'],
+              hourly_rate: 100,
+              session_types: ['individual'],
+              accepts_insurance: false,
+              insurance_networks: [],
+              timezone: 'UTC',
+              is_active: false, // Will be activated after full registration
+              hipaa_training_completed: false,
+              background_check_completed: false
+            }]);
+
+          if (profileError) {
+            console.error('Error creating therapist profile:', profileError);
+          }
+        }
 
         // If profile image was uploaded, store it
         if (profileImage && signUpData.user) {
@@ -137,6 +172,20 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
 
         if (signInError) throw signInError;
 
+        // Check account type matches what user expects
+        const { data: { user: signedInUser } } = await supabase.auth.getUser();
+        if (signedInUser) {
+          const userType = signedInUser.user_metadata?.user_type;
+          const isTherapist = signedInUser.user_metadata?.is_therapist;
+          
+          if (accountType === 'therapist' && userType !== 'therapist' && !isTherapist) {
+            await supabase.auth.signOut();
+            throw new Error('This account is not registered as a therapist account. Please use patient login or create a therapist account.');
+          } else if (accountType === 'patient' && (userType === 'therapist' || isTherapist)) {
+            await supabase.auth.signOut();
+            throw new Error('This account is registered as a therapist account. Please use therapist login.');
+          }
+        }
         toast.success('Successfully signed in!');
       }
 
@@ -223,6 +272,50 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 <>
                   {currentStep === 1 && (
                     <>
+                      {/* Account Type Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Account Type*
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setAccountType('patient')}
+                            className={`p-4 rounded-lg border-2 transition-all text-left ${
+                              accountType === 'patient'
+                                ? 'border-lavender-500 bg-lavender-50 text-lavender-900'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="font-medium">Patient</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Seeking mental health support
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAccountType('therapist')}
+                            className={`p-4 rounded-lg border-2 transition-all text-left ${
+                              accountType === 'therapist'
+                                ? 'border-blue-500 bg-blue-50 text-blue-900'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="font-medium">Therapist</div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              Licensed mental health professional
+                            </div>
+                          </button>
+                        </div>
+                        {accountType === 'therapist' && (
+                          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-800">
+                              <strong>Note:</strong> Therapist accounts require license verification and professional credentials.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                       <div>
                         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                           Full Name
@@ -403,6 +496,37 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
 
               {mode === 'signin' && (
                 <>
+                  {/* Account Type Selection for Sign In */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Account Type*
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setAccountType('patient')}
+                        className={`p-3 rounded-lg border-2 transition-all text-center ${
+                          accountType === 'patient'
+                            ? 'border-lavender-500 bg-lavender-50 text-lavender-900'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium text-sm">Patient</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAccountType('therapist')}
+                        className={`p-3 rounded-lg border-2 transition-all text-center ${
+                          accountType === 'therapist'
+                            ? 'border-blue-500 bg-blue-50 text-blue-900'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-medium text-sm">Therapist</div>
+                      </button>
+                    </div>
+                  </div>
+
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                       Email
