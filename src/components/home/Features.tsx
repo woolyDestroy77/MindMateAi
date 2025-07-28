@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, PenTool, Mic, BarChart2, Globe, Heart, Shield, Zap } from 'lucide-react';
+import { Brain, PenTool, Mic, BarChart2, Globe, Heart, Shield, Zap, Users, DollarSign, Calendar, ArrowRight } from 'lucide-react';
 import Card from '../ui/Card';
 
 interface FeatureProps {
@@ -89,6 +89,12 @@ const Features: React.FC = () => {
       title: "24/7 Availability",
       description: "Access your wellness tools whenever you need them, from any device.",
       color: "bg-sage-100"
+    },
+    {
+      icon: <Users className="h-6 w-6 text-lavender-600" />,
+      title: "Professional Therapists",
+      description: "Connect with licensed therapists for professional support when you need it most.",
+      color: "bg-lavender-100"
     }
   ];
 
@@ -120,6 +126,63 @@ const Features: React.FC = () => {
               index={index}
             />
           ))}
+        </div>
+        
+        {/* Therapist Platform Section */}
+        <div className="mt-20 bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 lg:p-12">
+          <div className="text-center mb-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">
+              For Licensed Mental Health Professionals
+            </h3>
+            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+              Join our platform as a freelance therapist and build your practice with complete flexibility
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <DollarSign className="w-8 h-8 text-blue-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">Set Your Own Rates</h4>
+              <p className="text-gray-600">
+                Complete control over your pricing. Keep 85% of session fees with transparent pricing.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-purple-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">Flexible Scheduling</h4>
+              <p className="text-gray-600">
+                Manage your availability and book sessions on your terms. Work when you want.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="w-8 h-8 text-green-600" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">HIPAA Compliant</h4>
+              <p className="text-gray-600">
+                Secure, encrypted platform with full HIPAA compliance and professional liability coverage.
+              </p>
+            </div>
+          </div>
+          
+          <div className="text-center mt-8">
+            <a
+              href="/become-therapist"
+              className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+            >
+              Start Your Application
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </a>
+            <p className="text-sm text-gray-500 mt-2">
+              License verification required • Background check included
+            </p>
+          </div>
         </div>
       </div>
     </section>

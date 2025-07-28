@@ -175,16 +175,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
         // Check account type matches what user expects
         const { data: { user: signedInUser } } = await supabase.auth.getUser();
         if (signedInUser) {
-          const userType = signedInUser.user_metadata?.user_type;
-          const isTherapist = signedInUser.user_metadata?.is_therapist;
-          
-          if (accountType === 'therapist' && userType !== 'therapist' && !isTherapist) {
-            await supabase.auth.signOut();
-            throw new Error('This account is not registered as a therapist account. Please use patient login or create a therapist account.');
-          } else if (accountType === 'patient' && (userType === 'therapist' || isTherapist)) {
-            await supabase.auth.signOut();
-            throw new Error('This account is registered as a therapist account. Please use therapist login.');
-          }
+          // Just sign in - no account type validation needed for sign-in
         }
         toast.success('Successfully signed in!');
       }
@@ -496,37 +487,6 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
 
               {mode === 'signin' && (
                 <>
-                  {/* Account Type Selection for Sign In */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Account Type*
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setAccountType('patient')}
-                        className={`p-3 rounded-lg border-2 transition-all text-center ${
-                          accountType === 'patient'
-                            ? 'border-lavender-500 bg-lavender-50 text-lavender-900'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">Patient</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAccountType('therapist')}
-                        className={`p-3 rounded-lg border-2 transition-all text-center ${
-                          accountType === 'therapist'
-                            ? 'border-blue-500 bg-blue-50 text-blue-900'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">Therapist</div>
-                      </button>
-                    </div>
-                  </div>
-
                   <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                       Email

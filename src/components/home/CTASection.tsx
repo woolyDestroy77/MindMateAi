@@ -49,6 +49,33 @@ const CTASection: React.FC = () => {
           <p className="mt-4 text-sm text-white opacity-75">
             No credit card required. Start with our free plan and upgrade anytime.
           </p>
+          
+          {/* Therapist CTA */}
+          <div className="mt-8 pt-8 border-t border-white/20">
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-white mb-2">
+                Licensed Mental Health Professional?
+              </h3>
+              <p className="text-white/90 mb-4 max-w-lg mx-auto">
+                Join our platform as a freelance therapist. Set your own rates, manage your schedule, 
+                and help clients on their mental health journey with secure, HIPAA-compliant sessions.
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-3">
+                <a
+                  href="/become-therapist"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-white/10 border border-white/30 text-white rounded-lg hover:bg-white/20 transition-colors font-medium"
+                >
+                  Become a Therapist
+                </a>
+                <a
+                  href="/therapists"
+                  className="inline-flex items-center justify-center px-6 py-3 text-white/80 hover:text-white transition-colors font-medium"
+                >
+                  Find Therapists →
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
