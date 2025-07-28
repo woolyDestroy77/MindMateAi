@@ -68,6 +68,22 @@ const AdminPanel: React.FC = () => {
           
           // Store admin user ID for notifications
           localStorage.setItem('admin_user_id', user.id);
+          
+          // Also store in database for easier lookup
+          try {
+            await supabase
+              .from('admin_users')
+              .upsert([{
+                user_id: user.id,
+                email: user.email,
+                role: 'super_admin',
+                last_login: new Date().toISOString()
+              }], {
+                onConflict: 'user_id'
+              });
+          } catch (adminError) {
+            console.error('Error storing admin info:', adminError);
+          }
         } else {
           // Not authorized, redirect to dashboard
           toast.error('Access denied. Admin privileges required.');

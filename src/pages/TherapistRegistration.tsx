@@ -399,23 +399,69 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
       
       // Send notification to admin for new therapist application
       try {
+        // Get the admin user ID
+        const { data: adminUsers, error: adminError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', 'youssef.arafat09@gmail.com')
+          .single();
+
+        if (adminError) {
+          console.error('Error finding admin user:', adminError);
+          // Fallback: try to get from localStorage or use a known ID
+          const storedAdminId = localStorage.getItem('admin_user_id');
+          if (storedAdminId) {
+            await supabase
+              .from('user_notifications')
+              .insert([{
+                user_id: storedAdminId,
+                title: 'New Therapist Application',
+                message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
+                type: 'alert',
+                priority: 'high',
+                read: false,
+                action_url: '/admin',
+                action_text: 'Review Application',
+                metadata: {
+                  therapist_id: profileId,
+                  applicant_name: user.user_metadata?.full_name,
+                  license_state: formData.license_state,
+                  professional_title: formData.professional_title
+                }
+              }]);
+          }
+        } else if (adminUsers) {
+          await supabase
+            .from('user_notifications')
+            .insert([{
+              user_id: adminUsers.id,
+              title: 'New Therapist Application',
+              message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
+              type: 'alert',
+              priority: 'high',
+              read: false,
+              action_url: '/admin',
+              action_text: 'Review Application',
+              metadata: {
+                therapist_id: profileId,
+                applicant_name: user.user_metadata?.full_name,
+                license_state: formData.license_state,
+                professional_title: formData.professional_title
+              }
+            }]);
+        }
+
+        // Also create a general admin notification that doesn't depend on user lookup
         await supabase
-          .from('user_notifications')
+          .from('therapist_applications_log')
           .insert([{
-            user_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Admin user ID - replace with actual admin ID
-            title: 'New Therapist Application',
-            message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
-            type: 'alert',
-            priority: 'high',
-            read: false,
-            action_url: '/admin',
-            action_text: 'Review Application',
-            metadata: {
-              therapist_id: profileId,
-              applicant_name: user.user_metadata?.full_name,
-              license_state: formData.license_state,
-              professional_title: formData.professional_title
-            }
+            therapist_id: profileId,
+            applicant_name: user.user_metadata?.full_name || 'Unknown',
+            applicant_email: user.email,
+            professional_title: formData.professional_title,
+            license_state: formData.license_state,
+            status: 'submitted',
+            submitted_at: new Date().toISOString()
           }]);
       } catch (notificationError) {
         console.error('Error sending admin notification:', notificationError);

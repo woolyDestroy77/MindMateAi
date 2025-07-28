@@ -132,22 +132,44 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           
           // Send notification to admin for new therapist signup
           try {
+            // Get the admin user ID
+            const { data: adminUsers, error: adminError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', 'youssef.arafat09@gmail.com')
+              .single();
+
+            if (!adminError && adminUsers) {
+              await supabase
+                .from('user_notifications')
+                .insert([{
+                  user_id: adminUsers.id,
+                  title: 'New Therapist Account Created',
+                  message: `${name} (${email}) has created a therapist account and needs to complete registration.`,
+                  type: 'info',
+                  priority: 'medium',
+                  read: false,
+                  action_url: '/admin',
+                  action_text: 'View Account',
+                  metadata: {
+                    new_user_id: signUpData.user.id,
+                    user_email: email,
+                    user_name: name
+                  }
+                }]);
+            }
+
+            // Also log the account creation
             await supabase
-              .from('user_notifications')
+              .from('therapist_applications_log')
               .insert([{
-                user_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Admin user ID - replace with actual admin ID
-                title: 'New Therapist Account Created',
-                message: `${name} (${email}) has created a therapist account and needs to complete registration.`,
-                type: 'info',
-                priority: 'medium',
-                read: false,
-                action_url: '/admin',
-                action_text: 'View Account',
-                metadata: {
-                  new_user_id: signUpData.user.id,
-                  user_email: email,
-                  user_name: name
-                }
+                therapist_id: null,
+                applicant_name: name,
+                applicant_email: email,
+                professional_title: 'Account Created',
+                license_state: '',
+                status: 'account_created',
+                submitted_at: new Date().toISOString()
               }]);
           } catch (notificationError) {
             console.error('Error sending admin notification:', notificationError);
