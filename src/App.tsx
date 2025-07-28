@@ -38,10 +38,12 @@ function App() {
       <NotificationProvider>
         <Routes>
           <Route path="/" element={
-            user ? <Navigate to="/dashboard" replace /> : <LandingPage />
-             user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist 
-               ? <Navigate to="/therapist-dashboard" replace />
-               : <Navigate to="/dashboard" replace />
+            user ? (
+              user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist 
+                ? <Navigate to="/therapist-dashboard" replace />
+                : <Navigate to="/dashboard" replace />
+            ) : <LandingPage />
+          } />
           <Route path="/dashboard" element={
             user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
