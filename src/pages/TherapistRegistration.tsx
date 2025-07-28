@@ -81,7 +81,15 @@ interface RegistrationData {
   backgroundCheckDate?: string;
 }
 
-const TherapistRegistration: React.FC = () => {
+interface TherapistRegistrationProps {
+  isEmbedded?: boolean;
+  onComplete?: () => void;
+}
+
+export const TherapistRegistrationForm: React.FC<TherapistRegistrationProps> = ({ 
+  isEmbedded = false, 
+  onComplete 
+}) => {
   const navigate = useNavigate();
   const [therapistUser, setTherapistUser] = useState<any>(null);
   const [showAuthModal, setShowAuthModal] = useState<'signin' | 'signup' | null>(null);
@@ -438,10 +446,14 @@ const TherapistRegistration: React.FC = () => {
           if (!autoApproveError) {
             toast.success('🚀 Auto-approved for testing! You can now access your therapist dashboard.');
           }
-        } catch (error) {
-          console.error('Auto-approval error:', error);
-        }
-      }, 2000);
+      if (onComplete) {
+        onComplete();
+      } else {
+        // Redirect to therapist dashboard
+        setTimeout(() => {
+          navigate('/therapist-dashboard');
+        }, 2000);
+      }
       
       toast.success('Registration submitted successfully! Your application is under review.');
       navigate('/therapist-dashboard');
@@ -474,27 +486,29 @@ const TherapistRegistration: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-center space-x-3 mb-4"
-          >
-            <div className="p-3 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full">
-              <Shield className="w-8 h-8 text-blue-600" />
-            </div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Become a Therapist
-            </h1>
-          </motion.div>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Join our platform as a licensed mental health professional and help clients on their wellness journey.
-          </p>
-        </div>
+    <div className={isEmbedded ? "" : "min-h-screen bg-gray-50"}>
+      {!isEmbedded && <Navbar />}
+      <main className={`max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 ${isEmbedded ? "" : "py-24"}`}>
+        {!isEmbedded && (
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-center space-x-3 mb-4"
+            >
+              <div className="p-3 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full">
+                <Shield className="w-8 h-8 text-blue-600" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Become a Therapist
+              </h1>
+            </motion.div>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Join our platform as a licensed mental health professional. Help clients on their wellness journey 
+              while building your practice with complete flexibility.
+            </p>
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="mb-8">
@@ -1242,6 +1256,10 @@ const TherapistRegistration: React.FC = () => {
       </main>
     </div>
   );
+};
+
+const TherapistRegistration: React.FC = () => {
+  return <TherapistRegistrationForm />;
 };
 
 export default TherapistRegistration;

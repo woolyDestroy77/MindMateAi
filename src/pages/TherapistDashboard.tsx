@@ -24,6 +24,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { TherapistRegistrationForm } from './TherapistRegistration';
 
 interface TherapistStats {
   totalSessions: number;
@@ -211,20 +212,35 @@ const TherapistDashboard: React.FC = () => {
       <div className="min-h-screen bg-gray-50">
         <Navbar />
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <Card className="text-center py-12">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Registration</h2>
-            <p className="text-gray-600 mb-6">
-              You need to complete your therapist registration to access the dashboard.
-            </p>
-            <Button
-              variant="primary"
-              onClick={() => navigate('/become-therapist')}
-              className="bg-gradient-to-r from-blue-500 to-purple-500"
-            >
-              Complete Registration
-            </Button>
-          </Card>
+          {/* Embedded Registration Form */}
+          <div className="max-w-4xl mx-auto">
+            <Card className="mb-8">
+              <div className="p-6 border-b border-gray-200 bg-blue-50">
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-3 mb-4">
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <Users className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-blue-900">Complete Your Therapist Registration</h1>
+                  </div>
+                  <p className="text-blue-700">
+                    Welcome! Please complete your professional profile to start accepting clients.
+                  </p>
+                </div>
+              </div>
+            </Card>
+            
+            {/* Import and render the registration form */}
+            <TherapistRegistrationForm 
+              isEmbedded={true}
+              onComplete={() => {
+                toast.success('Registration completed! Refreshing dashboard...');
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1500);
+              }}
+            />
+          </div>
         </main>
       </div>
     );

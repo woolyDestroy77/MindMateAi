@@ -105,18 +105,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
             .from('therapist_profiles')
             .insert([{
               user_id: signUpData.user.id,
-              license_number: 'TEMP-' + Date.now(), // Temporary, will be updated in registration
-              license_state: 'CA', // Temporary, will be updated in registration
+              license_number: '', // Will be filled in registration
+              license_state: '', // Will be filled in registration
               license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
               verification_status: 'pending',
-              professional_title: 'Licensed Therapist',
-              years_experience: 1,
+              professional_title: '',
+              years_experience: 0,
               education: [],
               certifications: [],
-              bio: 'Professional therapist ready to help clients.',
-              approach_description: 'Evidence-based therapeutic approaches.',
+              bio: '',
+              approach_description: '',
               languages_spoken: ['English'],
-              hourly_rate: 100,
+              hourly_rate: 0,
               session_types: ['individual'],
               accepts_insurance: false,
               insurance_networks: [],
@@ -163,7 +163,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           }
         }
 
-        toast.success('Check your email to confirm your account!');
+        toast.success('Therapist account created! Redirecting to complete your registration...');
+        
+        // Redirect to therapist dashboard after a brief delay
+        setTimeout(() => {
+          window.location.href = '/therapist-dashboard';
+        }, 1500);
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
@@ -172,15 +177,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
 
         if (signInError) throw signInError;
 
-        // Check account type matches what user expects
+        // Check account type and redirect appropriately
         const { data: { user: signedInUser } } = await supabase.auth.getUser();
         if (signedInUser) {
-          // Just sign in - no account type validation needed for sign-in
+          const userType = signedInUser.user_metadata?.user_type;
+          const isTherapist = signedInUser.user_metadata?.is_therapist;
+          
+          if (userType === 'therapist' || isTherapist) {
+            // Redirect therapist to therapist dashboard
+            setTimeout(() => {
+              window.location.href = '/therapist-dashboard';
+            }, 1000);
+          }
         }
         toast.success('Successfully signed in!');
       }
 
-      onClose();
+      if (mode === 'signin' && accountType !== 'therapist') {
+        onClose();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
