@@ -15,6 +15,8 @@ const Blog = lazy(() => import('./pages/Blog'));
 const BlogPost = lazy(() => import('./pages/BlogPost'));
 const CreateBlogPost = lazy(() => import('./pages/CreateBlogPost'));
 const TherapistPlatform = lazy(() => import('./pages/TherapistPlatform'));
+const TherapistRegistration = lazy(() => import('./pages/TherapistRegistration'));
+const TherapistDashboard = lazy(() => import('./pages/TherapistDashboard'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -97,6 +99,20 @@ function App() {
             user ? (
               <Suspense fallback={<LoadingFallback />}>
                 <TherapistPlatform />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
+          <Route path="/become-therapist" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistRegistration />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-dashboard" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistDashboard />
               </Suspense>
             ) : <Navigate to="/" replace />
           } />

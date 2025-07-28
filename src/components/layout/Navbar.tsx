@@ -338,6 +338,13 @@ const Navbar: React.FC<NavbarProps> = ({
                             <Users size={16} />
                             <span>Find Therapists</span>
                           </Link>
+                          <Link
+                            to="/become-therapist"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                          >
+                            <Shield size={16} />
+                            <span>Become a Therapist</span>
+                          </Link>
                         </div>
                       </div>
                       
@@ -548,6 +555,14 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     <Users size={16} />
                     <span>Find Therapists</span>
+                  </Link>
+                  <Link
+                    to="/become-therapist"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Shield size={16} />
+                    <span>Become a Therapist</span>
                   </Link>
                   <button
                     onClick={() => {

@@ -525,6 +525,27 @@ const TherapistPlatform: React.FC = () => {
             </div>
           </div>
         </Card>
+
+        {/* Therapist CTA */}
+        <Card className="mt-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+          <div className="p-6 text-center">
+            <Shield className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-blue-900 mb-2">Are you a licensed therapist?</h3>
+            <p className="text-blue-800 mb-6">
+              Join our platform and help clients on their mental health journey. 
+              Set your own rates, manage your schedule, and make a difference.
+            </p>
+            <Link to="/become-therapist">
+              <Button
+                variant="primary"
+                leftIcon={<Shield size={18} />}
+                className="bg-gradient-to-r from-blue-500 to-purple-500"
+              >
+                Become a Therapist
+              </Button>
+            </Link>
+          </div>
+        </Card>
       </main>
     </div>
   );
