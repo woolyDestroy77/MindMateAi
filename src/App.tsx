@@ -39,89 +39,95 @@ function App() {
         <Routes>
           <Route path="/" element={
             user ? <Navigate to="/dashboard" replace /> : <LandingPage />
-          } />
+             user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist 
+               ? <Navigate to="/therapist-dashboard" replace />
+               : <Navigate to="/dashboard" replace />
           <Route path="/dashboard" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <Dashboard />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/journal" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <Journal />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/chat" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <Chat />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/addiction-support" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <AddictionSupport />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/anxiety-support" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <AnxietySupport />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/blog" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <Blog />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/blog/post/:id" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <BlogPost />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/blog/create" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <CreateBlogPost />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/therapists" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <TherapistPlatform />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/become-therapist" element={
-            user ? (
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
                 <TherapistRegistration />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/therapist-dashboard" element={
-            user ? (
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
               <Suspense fallback={<LoadingFallback />}>
                 <TherapistDashboard />
               </Suspense>
-            ) : <Navigate to="/" replace />
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/admin" element={
-            user ? (
+            user && user.email === 'youssef.arafat09@gmail.com' ? (
               <Suspense fallback={<LoadingFallback />}>
                 <AdminPanel />
               </Suspense>
+            ) : user ? (
+              user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist 
+                ? <Navigate to="/therapist-dashboard" replace />
+                : <Navigate to="/dashboard" replace />
             ) : <Navigate to="/" replace />
           } />
         </Routes>

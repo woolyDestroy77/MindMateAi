@@ -167,7 +167,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
         
         // Redirect to therapist dashboard after a brief delay
         setTimeout(() => {
-          window.location.href = '/therapist-dashboard';
+          onClose();
+          // Force a page refresh to ensure proper routing
+          window.location.reload();
         }, 1500);
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -185,15 +187,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           
           if (userType === 'therapist' || isTherapist) {
             // Redirect therapist to therapist dashboard
-            setTimeout(() => {
-              window.location.href = '/therapist-dashboard';
-            }, 1000);
+            onClose();
+            // Force a page refresh to ensure proper routing
+            window.location.reload();
           }
         }
         toast.success('Successfully signed in!');
       }
 
-      if (mode === 'signin' && accountType !== 'therapist') {
+      if (mode === 'signin') {
         onClose();
       }
     } catch (error) {
