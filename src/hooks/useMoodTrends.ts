@@ -3,6 +3,34 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { startOfWeek, endOfWeek, eachDayOfInterval, format, subDays, isToday, parseISO, addDays } from 'date-fns';
 
+// Helper function to get video messages for mood analysis
+function getVideoMessagesForAnalysis(startDate: Date) {
+  const videoMessages: any[] = [];
+  const endDate = new Date();
+  
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dateStr = d.toDateString();
+    try {
+      const savedMessages = localStorage.getItem(`video_chat_messages_${dateStr}`);
+      if (savedMessages) {
+        const messages = JSON.parse(savedMessages);
+        messages.forEach((msg: any) => {
+          if (msg.role === 'user') {
+            videoMessages.push({
+              created_at: msg.timestamp,
+              user_message: msg.content
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error loading video messages for analysis:', error);
+    }
+  }
+  
+  return videoMessages;
+}
+
 export interface MoodDataPoint {
   date: string;
   mood: string;
