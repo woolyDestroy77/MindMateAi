@@ -135,6 +135,7 @@ function App() {
       </NotificationProvider>
     }
     </BrowserRouter>
+  )
   );
 }
 
