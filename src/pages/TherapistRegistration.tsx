@@ -419,6 +419,8 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
           }]);
       } catch (notificationError) {
         console.error('Error sending admin notification:', notificationError);
+      }
+
       if (onComplete) {
         onComplete();
       } else {
