@@ -153,9 +153,27 @@ const Dashboard = () => {
     localStorage.setItem(`allGoalsFinished_${today}`, allGoalsFinished.toString());
   }, [allGoalsFinished, today]);
 
+  // Check if user has done video chat today
+  const hasVideoChattedToday = () => {
+    try {
+      const today = new Date().toDateString();
+      const savedMessages = localStorage.getItem(`video_chat_messages_${today}`);
+      if (savedMessages) {
+        const messages = JSON.parse(savedMessages);
+        return messages.some((msg: any) => msg.role === 'user');
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
   // Auto-complete AI goals based on dashboard data
   useEffect(() => {
-    if (dashboardData.lastMessage && !completedGoals.has('daily-chat')) {
+    const hasTextChat = dashboardData.lastMessage;
+    const hasVideoChat = hasVideoChattedToday();
+    
+    if ((hasTextChat || hasVideoChat) && !completedGoals.has('daily-chat')) {
       setCompletedGoals(prev => new Set([...prev, 'daily-chat']));
       setGoalPointsMap(prev => new Map([...prev, ['daily-chat', 8]]));
     }
@@ -163,7 +181,7 @@ const Dashboard = () => {
       setCompletedGoals(prev => new Set([...prev, 'mood-tracking']));
       setGoalPointsMap(prev => new Map([...prev, ['mood-tracking', 6]]));
     }
-    if (dashboardData.sentiment !== 'neutral' && !completedGoals.has('emotional-checkin')) {
+    if ((dashboardData.sentiment !== 'neutral' || hasVideoChat) && !completedGoals.has('emotional-checkin')) {
       setCompletedGoals(prev => new Set([...prev, 'emotional-checkin']));
       setGoalPointsMap(prev => new Map([...prev, ['emotional-checkin', 7]]));
     }

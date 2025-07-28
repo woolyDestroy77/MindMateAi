@@ -136,11 +136,11 @@ export const useAIGoals = () => {
     if (!profile.lastChatDate) {
       return [{
         id: `ai_daily_chat_${Date.now()}`,
-        text: 'Start your daily wellness chat to unlock personalized goals',
+        text: 'Start your daily wellness chat (text or video) to unlock personalized goals',
         type: 'mental_health',
         priority: 'high',
         pointsValue: 10,
-        reasoning: 'I need to analyze your current mood and feelings through our daily conversation to generate personalized goals that match your emotional state today.',
+        reasoning: 'I need to analyze your current mood and feelings through our daily conversation (text or video chat) to generate personalized goals that match your emotional state today.',
         category: 'Mood Assessment',
         estimatedTime: '5-10 min',
         difficulty: 'easy',

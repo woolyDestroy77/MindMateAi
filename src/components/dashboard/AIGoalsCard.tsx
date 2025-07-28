@@ -195,7 +195,7 @@ const AIGoalsCard: React.FC = () => {
               <MessageSquare className="w-12 h-12 text-blue-500 mx-auto mb-3" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Ready for Your Daily Check-in?</h3>
               <p className="text-gray-600 mb-4 text-sm">
-                Chat with our AI about your current mood and feelings to unlock personalized goals for today.
+                Chat with our AI (text or video) about your current mood and feelings to unlock personalized goals for today.
               </p>
               <Link to="/chat">
                 <Button
@@ -203,11 +203,11 @@ const AIGoalsCard: React.FC = () => {
                   leftIcon={<MessageSquare size={18} />}
                   className="bg-gradient-to-r from-blue-500 to-purple-500"
                 >
-                  Start Daily Chat
+                  Start Daily Chat (Text or Video)
                 </Button>
               </Link>
               <div className="mt-4 text-xs text-gray-500">
-                💡 Once you share your mood, I'll create 3-4 personalized goals just for you
+          ) : needsDailyChat && aiGoals.length === 1 && aiGoals[0].text.includes('daily wellness chat') ? (
               </div>
             </div>
           ) : (

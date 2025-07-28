@@ -21,6 +21,21 @@ export const useDailyReset = () => {
   const [customGoals, setCustomGoals] = useState<DailyGoal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Check if user has done video chat today
+  const hasVideoChattedToday = useCallback(() => {
+    try {
+      const today = new Date().toDateString();
+      const savedMessages = localStorage.getItem(`video_chat_messages_${today}`);
+      if (savedMessages) {
+        const messages = JSON.parse(savedMessages);
+        return messages.some((msg: any) => msg.role === 'user');
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  }, []);
+
   // Check if we need to reset daily data
   const checkForDailyReset = useCallback(async () => {
     try {

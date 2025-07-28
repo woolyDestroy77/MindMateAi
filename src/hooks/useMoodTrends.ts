@@ -152,7 +152,8 @@ export const useMoodTrends = () => {
     });
 
     // Add message counts
-    chatHistory.forEach(chat => {
+    const allMessages = [...chatHistory, ...videoMessages];
+    allMessages.forEach(chat => {
       const date = format(parseISO(chat.created_at), 'yyyy-MM-dd');
       
       if (dateMap.has(date)) {
