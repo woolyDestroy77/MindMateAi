@@ -292,13 +292,6 @@ const Navbar: React.FC<NavbarProps> = ({
                         ></span>
                       </Link>
                       <Link
-                        to="/journal"
-                        className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
-                      >
-                        <span className="relative z-10">Journal</span>
-                        <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
-                      </Link>
-                      <Link
                         to="/chat"
                         className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
                           isChat
@@ -315,86 +308,63 @@ const Navbar: React.FC<NavbarProps> = ({
                           }`}
                         ></span>
                       </Link>
-                      <Link
-                        to="/addiction-support"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          isAddictionSupport
-                            ? "text-lavender-600"
-                            : "text-gray-700 hover:text-lavender-600"
-                        }`}
-                      >
-                        <span className="relative z-10 flex items-center space-x-1">
-                          <Heart size={16} />
-                          <span>Recovery</span>
-                        </span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            isAddictionSupport
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
-                      <Link
-                        to="/anxiety-support"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          isAnxietySupport
-                            ? "text-lavender-600"
-                            : "text-gray-700 hover:text-lavender-600"
-                        }`}
-                      >
-                        <span className="relative z-10 flex items-center space-x-1">
-                          <Brain size={16} />
-                          <span>Anxiety</span>
-                        </span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            isAnxietySupport
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
-                      <Link
-                        to="/blog"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          isBlog
-                            ? "text-lavender-600"
-                            : "text-gray-700 hover:text-lavender-600"
-                        }`}
-                      >
-                        <span className="relative z-10 flex items-center space-x-1">
-                          <BookOpen size={16} />
-                          <span>Blog</span>
-                        </span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            isBlog
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
-                      <Link
-                        to="/therapists"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          location.pathname === '/therapists'
-                            ? 'text-lavender-600'
-                            : 'text-gray-700 hover:text-lavender-600'
-                        }`}
-                      >
-                        <span className="relative z-10 flex items-center space-x-1">
-                          <Users size={16} />
-                          <span>Therapists</span>
-                        </span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            location.pathname === '/therapists'
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
+                      
+                      {/* Support Dropdown */}
+                      <div className="relative group">
+                        <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
+                          <span className="relative z-10">Support</span>
+                          <span className="text-xs">▼</span>
+                          <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                        </button>
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                          <Link
+                            to="/addiction-support"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
+                          >
+                            <Heart size={16} />
+                            <span>Recovery Support</span>
+                          </Link>
+                          <Link
+                            to="/anxiety-support"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600"
+                          >
+                            <Brain size={16} />
+                            <span>Anxiety Support</span>
+                          </Link>
+                          <Link
+                            to="/therapists"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                          >
+                            <Users size={16} />
+                            <span>Find Therapists</span>
+                          </Link>
+                        </div>
+                      </div>
+                      
+                      {/* Tools Dropdown */}
+                      <div className="relative group">
+                        <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
+                          <span className="relative z-10">Tools</span>
+                          <span className="text-xs">▼</span>
+                          <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                        </button>
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                          <Link
+                            to="/journal"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
+                          >
+                            <Image size={16} />
+                            <span>Journal</span>
+                          </Link>
+                          <Link
+                            to="/blog"
+                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                          >
+                            <BookOpen size={16} />
+                            <span>Blog</span>
+                          </Link>
+                        </div>
+                      </div>
                     </>
                   )
                 )}
@@ -429,6 +399,239 @@ const Navbar: React.FC<NavbarProps> = ({
                       onClick={() => setShowNotificationSettings(true)}
                       className="p-2 rounded-full text-gray-600 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
                       aria-label="Notification settings"
+                    >
+                      <Settings size={20} />
+                    </button>
+                  )}
+                </div>
+
+                {renderAuthButtons()}
+              </div>
+            </div>
+
+            <div className="md:hidden flex items-center space-x-3">
+              {/* Mobile Streak Indicator */}
+              {user && streak > 0 && (
+                <div className="flex items-center px-2 py-1 bg-gradient-to-r from-orange-100 to-red-100 rounded-md border border-orange-200">
+                  <Flame size={14} className="text-orange-500 mr-1" />
+                  <span className="text-xs font-medium text-orange-700">{streak}</span>
+                </div>
+              )}
+              
+              {/* Mobile Notification Center */}
+              {user && <NotificationCenter />}
+              
+              {/* Mobile Profile Button */}
+              {user && (
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="p-1 rounded-full border border-gray-200 overflow-hidden"
+                >
+                  <div className="w-7 h-7 rounded-full overflow-hidden bg-lavender-100 flex items-center justify-center">
+                    {userProfile?.avatar_url ? (
+                      <img 
+                        src={userProfile.avatar_url} 
+                        alt={userProfile.full_name} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User size={14} className="text-lavender-600" />
+                    )}
+                  </div>
+                </button>
+              )}
+              
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-lavender-600 transition-all duration-300 hover:bg-lavender-50 focus:outline-none"
+                aria-expanded={isMenuOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        <div
+          className={`md:hidden fixed left-0 right-0 transition-all duration-300 ease-in-out ${
+            isMenuOpen
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-full pointer-events-none"
+          }`}
+        >
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/95 supports-[backdrop-filter]:bg-white/80 backdrop-blur-lg shadow-lg">
+            {!isDashboard && !isChat && !isAddictionSupport && !isAnxietySupport && !isBlog && !user ? (
+              <>
+                <a
+                  href="#features"
+                  onClick={(e) => scrollToSection(e, "features")}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                >
+                  Features
+                </a>
+                <a
+                  href="#how-it-works"
+                  onClick={(e) => scrollToSection(e, "how-it-works")}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                >
+                  How It Works
+                </a>
+                <a
+                  href="#testimonials"
+                  onClick={(e) => scrollToSection(e, "testimonials")}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                >
+                  Testimonials
+                </a>
+                <a
+                  href="#faq"
+                  onClick={(e) => scrollToSection(e, "faq")}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                >
+                  FAQ
+                </a>
+              </>
+            ) : (
+              user && (
+                <>
+                  <Link
+                    to="/dashboard"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/journal"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Journal
+                  </Link>
+                  <Link
+                    to="/chat"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    AI Chat
+                  </Link>
+                  <Link
+                    to="/addiction-support"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Heart size={16} />
+                    <span>Recovery Support</span>
+                  </Link>
+                  <Link
+                    to="/anxiety-support"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Brain size={16} />
+                    <span>Anxiety Support</span>
+                  </Link>
+                  <Link
+                    to="/blog"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <BookOpen size={16} />
+                    <span>Blog</span>
+                  </Link>
+                      <Link
+                        to="/therapists"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Users size={16} />
+                        <span>Find Therapists</span>
+                      </Link>
+                  <button
+                    onClick={() => {
+                      setShowNotificationSettings(true);
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300 w-full text-left"
+                  >
+                    <Settings size={16} />
+                    <span>Notification Settings</span>
+                  </button>
+                </>
+              )
+            )}
+
+            {user ? (
+              <Button
+                variant="primary"
+                size="sm"
+                fullWidth
+                className="text-sm transition-all duration-300 mt-2"
+                onClick={handleSignOut}
+                leftIcon={<LogOut size={16} />}
+              >
+                Sign Out
+              </Button>
+            ) : (
+              !isDashboard &&
+              !isChat &&
+              !isAddictionSupport &&
+              !isAnxietySupport &&
+              !isBlog && (
+                <div className="flex flex-col space-y-2 pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    fullWidth
+                    className="text-sm transition-all duration-300"
+                    onClick={() => setShowAuthModal("signin")}
+                    leftIcon={<LogIn size={16} />}
+                  >
+                    Sign In
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    fullWidth
+                    className="text-sm transition-all duration-300"
+                    onClick={() => setShowAuthModal("signup")}
+                    leftIcon={<UserPlus size={16} />}
+                  >
+                    Sign Up
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </nav>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          mode={showAuthModal}
+          onClose={() => setShowAuthModal(null)}
+        />
+      )}
+
+      {/* Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+      
+      {/* Notification Settings Modal */}
+      <NotificationSettingsModal
+        isOpen={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
+      />
+    </>
+  );
+};
+
+export default Navbar;
                     >
                       <Settings size={20} />
                     </button>
