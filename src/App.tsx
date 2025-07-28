@@ -14,6 +14,7 @@ const AnxietySupport = lazy(() => import('./pages/AnxietySupport'));
 const Blog = lazy(() => import('./pages/Blog'));
 const BlogPost = lazy(() => import('./pages/BlogPost'));
 const CreateBlogPost = lazy(() => import('./pages/CreateBlogPost'));
+const TherapistPlatform = lazy(() => import('./pages/TherapistPlatform'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -89,6 +90,13 @@ function App() {
             user ? (
               <Suspense fallback={<LoadingFallback />}>
                 <CreateBlogPost />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
+          <Route path="/therapists" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistPlatform />
               </Suspense>
             ) : <Navigate to="/" replace />
           } />

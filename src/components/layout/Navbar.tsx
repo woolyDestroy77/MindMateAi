@@ -374,6 +374,26 @@ const Navbar: React.FC<NavbarProps> = ({
                           }`}
                         ></span>
                       </Link>
+                      <Link
+                        to="/therapists"
+                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                          location.pathname === '/therapists'
+                            ? 'text-lavender-600'
+                            : 'text-gray-700 hover:text-lavender-600'
+                        }`}
+                      >
+                        <span className="relative z-10 flex items-center space-x-1">
+                          <Users size={16} />
+                          <span>Therapists</span>
+                        </span>
+                        <span
+                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                            location.pathname === '/therapists'
+                              ? "scale-100"
+                              : "scale-0 group-hover:scale-100"
+                          }`}
+                        ></span>
+                      </Link>
                     </>
                   )
                 )}
@@ -549,6 +569,14 @@ const Navbar: React.FC<NavbarProps> = ({
                   >
                     <BookOpen size={16} />
                     <span>Blog</span>
+                  </Link>
+                  <Link
+                    to="/therapists"
+                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Users size={16} />
+                    <span>Find Therapists</span>
                   </Link>
                   <button
                     onClick={() => {
