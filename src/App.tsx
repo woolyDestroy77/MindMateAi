@@ -135,9 +135,7 @@ function App() {
         </Routes>
         <Toaster position="top-right" />
       </NotificationProvider>
-    }
     </BrowserRouter>
-  )
   );
 }
 
