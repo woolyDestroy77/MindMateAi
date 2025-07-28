@@ -129,6 +129,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           if (profileError) {
             console.error('Error creating therapist profile:', profileError);
           }
+          
+          // Send notification to admin for new therapist signup
+          try {
+            await supabase
+              .from('user_notifications')
+              .insert([{
+                user_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Admin user ID - replace with actual admin ID
+                title: 'New Therapist Account Created',
+                message: `${name} (${email}) has created a therapist account and needs to complete registration.`,
+                type: 'info',
+                priority: 'medium',
+                read: false,
+                action_url: '/admin',
+                action_text: 'View Account',
+                metadata: {
+                  new_user_id: signUpData.user.id,
+                  user_email: email,
+                  user_name: name
+                }
+              }]);
+          } catch (notificationError) {
+            console.error('Error sending admin notification:', notificationError);
+          }
         }
 
         // If profile image was uploaded, store it

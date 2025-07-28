@@ -553,6 +553,27 @@ export const useNotifications = () => {
         return;
       }
 
+      // Check for pending therapist applications (admin only)
+      if (user.email === 'youssef.arafat09@gmail.com') {
+        const { data: pendingTherapists } = await supabase
+          .from('therapist_profiles')
+          .select('id, professional_title, user:users!therapist_profiles_user_id_fkey(full_name, email)')
+          .eq('verification_status', 'pending');
+
+        if (pendingTherapists && pendingTherapists.length > 0) {
+          createNotification(
+            `${pendingTherapists.length} Pending Therapist Applications`,
+            `You have ${pendingTherapists.length} therapist application${pendingTherapists.length > 1 ? 's' : ''} waiting for review.`,
+            'alert',
+            {
+              priority: 'high',
+              actionUrl: '/admin',
+              actionText: 'Review Applications'
+            }
+          );
+        }
+      }
+
       // Create journal reminder
       const lastJournalEntry = await supabase
         .from('journal_entries')

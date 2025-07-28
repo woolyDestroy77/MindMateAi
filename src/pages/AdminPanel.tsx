@@ -65,6 +65,9 @@ const AdminPanel: React.FC = () => {
         
         if (user && user.email === 'youssef.arafat09@gmail.com') {
           setIsAuthorized(true);
+          
+          // Store admin user ID for notifications
+          localStorage.setItem('admin_user_id', user.id);
         } else {
           // Not authorized, redirect to dashboard
           toast.error('Access denied. Admin privileges required.');

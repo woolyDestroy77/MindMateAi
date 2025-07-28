@@ -397,6 +397,28 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
 
       toast.success('Registration submitted successfully! You will be notified once approved.');
       
+      // Send notification to admin for new therapist application
+      try {
+        await supabase
+          .from('user_notifications')
+          .insert([{
+            user_id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // Admin user ID - replace with actual admin ID
+            title: 'New Therapist Application',
+            message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
+            type: 'alert',
+            priority: 'high',
+            read: false,
+            action_url: '/admin',
+            action_text: 'Review Application',
+            metadata: {
+              therapist_id: profileId,
+              applicant_name: user.user_metadata?.full_name,
+              license_state: formData.license_state,
+              professional_title: formData.professional_title
+            }
+          }]);
+      } catch (notificationError) {
+        console.error('Error sending admin notification:', notificationError);
       if (onComplete) {
         onComplete();
       } else {
