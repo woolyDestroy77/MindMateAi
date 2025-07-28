@@ -51,6 +51,8 @@ const Navbar: React.FC<NavbarProps> = ({
   const isAddictionSupport = location.pathname === "/addiction-support";
   const isAnxietySupport = location.pathname === "/anxiety-support";
   const isBlog = location.pathname.startsWith("/blog");
+  const isTherapistDashboard = location.pathname === "/therapist-dashboard";
+  const isTherapist = user?.user_metadata?.user_type === 'therapist' || user?.user_metadata?.is_therapist;
   const [streak, setStreak] = useState(0);
 
   // Load streak from localStorage or calculate it
@@ -279,114 +281,177 @@ const Navbar: React.FC<NavbarProps> = ({
                 ) : (
                   user && (
                     <>
-                      <Link
-                        to="/dashboard"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          isDashboard
-                            ? "text-lavender-600"
-                            : "text-gray-700 hover:text-lavender-600"
-                        }`}
-                      >
-                        <span className="relative z-10">Dashboard</span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            isDashboard
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
-                      <Link
-                        to="/chat"
-                        className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
-                          isChat
-                            ? "text-lavender-600"
-                            : "text-gray-700 hover:text-lavender-600"
-                        }`}
-                      >
-                        <span className="relative z-10">AI Chat</span>
-                        <span
-                          className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
-                            isChat
-                              ? "scale-100"
-                              : "scale-0 group-hover:scale-100"
-                          }`}
-                        ></span>
-                      </Link>
-                      
-                      {/* Support Dropdown */}
-                      <div className="relative group">
-                        <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
-                          <span className="relative z-10">Support</span>
-                          <span className="text-xs">▼</span>
-                          <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
-                        </button>
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      {isTherapist ? (
+                        // Therapist Navigation
+                        <>
                           <Link
-                            to="/addiction-support"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
+                            to="/therapist-dashboard"
+                            className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                              isTherapistDashboard
+                                ? "text-blue-600"
+                                : "text-gray-700 hover:text-blue-600"
+                            }`}
                           >
-                            <Heart size={16} />
-                            <span>Recovery Support</span>
+                            <span className="relative z-10">Dashboard</span>
+                            <span
+                              className={`absolute inset-0 bg-blue-50 rounded-md transition-transform duration-300 -z-0 ${
+                                isTherapistDashboard
+                                  ? "scale-100"
+                                  : "scale-0 group-hover:scale-100"
+                              }`}
+                            ></span>
+                          </Link>
+                          
+                          <Link
+                            to="/therapist-sessions"
+                            className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Sessions</span>
+                            <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
+                          <Link
+                            to="/therapist-clients"
+                            className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Clients</span>
+                            <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
+                          <Link
+                            to="/therapist-schedule"
+                            className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Schedule</span>
+                            <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
+                          <Link
+                            to="/therapist-earnings"
+                            className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Earnings</span>
+                            <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
+                          {/* Admin Panel for authorized users */}
+                          {user?.email === 'youssef.arafat09@gmail.com' && (
+                            <Link
+                              to="/admin"
+                              className="relative text-gray-700 hover:text-red-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                            >
+                              <span className="relative z-10">Admin</span>
+                              <span className="absolute inset-0 bg-red-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                            </Link>
+                          )}
+                        </>
+                      ) : (
+                        // Patient Navigation
+                        <>
+                          <Link
+                            to="/dashboard"
+                            className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                              isDashboard
+                                ? "text-lavender-600"
+                                : "text-gray-700 hover:text-lavender-600"
+                            }`}
+                          >
+                            <span className="relative z-10">Dashboard</span>
+                            <span
+                              className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                                isDashboard
+                                  ? "scale-100"
+                                  : "scale-0 group-hover:scale-100"
+                              }`}
+                            ></span>
                           </Link>
                           <Link
-                            to="/anxiety-support"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600"
+                            to="/chat"
+                            className={`relative transition-all duration-300 px-3 py-2 rounded-md font-medium group ${
+                              isChat
+                                ? "text-lavender-600"
+                                : "text-gray-700 hover:text-lavender-600"
+                            }`}
                           >
-                            <Brain size={16} />
-                            <span>Anxiety Support</span>
+                            <span className="relative z-10">AI Chat</span>
+                            <span
+                              className={`absolute inset-0 bg-lavender-50 rounded-md transition-transform duration-300 -z-0 ${
+                                isChat
+                                  ? "scale-100"
+                                  : "scale-0 group-hover:scale-100"
+                              }`}
+                            ></span>
                           </Link>
-                          <Link
-                            to="/therapists"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
-                          >
-                            <Users size={16} />
-                            <span>Find Therapists</span>
-                          </Link>
-                          <Link
-                            to="/become-therapist"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
-                          >
-                            <Shield size={16} />
-                            <span>Become a Therapist</span>
-                          </Link>
-                          <Link
-                            to="/admin"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
-                            style={{ 
-                              display: user?.email === 'youssef.arafat09@gmail.com' ? 'flex' : 'none' 
-                            }}
-                          >
-                            <Settings size={16} />
-                            <span>Admin Panel</span>
-                          </Link>
-                        </div>
-                      </div>
-                      
-                      {/* Tools Dropdown */}
-                      <div className="relative group">
-                        <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
-                          <span className="relative z-10">Tools</span>
-                          <span className="text-xs">▼</span>
-                          <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
-                        </button>
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                          <Link
-                            to="/journal"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
-                          >
-                            <Image size={16} />
-                            <span>Journal</span>
-                          </Link>
-                          <Link
-                            to="/blog"
-                            className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
-                          >
-                            <BookOpen size={16} />
-                            <span>Blog</span>
-                          </Link>
-                        </div>
-                      </div>
+                          
+                          {/* Support Dropdown */}
+                          <div className="relative group">
+                            <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
+                              <span className="relative z-10">Support</span>
+                              <span className="text-xs">▼</span>
+                              <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                            </button>
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                              <Link
+                                to="/addiction-support"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
+                              >
+                                <Heart size={16} />
+                                <span>Recovery Support</span>
+                              </Link>
+                              <Link
+                                to="/anxiety-support"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600"
+                              >
+                                <Brain size={16} />
+                                <span>Anxiety Support</span>
+                              </Link>
+                              <Link
+                                to="/therapists"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                              >
+                                <Users size={16} />
+                                <span>Find Therapists</span>
+                              </Link>
+                            </div>
+                          </div>
+                          
+                          {/* Tools Dropdown */}
+                          <div className="relative group">
+                            <button className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium flex items-center space-x-1">
+                              <span className="relative z-10">Tools</span>
+                              <span className="text-xs">▼</span>
+                              <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                            </button>
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                              <Link
+                                to="/journal"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 first:rounded-t-lg"
+                              >
+                                <Image size={16} />
+                                <span>Journal</span>
+                              </Link>
+                              <Link
+                                to="/blog"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                              >
+                                <BookOpen size={16} />
+                                <span>Blog</span>
+                              </Link>
+                            </div>
+                          </div>
+                          
+                          {/* Admin Panel for authorized users */}
+                          {user?.email === 'youssef.arafat09@gmail.com' && (
+                            <Link
+                              to="/admin"
+                              className="relative text-gray-700 hover:text-red-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                            >
+                              <span className="relative z-10">Admin</span>
+                              <span className="absolute inset-0 bg-red-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                            </Link>
+                          )}
+                        </>
+                      )}
                     </>
                   )
                 )}
@@ -518,67 +583,123 @@ const Navbar: React.FC<NavbarProps> = ({
             ) : (
               user && (
                 <>
-                  <Link
-                    to="/dashboard"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    to="/journal"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Journal
-                  </Link>
-                  <Link
-                    to="/chat"
-                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    AI Chat
-                  </Link>
-                  <Link
-                    to="/addiction-support"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Heart size={16} />
-                    <span>Recovery Support</span>
-                  </Link>
-                  <Link
-                    to="/anxiety-support"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Brain size={16} />
-                    <span>Anxiety Support</span>
-                  </Link>
-                  <Link
-                    to="/blog"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <BookOpen size={16} />
-                    <span>Blog</span>
-                  </Link>
-                  <Link
-                    to="/therapists"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Users size={16} />
-                    <span>Find Therapists</span>
-                  </Link>
-                  <Link
-                    to="/become-therapist"
-                    className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Shield size={16} />
-                    <span>Become a Therapist</span>
-                  </Link>
+                  {isTherapist ? (
+                    // Therapist Mobile Navigation
+                    <>
+                      <Link
+                        to="/therapist-dashboard"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/therapist-sessions"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Sessions
+                      </Link>
+                      <Link
+                        to="/therapist-clients"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Clients
+                      </Link>
+                      <Link
+                        to="/therapist-schedule"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Schedule
+                      </Link>
+                      <Link
+                        to="/therapist-earnings"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Earnings
+                      </Link>
+                      {user?.email === 'youssef.arafat09@gmail.com' && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-300"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Settings size={16} />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+                    </>
+                  ) : (
+                    // Patient Mobile Navigation
+                    <>
+                      <Link
+                        to="/dashboard"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/journal"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Journal
+                      </Link>
+                      <Link
+                        to="/chat"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        AI Chat
+                      </Link>
+                      <Link
+                        to="/addiction-support"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Heart size={16} />
+                        <span>Recovery Support</span>
+                      </Link>
+                      <Link
+                        to="/anxiety-support"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Brain size={16} />
+                        <span>Anxiety Support</span>
+                      </Link>
+                      <Link
+                        to="/blog"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <BookOpen size={16} />
+                        <span>Blog</span>
+                      </Link>
+                      <Link
+                        to="/therapists"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Users size={16} />
+                        <span>Find Therapists</span>
+                      </Link>
+                      {user?.email === 'youssef.arafat09@gmail.com' && (
+                        <Link
+                          to="/admin"
+                          className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-300"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Settings size={16} />
+                          <span>Admin Panel</span>
+                        </Link>
+                      )}
+                    </>
+                  )}
                   <button
                     onClick={() => {
                       setShowNotificationSettings(true);
