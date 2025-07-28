@@ -14,7 +14,8 @@ import {
   User,
   Settings,
   Image,
-  BookOpen
+  BookOpen,
+  Users
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
