@@ -5,12 +5,20 @@ import { toast } from 'react-hot-toast';
 
 export interface UserProfile {
   id: string;
+  user_id: string;
+  user_type: 'patient' | 'therapist' | 'admin';
+  account_status: 'pending' | 'active' | 'suspended' | 'rejected';
   full_name: string;
+  email: string;
   avatar_url?: string;
-  birthdate?: string;
+  phone?: string;
+  date_of_birth?: string;
   location?: string;
   bio?: string;
+  preferences?: any;
   created_at?: string;
+  updated_at?: string;
+  last_login?: string;
 }
 
 // Create a cache for user profiles to reduce database calls
@@ -33,21 +41,82 @@ export const useAuth = () => {
 
       setIsLoadingProfile(true);
       
-      // Get user metadata from auth.users
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+      // Get user profile from user_profiles table
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
       
-      if (userError) throw userError;
-      if (!userData.user) return null;
+      if (profileError) {
+        // If no profile exists, create one from auth metadata
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!userData.user) return null;
+        
+        const newProfile = {
+          user_id: userData.user.id,
+          user_type: (userData.user.user_metadata.user_type || 'patient') as 'patient' | 'therapist' | 'admin',
+          account_status: 'active' as 'pending' | 'active' | 'suspended' | 'rejected',
+          full_name: userData.user.user_metadata.full_name || '',
+          email: userData.user.email || '',
+          avatar_url: userData.user.user_metadata.avatar_url,
+          phone: userData.user.user_metadata.phone,
+          date_of_birth: userData.user.user_metadata.date_of_birth,
+          location: userData.user.user_metadata.location,
+          bio: userData.user.user_metadata.bio,
+          preferences: userData.user.user_metadata.preferences || {}
+        };
+        
+        // Create the profile
+        const { data: createdProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert([newProfile])
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        
+        const profile: UserProfile = {
+          id: createdProfile.id,
+          user_id: createdProfile.user_id,
+          user_type: createdProfile.user_type,
+          account_status: createdProfile.account_status,
+          full_name: createdProfile.full_name,
+          email: createdProfile.email,
+          avatar_url: createdProfile.avatar_url,
+          phone: createdProfile.phone,
+          date_of_birth: createdProfile.date_of_birth,
+          location: createdProfile.location,
+          bio: createdProfile.bio,
+          preferences: createdProfile.preferences,
+          created_at: createdProfile.created_at,
+          updated_at: createdProfile.updated_at,
+          last_login: createdProfile.last_login
+        };
+        
+        profileCache.set(userId, profile);
+        setUserProfile(profile);
+        return profile;
+      }
       
-      // Create profile object from user metadata
+      // Create profile object from database
       const profile: UserProfile = {
-        id: userData.user.id,
-        full_name: userData.user.user_metadata.full_name || '',
-        avatar_url: userData.user.user_metadata.avatar_url,
-        birthdate: userData.user.user_metadata.birthdate,
-        location: userData.user.user_metadata.location,
-        bio: userData.user.user_metadata.bio,
-        created_at: userData.user.created_at
+        id: profileData.id,
+        user_id: profileData.user_id,
+        user_type: profileData.user_type,
+        account_status: profileData.account_status,
+        full_name: profileData.full_name,
+        email: profileData.email,
+        avatar_url: profileData.avatar_url,
+        phone: profileData.phone,
+        date_of_birth: profileData.date_of_birth,
+        location: profileData.location,
+        bio: profileData.bio,
+        preferences: profileData.preferences,
+        created_at: profileData.created_at,
+        updated_at: profileData.updated_at,
+        last_login: profileData.last_login
       };
       
       // Cache the profile

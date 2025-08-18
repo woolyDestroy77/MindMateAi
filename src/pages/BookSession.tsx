@@ -92,6 +92,25 @@ const BookSession: React.FC = () => {
       console.log('👨‍⚕️ Therapist ID:', therapist.id);
       console.log('📅 Session details:', { selectedDate, selectedTime, sessionType, sessionFormat, duration });
 
+      // CRITICAL: Verify therapist is active and verified
+      const { data: therapistCheck, error: therapistCheckError } = await supabase
+        .from('therapist_profiles')
+        .select('verification_status, is_active, user_id')
+        .eq('id', therapist.id)
+        .single();
+        
+      if (therapistCheckError) {
+        console.error('❌ THERAPIST CHECK ERROR:', therapistCheckError);
+        throw new Error('Therapist not found');
+      }
+      
+      if (therapistCheck.verification_status !== 'verified' || !therapistCheck.is_active) {
+        throw new Error('This therapist is not currently accepting new clients');
+      }
+      
+      console.log('✅ THERAPIST VERIFIED AND ACTIVE');
+      console.log('👨‍⚕️ Therapist user_id:', therapistCheck.user_id);
+
       // Calculate cost
       const durationHours = duration / 60;
       const totalCost = therapist.hourly_rate * durationHours;
@@ -127,20 +146,6 @@ const BookSession: React.FC = () => {
       console.log('✅ SESSION CREATED SUCCESSFULLY:', session);
       console.log('🆔 Session ID:', session.id);
 
-      // Get therapist user_id for notification
-      const { data: therapistData, error: therapistError } = await supabase
-        .from('therapist_profiles')
-        .select('user_id')
-        .eq('id', therapist.id)
-        .single();
-
-      if (therapistError) {
-        console.error('❌ Error getting therapist user_id:', therapistError);
-        throw therapistError;
-      }
-
-      console.log('👨‍⚕️ Therapist user_id:', therapistData.user_id);
-
       // Create payment transaction with proper user_id
       console.log('💳 CREATING PAYMENT TRANSACTION...');
       const platformFee = totalCost * 0.15;
@@ -165,38 +170,8 @@ const BookSession: React.FC = () => {
       
       console.log('✅ PAYMENT TRANSACTION CREATED');
       
-      // CRITICAL: Send notification to therapist about new booking
-      console.log('🔔 SENDING NOTIFICATION TO THERAPIST...');
-      console.log('📧 Therapist user_id for notification:', therapistData.user_id);
-      
-      try {
-        const { error: notificationError } = await supabase
-          .from('user_notifications')
-          .insert([{
-            user_id: therapistData.user_id, // Use the actual user_id from therapist_profiles
-            title: 'New Session Booking',
-            message: `${user.user_metadata.full_name || 'A client'} has booked a ${sessionType} session with you for ${format(new Date(`${selectedDate}T${selectedTime}`), 'MMM d, yyyy h:mm a')}.`,
-            type: 'info',
-            priority: 'high',
-            read: false,
-            action_url: '/therapist-sessions',
-            action_text: 'View Sessions',
-            metadata: {
-              session_id: session.id,
-              client_name: user.user_metadata.full_name,
-              session_date: selectedDate,
-              session_time: selectedTime
-            }
-          }]);
-          
-        if (notificationError) {
-          console.error('❌ FAILED TO SEND THERAPIST NOTIFICATION:', notificationError);
-        } else {
-          console.log('✅ THERAPIST NOTIFICATION SENT SUCCESSFULLY');
-        }
-      } catch (notifError) {
-        console.error('❌ ERROR SENDING THERAPIST NOTIFICATION:', notifError);
-      }
+      // Notification will be sent automatically by database trigger
+      console.log('🔔 NOTIFICATION WILL BE SENT BY DATABASE TRIGGER');
 
       toast.success('Session booked successfully!');
       navigate('/my-therapy-sessions');

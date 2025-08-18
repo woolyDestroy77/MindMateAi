@@ -108,7 +108,41 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: 'pending'
       });
       
-      // STEP 1: Get therapist profile with real-time query
+      // STEP 1: Check user profile first for account status
+      console.log('🔍 STEP 1: Checking user profile and account status...');
+      
+      const { data: userProfile, error: userProfileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', therapistUser?.id)
+        .single();
+        
+      if (userProfileError) {
+        console.error('❌ USER PROFILE ERROR:', userProfileError);
+        // Create user profile if it doesn't exist
+        const { data: newProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert([{
+            user_id: therapistUser?.id,
+            user_type: 'therapist',
+            account_status: 'pending',
+            full_name: therapistUser?.user_metadata?.full_name || '',
+            email: therapistUser?.email || ''
+          }])
+          .select()
+          .single();
+          
+        if (createError) throw createError;
+        console.log('✅ CREATED NEW USER PROFILE:', newProfile);
+      } else {
+        console.log('✅ USER PROFILE FOUND:', {
+          user_type: userProfile.user_type,
+          account_status: userProfile.account_status,
+          full_name: userProfile.full_name
+        });
+      }
+      
+      // STEP 2: Get therapist profile with real-time query
       console.log('🔍 STEP 1: Fetching therapist profile...');
       
       const { data: profile, error: profileError } = await supabase
@@ -138,7 +172,7 @@ const TherapistDashboard: React.FC = () => {
 
       setTherapistProfile(profile);
       
-      // STEP 2: Update stats with real verification status
+      // STEP 3: Update stats with real verification status
       console.log('📊 STEP 2: Updating verification status to:', profile.verification_status);
       
       setStats(prevStats => ({
@@ -146,7 +180,7 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: profile.verification_status
       }));
 
-      // STEP 3: Get session stats
+      // STEP 4: Get session stats with enhanced debugging
       console.log('📋 STEP 3: Fetching sessions for therapist profile ID:', profile.id);
       
       const { data: sessions, error: sessionsError } = await supabase
@@ -174,7 +208,7 @@ const TherapistDashboard: React.FC = () => {
         date: s.scheduled_start
       })));
 
-      // STEP 4: Get reviews
+      // STEP 5: Get reviews
       console.log('⭐ STEP 4: Fetching reviews...');
       
       const { data: reviews, error: reviewsError } = await supabase
@@ -190,7 +224,7 @@ const TherapistDashboard: React.FC = () => {
       
       console.log('⭐ REVIEWS FOUND:', reviews?.length || 0);
 
-      // STEP 5: Calculate final stats
+      // STEP 6: Calculate final stats
       console.log('🧮 STEP 5: Calculating final stats...');
       
       const totalSessions = sessions?.length || 0;
