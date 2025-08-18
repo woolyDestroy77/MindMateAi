@@ -98,15 +98,16 @@ const TherapistDashboard: React.FC = () => {
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        if (profileError.code === 'PGRST116') {
-          // No profile found - redirect to registration
-          toast.error('Please complete your therapist registration first');
-          return;
-        }
         throw profileError;
+      }
+
+      if (!profile) {
+        // No profile found - user needs to complete registration
+        console.log('No therapist profile found for user:', therapistUser?.id);
+        return;
       }
 
       setTherapistProfile(profile);
