@@ -47,6 +47,8 @@ export const useTherapistPlatform = () => {
       setIsLoading(true);
       setError(null);
 
+      console.log('🔍 Searching for verified therapists...');
+      
       let query = supabase
         .from('therapist_profiles')
         .select(`
@@ -84,6 +86,18 @@ export const useTherapistPlatform = () => {
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('✅ Found verified therapists:', data?.length || 0);
+      data?.forEach((therapist, index) => {
+        console.log(`Therapist ${index + 1}:`, {
+          name: therapist.user?.full_name,
+          title: therapist.professional_title,
+          rate: therapist.hourly_rate,
+          state: therapist.license_state,
+          active: therapist.is_active,
+          verified: therapist.verification_status
+        });
+      });
 
       // Filter by specializations if specified
       let filteredData = data || [];

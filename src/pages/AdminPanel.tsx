@@ -159,19 +159,58 @@ const AdminPanel: React.FC = () => {
 
   const approveTherapist = async (therapistId: string) => {
     try {
+      console.log('🔄 Approving therapist:', therapistId);
+      
       const { error } = await supabase
         .from('therapist_profiles')
         .update({ 
           verification_status: 'verified',
+          is_active: true, // Enable therapist to be discoverable
           hipaa_training_completed: true,
           hipaa_training_date: new Date().toISOString().split('T')[0],
           background_check_completed: true,
-          background_check_date: new Date().toISOString().split('T')[0]
+          background_check_date: new Date().toISOString().split('T')[0],
+          updated_at: new Date().toISOString()
         })
         .eq('id', therapistId);
 
       if (error) throw error;
 
+      console.log('✅ Therapist approved successfully');
+      
+      // Get therapist details for notification
+      const therapist = pendingTherapists.find(t => t.id === therapistId);
+      
+      // Send approval notification to the therapist
+      if (therapist?.user_id) {
+        try {
+          const { error: notificationError } = await supabase
+            .from('user_notifications')
+            .insert([{
+              user_id: therapist.user_id,
+              title: 'Application Approved! 🎉',
+              message: 'Congratulations! Your therapist application has been approved. You can now start accepting clients and managing your practice.',
+              type: 'achievement',
+              priority: 'high',
+              read: false,
+              action_url: '/therapist-dashboard',
+              action_text: 'Go to Dashboard',
+              metadata: {
+                approval_date: new Date().toISOString(),
+                approved_by: user?.id
+              }
+            }]);
+            
+          if (notificationError) {
+            console.error('Failed to send approval notification:', notificationError);
+          } else {
+            console.log('✅ Approval notification sent to therapist');
+          }
+        } catch (notifError) {
+          console.error('Error sending approval notification:', notifError);
+        }
+      }
+      
       toast.success('Therapist approved successfully!');
       fetchPendingTherapists();
     } catch (error) {
@@ -182,13 +221,54 @@ const AdminPanel: React.FC = () => {
 
   const rejectTherapist = async (therapistId: string) => {
     try {
+      console.log('🔄 Rejecting therapist:', therapistId);
+      
       const { error } = await supabase
         .from('therapist_profiles')
-        .update({ verification_status: 'rejected' })
+        .update({ 
+          verification_status: 'rejected',
+          is_active: false, // Disable therapist from being discoverable
+          updated_at: new Date().toISOString()
+        })
         .eq('id', therapistId);
 
       if (error) throw error;
 
+      console.log('✅ Therapist rejected successfully');
+      
+      // Get therapist details for notification
+      const therapist = pendingTherapists.find(t => t.id === therapistId);
+      
+      // Send rejection notification to the therapist
+      if (therapist?.user_id) {
+        try {
+          const { error: notificationError } = await supabase
+            .from('user_notifications')
+            .insert([{
+              user_id: therapist.user_id,
+              title: 'Application Update',
+              message: 'Your therapist application requires additional review. Please contact support for more information.',
+              type: 'alert',
+              priority: 'high',
+              read: false,
+              action_url: '/become-therapist',
+              action_text: 'Contact Support',
+              metadata: {
+                rejection_date: new Date().toISOString(),
+                rejected_by: user?.id
+              }
+            }]);
+            
+          if (notificationError) {
+            console.error('Failed to send rejection notification:', notificationError);
+          } else {
+            console.log('✅ Rejection notification sent to therapist');
+          }
+        } catch (notifError) {
+          console.error('Error sending rejection notification:', notifError);
+        }
+      }
+      
       toast.success('Therapist application rejected');
       fetchPendingTherapists();
     } catch (error) {
