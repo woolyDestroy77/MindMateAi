@@ -146,6 +146,15 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 account_type: 'therapist'
               }
             );
+          } catch (notificationError) {
+            console.error('Error sending admin notification:', notificationError);
+          }
+        }
+
+        // Handle profile image upload if provided
+        if (profileImage && signUpData.user) {
+          const userId = signUpData.user.id;
+          const fileExt = profileImage.name.split('.').pop();
           const fileName = `${userId}-${Date.now()}.${fileExt}`;
           
           const { error: uploadError } = await supabase.storage
