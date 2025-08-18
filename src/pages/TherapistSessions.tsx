@@ -50,26 +50,37 @@ const TherapistSessions: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
-      console.log('🔍 FETCHING THERAPIST SESSIONS...');
+      console.log('🔍 FETCHING THERAPIST SESSIONS - ENHANCED DEBUG...');
       
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) return;
 
-      console.log('👨‍⚕️ Current therapist user:', user.id);
+      console.log('👨‍⚕️ Current therapist user ID:', user.id);
+      console.log('📧 Therapist email:', user.email);
 
       // Get therapist profile
       const { data: therapistProfile, error: profileError } = await supabase
         .from('therapist_profiles')
-        .select('id')
+        .select('id, verification_status, is_active, professional_title')
         .eq('user_id', user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('❌ THERAPIST PROFILE ERROR:', profileError);
+        throw profileError;
+      }
       
-      console.log('🏥 Therapist profile ID:', therapistProfile.id);
+      console.log('🏥 THERAPIST PROFILE FOUND:', {
+        id: therapistProfile.id,
+        verification_status: therapistProfile.verification_status,
+        is_active: therapistProfile.is_active,
+        title: therapistProfile.professional_title
+      });
 
-      // Get sessions
+      // Get ALL sessions for this therapist (not just specific statuses)
+      console.log('📋 FETCHING ALL SESSIONS FOR THERAPIST ID:', therapistProfile.id);
+      
       const { data, error } = await supabase
         .from('therapy_sessions')
         .select(`
@@ -84,20 +95,35 @@ const TherapistSessions: React.FC = () => {
         .eq('therapist_id', therapistProfile.id)
         .order('scheduled_start', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ SESSIONS FETCH ERROR:', error);
+        throw error;
+      }
       
-      console.log('📅 Found sessions for therapist:', data?.length || 0);
-      console.log('📋 Session details:', data?.map(s => ({
+      console.log('📅 TOTAL SESSIONS FOUND:', data?.length || 0);
+      console.log('📋 DETAILED SESSION LIST:', data?.map(s => ({
         id: s.id,
-        client: s.client?.full_name,
+        client_name: s.client?.full_name,
+        client_email: s.client?.email,
         status: s.status,
-        date: s.scheduled_start,
-        cost: s.total_cost
+        scheduled_start: s.scheduled_start,
+        total_cost: s.total_cost,
+        payment_status: s.payment_status,
+        created_at: s.created_at
       })));
+      
+      // Log specific session statuses
+      const statusCounts = data?.reduce((acc: any, session) => {
+        acc[session.status] = (acc[session.status] || 0) + 1;
+        return acc;
+      }, {});
+      console.log('📊 SESSION STATUS BREAKDOWN:', statusCounts);
       
       setSessions(data || []);
       
-      // Set up real-time subscription for new session bookings
+      // CRITICAL: Set up real-time subscription for session changes
+      console.log('🔄 SETTING UP REAL-TIME SUBSCRIPTION...');
+      
       const subscription = supabase
         .channel('therapist_sessions_changes')
         .on('postgres_changes', {
@@ -106,9 +132,13 @@ const TherapistSessions: React.FC = () => {
           table: 'therapy_sessions',
           filter: `therapist_id=eq.${therapistProfile.id}`
         }, (payload) => {
-          console.log('🔄 Real-time therapist session update:', payload);
+          console.log('🔄 REAL-TIME SESSION UPDATE RECEIVED:', payload);
+          console.log('📝 Event type:', payload.eventType);
+          console.log('📋 New data:', payload.new);
           
           if (payload.eventType === 'INSERT') {
+            console.log('➕ NEW SESSION BOOKING DETECTED!');
+            
             // Fetch the new session with client data
             supabase
               .from('therapy_sessions')
@@ -125,25 +155,37 @@ const TherapistSessions: React.FC = () => {
               .single()
               .then(({ data: newSession }) => {
                 if (newSession) {
+                  console.log('✅ NEW SESSION ADDED TO LIST:', newSession);
                   setSessions(prev => [newSession, ...prev]);
-                  toast.success('New session booking received!');
+                  toast.success(`🎉 New session booking from ${newSession.client?.full_name}!`, {
+                    duration: 6000,
+                    icon: '📅'
+                  });
                 }
+              })
+              .catch(error => {
+                console.error('❌ Error fetching new session details:', error);
               });
           } else if (payload.eventType === 'UPDATE') {
+            console.log('🔄 SESSION UPDATE DETECTED');
             setSessions(prev => prev.map(session => 
               session.id === payload.new.id ? { ...session, ...payload.new } : session
             ));
           } else if (payload.eventType === 'DELETE') {
+            console.log('🗑️ SESSION DELETION DETECTED');
             setSessions(prev => prev.filter(session => session.id !== payload.old.id));
           }
         })
         .subscribe();
+        
+      console.log('✅ REAL-TIME SUBSCRIPTION ACTIVE');
 
       return () => {
+        console.log('🔌 UNSUBSCRIBING FROM REAL-TIME UPDATES');
         subscription.unsubscribe();
       };
     } catch (error) {
-      console.error('Error fetching sessions:', error);
+      console.error('❌ CRITICAL ERROR FETCHING SESSIONS:', error);
       toast.error('Failed to load sessions');
     } finally {
       setIsLoading(false);

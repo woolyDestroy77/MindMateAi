@@ -93,8 +93,9 @@ const TherapistDashboard: React.FC = () => {
     try {
       setIsLoading(true);
       
-      console.log('🔄 FETCHING FRESH THERAPIST DATA...');
+      console.log('🔄 FETCHING FRESH THERAPIST DATA - ENHANCED DEBUG...');
       console.log('👨‍⚕️ Therapist user ID:', therapistUser?.id);
+      console.log('📧 Therapist email:', therapistUser?.email);
       
       // Clear any cached data first
       setTherapistProfile(null);
@@ -107,58 +108,91 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: 'pending'
       });
       
-      // Get therapist profile with real-time query
+      // STEP 1: Get therapist profile with real-time query
+      console.log('🔍 STEP 1: Fetching therapist profile...');
+      
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .maybeSingle();
+        .single();
 
       if (profileError) {
-        console.error('❌ Error fetching therapist profile:', profileError);
+        console.error('❌ THERAPIST PROFILE ERROR:', profileError);
+        if (profileError.code === 'PGRST116') {
+          console.log('📝 No therapist profile found - showing registration form');
+          setTherapistProfile(null);
+          return;
+        }
         throw profileError;
       }
       
-      if (!profile) {
-        console.log('📝 No therapist profile found, showing registration form');
-        setTherapistProfile(null);
-        return;
-      }
-
-      console.log('✅ Therapist profile found:', {
+      console.log('✅ THERAPIST PROFILE FOUND:', {
         id: profile.id,
         verification_status: profile.verification_status,
         is_active: profile.is_active,
         professional_title: profile.professional_title,
+        hourly_rate: profile.hourly_rate,
         updated_at: profile.updated_at
       });
 
       setTherapistProfile(profile);
       
-      // CRITICAL: Update stats with real verification status
+      // STEP 2: Update stats with real verification status
+      console.log('📊 STEP 2: Updating verification status to:', profile.verification_status);
+      
       setStats(prevStats => ({
         ...prevStats,
         verificationStatus: profile.verification_status
       }));
 
-      // Get session stats
+      // STEP 3: Get session stats
+      console.log('📋 STEP 3: Fetching sessions for therapist profile ID:', profile.id);
+      
       const { data: sessions, error: sessionsError } = await supabase
         .from('therapy_sessions')
-        .select('*')
+        .select(`
+          *,
+          client:users!therapy_sessions_client_id_fkey(
+            id,
+            full_name,
+            email
+          )
+        `)
         .eq('therapist_id', profile.id);
 
-      if (sessionsError) throw sessionsError;
+      if (sessionsError) {
+        console.error('❌ SESSIONS FETCH ERROR:', sessionsError);
+        throw sessionsError;
+      }
+      
+      console.log('📅 SESSIONS FOUND FOR THERAPIST:', sessions?.length || 0);
+      console.log('📋 SESSION BREAKDOWN:', sessions?.map(s => ({
+        id: s.id,
+        client: s.client?.full_name,
+        status: s.status,
+        date: s.scheduled_start
+      })));
 
-      // Get reviews
+      // STEP 4: Get reviews
+      console.log('⭐ STEP 4: Fetching reviews...');
+      
       const { data: reviews, error: reviewsError } = await supabase
         .from('therapist_reviews')
         .select('rating')
         .eq('therapist_id', profile.id)
         .eq('is_approved', true);
 
-      if (reviewsError) throw reviewsError;
+      if (reviewsError) {
+        console.error('❌ REVIEWS FETCH ERROR:', reviewsError);
+        throw reviewsError;
+      }
+      
+      console.log('⭐ REVIEWS FOUND:', reviews?.length || 0);
 
-      // Calculate stats
+      // STEP 5: Calculate final stats
+      console.log('🧮 STEP 5: Calculating final stats...');
+      
       const totalSessions = sessions?.length || 0;
       const upcomingSessions = sessions?.filter(s => 
         s.status === 'scheduled' && new Date(s.scheduled_start) > new Date()
@@ -172,37 +206,22 @@ const TherapistDashboard: React.FC = () => {
         ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
         : 0;
 
-      setStats({
+      const finalStats = {
         totalSessions,
         upcomingSessions,
         totalEarnings,
         averageRating: Math.round(averageRating * 10) / 10,
         totalReviews: reviews?.length || 0,
         verificationStatus: profile.verification_status
-      });
+      };
+      
+      console.log('📊 FINAL CALCULATED STATS:', finalStats);
+      setStats(finalStats);
 
-      console.log('📊 Therapist stats calculated:', {
-        totalSessions,
-        upcomingSessions,
-        totalEarnings,
-        averageRating: Math.round(averageRating * 10) / 10,
-        totalReviews: reviews?.length || 0,
-        verificationStatus: profile.verification_status
-      });
-
-      console.log('📊 Final stats with verification status:', {
-        ...{
-          totalSessions,
-          upcomingSessions,
-          totalEarnings,
-          averageRating: Math.round(averageRating * 10) / 10,
-          totalReviews: reviews?.length || 0,
-          verificationStatus: profile.verification_status
-        }
-      });
+      console.log('✅ THERAPIST DATA FETCH COMPLETE');
 
     } catch (error) {
-      console.error('Error fetching therapist data:', error);
+      console.error('❌ CRITICAL ERROR FETCHING THERAPIST DATA:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setIsLoading(false);
