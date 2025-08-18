@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Shield, Award, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import Button from '../ui/Button';
+import Button from '../components/ui/Button';
 import { supabase } from '../../lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
 import { useAuth } from '../../hooks/useAuth';
