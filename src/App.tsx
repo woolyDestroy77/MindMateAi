@@ -18,6 +18,12 @@ const TherapistPlatform = lazy(() => import('./pages/TherapistPlatform'));
 const TherapistRegistration = lazy(() => import('./pages/TherapistRegistration'));
 const TherapistDashboard = lazy(() => import('./pages/TherapistDashboard'));
 const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const TherapistSessions = lazy(() => import('./pages/TherapistSessions'));
+const TherapistClients = lazy(() => import('./pages/TherapistClients'));
+const TherapistSchedule = lazy(() => import('./pages/TherapistSchedule'));
+const TherapistEarnings = lazy(() => import('./pages/TherapistEarnings'));
+const BookSession = lazy(() => import('./pages/BookSession'));
+const TherapistProfile = lazy(() => import('./pages/TherapistProfile'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -120,6 +126,48 @@ function App() {
                 <TherapistDashboard />
               </Suspense>
             ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-sessions" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistSessions />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-clients" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistClients />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-schedule" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistSchedule />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-earnings" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistEarnings />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/book-session/:therapistId" element={
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <BookSession />
+              </Suspense>
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist/:therapistId" element={
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistProfile />
+              </Suspense>
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
           <Route path="/admin" element={
             user && user.email === 'youssef.arafat09@gmail.com' ? (
