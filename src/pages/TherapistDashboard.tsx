@@ -99,19 +99,19 @@ const TherapistDashboard: React.FC = () => {
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('❌ Error fetching therapist profile:', profileError);
-        if (profileError.code === 'PGRST116') {
-          // No profile found - user needs to complete registration
-          console.log('📝 No therapist profile found, showing registration form');
-          setTherapistProfile(null);
-          return;
-        }
         throw profileError;
       }
 
+      if (!profile) {
+        // No profile found - user needs to complete registration
+        console.log('📝 No therapist profile found, showing registration form');
+        setTherapistProfile(null);
+        return;
+      }
       console.log('✅ Therapist profile found:', {
         id: profile.id,
         verification_status: profile.verification_status,
@@ -183,6 +183,10 @@ const TherapistDashboard: React.FC = () => {
     if (therapistUser) {
       console.log('🔄 Manually refreshing therapist dashboard...');
       await fetchTherapistData();
+      // Force a page refresh to ensure all data is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   }, [therapistUser]);
 
