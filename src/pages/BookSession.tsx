@@ -111,6 +111,8 @@ const BookSession: React.FC = () => {
         video_room_id: sessionFormat === 'video' ? `room_${Date.now()}` : null
       };
 
+      console.log('📅 Creating session with data:', sessionData);
+
       const { data: session, error: sessionError } = await supabase
         .from('therapy_sessions')
         .insert([sessionData])
@@ -118,8 +120,12 @@ const BookSession: React.FC = () => {
         .single();
 
       if (sessionError) throw sessionError;
+      
+      console.log('✅ Session created successfully:', session);
 
       // Create payment transaction
+      console.log('💳 Creating payment transaction...');
+      
       const { error: paymentError } = await supabase
         .from('payment_transactions')
         .insert([{
@@ -127,16 +133,41 @@ const BookSession: React.FC = () => {
           client_id: user.id,
           therapist_id: therapist.id,
           amount: totalCost,
+          currency: 'USD',
+          payment_method: 'card',
           platform_fee: platformFee,
           therapist_payout: therapistPayout,
-          payment_method: 'card',
           status: 'pending'
         }]);
 
       if (paymentError) throw paymentError;
+      
+      console.log('✅ Payment transaction created');
+      
+      // Send notification to therapist about new booking
+      try {
+        const { error: notificationError } = await supabase
+          .from('user_notifications')
+          .insert([{
+            user_id: therapist.user_id,
+            title: 'New Session Booking',
+            message: `${user.user_metadata.full_name || 'A client'} has booked a ${sessionType} session with you.`,
+            type: 'info',
+            priority: 'high',
+            read: false,
+            action_url: '/therapist-sessions',
+            action_text: 'View Sessions'
+          }]);
+          
+        if (notificationError) {
+          console.error('Failed to send therapist notification:', notificationError);
+        }
+      } catch (notifError) {
+        console.error('Error sending therapist notification:', notifError);
+      }
 
       toast.success('Session booked successfully!');
-      navigate('/therapists');
+      navigate('/my-therapy-sessions');
     } catch (error) {
       console.error('Error booking session:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to book session');

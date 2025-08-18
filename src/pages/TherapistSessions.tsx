@@ -50,9 +50,13 @@ const TherapistSessions: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
+      console.log('🔍 FETCHING THERAPIST SESSIONS...');
+      
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       if (!user) return;
+
+      console.log('👨‍⚕️ Current therapist user:', user.id);
 
       // Get therapist profile
       const { data: therapistProfile, error: profileError } = await supabase
@@ -62,6 +66,8 @@ const TherapistSessions: React.FC = () => {
         .single();
 
       if (profileError) throw profileError;
+      
+      console.log('🏥 Therapist profile ID:', therapistProfile.id);
 
       // Get sessions
       const { data, error } = await supabase
@@ -69,7 +75,9 @@ const TherapistSessions: React.FC = () => {
         .select(`
           *,
           client:users!therapy_sessions_client_id_fkey(
+            id,
             full_name,
+            email,
             avatar_url
           )
         `)
@@ -77,6 +85,16 @@ const TherapistSessions: React.FC = () => {
         .order('scheduled_start', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📅 Found sessions for therapist:', data?.length || 0);
+      console.log('📋 Session details:', data?.map(s => ({
+        id: s.id,
+        client: s.client?.full_name,
+        status: s.status,
+        date: s.scheduled_start,
+        cost: s.total_cost
+      })));
+      
       setSessions(data || []);
     } catch (error) {
       console.error('Error fetching sessions:', error);

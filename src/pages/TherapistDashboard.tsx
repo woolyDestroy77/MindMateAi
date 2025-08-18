@@ -93,8 +93,8 @@ const TherapistDashboard: React.FC = () => {
     try {
       setIsLoading(true);
       
-      // Force fresh data by bypassing any caching
-      console.log('🔄 FORCING FRESH THERAPIST DATA FETCH...');
+      console.log('🔄 FETCHING FRESH THERAPIST DATA...');
+      console.log('👨‍⚕️ Therapist user ID:', therapistUser?.id);
       
       // Clear any cached data first
       setTherapistProfile(null);
@@ -107,24 +107,22 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: 'pending'
       });
       
-      console.log('🔍 Fetching therapist profile for user:', therapistUser?.id);
-
-      // Get therapist profile with forced fresh query
+      // Get therapist profile with real-time query
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
-        if (profileError.code === 'PGRST116') {
-          // No profile found - user needs to complete registration
-          console.log('📝 No therapist profile found, showing registration form');
-          setTherapistProfile(null);
-          return;
-        }
         console.error('❌ Error fetching therapist profile:', profileError);
         throw profileError;
+      }
+      
+      if (!profile) {
+        console.log('📝 No therapist profile found, showing registration form');
+        setTherapistProfile(null);
+        return;
       }
 
       console.log('✅ Therapist profile found:', {
@@ -136,6 +134,12 @@ const TherapistDashboard: React.FC = () => {
       });
 
       setTherapistProfile(profile);
+      
+      // CRITICAL: Update stats with real verification status
+      setStats(prevStats => ({
+        ...prevStats,
+        verificationStatus: profile.verification_status
+      }));
 
       // Get session stats
       const { data: sessions, error: sessionsError } = await supabase
@@ -186,6 +190,17 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: profile.verification_status
       });
 
+      console.log('📊 Final stats with verification status:', {
+        ...{
+          totalSessions,
+          upcomingSessions,
+          totalEarnings,
+          averageRating: Math.round(averageRating * 10) / 10,
+          totalReviews: reviews?.length || 0,
+          verificationStatus: profile.verification_status
+        }
+      });
+
     } catch (error) {
       console.error('Error fetching therapist data:', error);
       toast.error('Failed to load dashboard data');
@@ -197,7 +212,7 @@ const TherapistDashboard: React.FC = () => {
   // Add a refresh function that can be called manually
   const refreshDashboard = useCallback(async () => {
     if (therapistUser) {
-      console.log('🔄 MANUAL REFRESH TRIGGERED - FORCING FRESH DATA...');
+      console.log('🔄 MANUAL REFRESH TRIGGERED...');
       
       // Clear all cached data
       setTherapistProfile(null);
@@ -212,7 +227,7 @@ const TherapistDashboard: React.FC = () => {
       
       await fetchTherapistData();
       
-      toast.success('Dashboard refreshed with latest data!');
+      toast.success('Dashboard refreshed! Check verification status.');
     }
   }, [therapistUser, fetchTherapistData]);
 
