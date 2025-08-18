@@ -92,31 +92,47 @@ const TherapistDashboard: React.FC = () => {
   const fetchTherapistData = async () => {
     try {
       setIsLoading(true);
+      
+      // Force fresh data by bypassing any caching
+      console.log('🔄 FORCING FRESH THERAPIST DATA FETCH...');
+      
+      // Clear any cached data first
+      setTherapistProfile(null);
+      setStats({
+        totalSessions: 0,
+        upcomingSessions: 0,
+        totalEarnings: 0,
+        averageRating: 0,
+        totalReviews: 0,
+        verificationStatus: 'pending'
+      });
+      
       console.log('🔍 Fetching therapist profile for user:', therapistUser?.id);
 
-      // Get therapist profile
+      // Get therapist profile with forced fresh query
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .maybeSingle();
+        .single();
 
       if (profileError) {
+        if (profileError.code === 'PGRST116') {
+          // No profile found - user needs to complete registration
+          console.log('📝 No therapist profile found, showing registration form');
+          setTherapistProfile(null);
+          return;
+        }
         console.error('❌ Error fetching therapist profile:', profileError);
         throw profileError;
       }
 
-      if (!profile) {
-        // No profile found - user needs to complete registration
-        console.log('📝 No therapist profile found, showing registration form');
-        setTherapistProfile(null);
-        return;
-      }
       console.log('✅ Therapist profile found:', {
         id: profile.id,
         verification_status: profile.verification_status,
         is_active: profile.is_active,
-        professional_title: profile.professional_title
+        professional_title: profile.professional_title,
+        updated_at: profile.updated_at
       });
 
       setTherapistProfile(profile);
@@ -181,14 +197,24 @@ const TherapistDashboard: React.FC = () => {
   // Add a refresh function that can be called manually
   const refreshDashboard = useCallback(async () => {
     if (therapistUser) {
-      console.log('🔄 Manually refreshing therapist dashboard...');
+      console.log('🔄 MANUAL REFRESH TRIGGERED - FORCING FRESH DATA...');
+      
+      // Clear all cached data
+      setTherapistProfile(null);
+      setStats({
+        totalSessions: 0,
+        upcomingSessions: 0,
+        totalEarnings: 0,
+        averageRating: 0,
+        totalReviews: 0,
+        verificationStatus: 'pending'
+      });
+      
       await fetchTherapistData();
-      // Force a page refresh to ensure all data is updated
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      
+      toast.success('Dashboard refreshed with latest data!');
     }
-  }, [therapistUser]);
+  }, [therapistUser, fetchTherapistData]);
 
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
@@ -328,13 +354,13 @@ const TherapistDashboard: React.FC = () => {
                 <Button
                   variant="outline"
                   onClick={refreshDashboard}
-                  leftIcon={<Settings size={16} />}
+                  leftIcon={<TrendingUp size={16} />}
                   className="mr-3"
                 >
-                  Refresh Status
+                  Force Refresh Status
                 </Button>
                 <span className="text-xs text-yellow-700">
-                  Status not updated? Click refresh to check for changes.
+                  Status not updated? Click to force refresh from database.
                 </span>
               </div>
             </div>
