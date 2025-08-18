@@ -557,6 +557,9 @@ export const useNotifications = () => {
       if (user.email === 'youssef.arafat09@gmail.com') {
         console.log('Checking for pending therapist applications...');
         
+        // Store admin user ID for future use
+        localStorage.setItem('admin_user_id', user.id);
+        
         const { data: pendingTherapists } = await supabase
           .from('therapist_profiles')
           .select(`
@@ -569,7 +572,7 @@ export const useNotifications = () => {
           .eq('verification_status', 'pending');
 
         if (pendingTherapists && pendingTherapists.length > 0) {
-          console.log('Found pending therapist applications:', pendingTherapists.length);
+          console.log('🚨 Found pending therapist applications:', pendingTherapists.length);
           
           createNotification(
             `${pendingTherapists.length} Pending Therapist Applications`,
@@ -591,7 +594,7 @@ export const useNotifications = () => {
             }
           );
         } else {
-          console.log('No pending therapist applications found');
+          console.log('✅ No pending therapist applications found');
         }
       }
 

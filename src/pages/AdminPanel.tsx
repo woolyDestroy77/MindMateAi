@@ -66,24 +66,12 @@ const AdminPanel: React.FC = () => {
         if (user && user.email === 'youssef.arafat09@gmail.com') {
           setIsAuthorized(true);
           
-          // Store admin user ID for notifications
-          localStorage.setItem('admin_user_id', user.id);
+          console.log('✅ Admin user authenticated:', user.id);
+          console.log('📧 Admin email:', user.email);
           
-          // Also store in database for easier lookup
-          try {
-            await supabase
-              .from('admin_users')
-              .upsert([{
-                user_id: user.id,
-                email: user.email,
-                role: 'super_admin',
-                last_login: new Date().toISOString()
-              }], {
-                onConflict: 'user_id'
-              });
-          } catch (adminError) {
-            console.error('Error storing admin info:', adminError);
-          }
+          // Store admin user ID for notifications (CRITICAL)
+          localStorage.setItem('admin_user_id', user.id);
+          console.log('💾 Stored admin user ID in localStorage:', user.id);
         } else {
           // Not authorized, redirect to dashboard
           toast.error('Access denied. Admin privileges required.');
@@ -110,6 +98,8 @@ const AdminPanel: React.FC = () => {
   const fetchPendingTherapists = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 Fetching pending therapists...');
+      
       const { data, error } = await supabase
         .from('therapist_profiles')
         .select(`
@@ -124,6 +114,10 @@ const AdminPanel: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('📋 Found therapist profiles:', data?.length || 0);
+      console.log('🔍 Pending applications:', data?.filter(t => t.verification_status === 'pending').length || 0);
+      
       setPendingTherapists(data || []);
     } catch (error) {
       console.error('Error fetching pending therapists:', error);
