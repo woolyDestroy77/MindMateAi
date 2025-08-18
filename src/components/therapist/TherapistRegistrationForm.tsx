@@ -50,8 +50,6 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Basic Information
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [licenseState, setLicenseState] = useState('');
@@ -204,137 +202,129 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if (isSubmitting) return;
 
     try {
-      // Create therapist account
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            user_type: 'therapist',
-            is_therapist: true
-          },
-        },
-      });
+      setIsSubmitting(true);
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error('User not authenticated');
 
-      if (signUpError) throw signUpError;
+      // Create/update therapist profile
+      const { error: profileError } = await supabase
+        .from('therapist_profiles')
+        .upsert([{
+          user_id: user.id,
+          license_number: licenseNumber,
+          license_state: licenseState,
+          license_expiry: licenseExpiry,
+          verification_status: 'pending',
+          professional_title: professionalTitle,
+          years_experience: yearsExperience,
+          education,
+          certifications,
+          bio,
+          approach_description: approachDescription,
+          languages_spoken: languagesSpoken,
+          hourly_rate: hourlyRate,
+          session_types: sessionTypes,
+          accepts_insurance: acceptsInsurance,
+          insurance_networks: insuranceNetworks,
+          timezone,
+          is_active: true,
+          hipaa_training_completed: false,
+          background_check_completed: false
+        }], {
+          onConflict: 'user_id'
+        });
 
-      if (signUpData.user) {
-        // Create therapist profile
-        const { error: profileError } = await supabase
-          .from('therapist_profiles')
-          .insert([{
-            user_id: signUpData.user.id,
-            license_number: licenseNumber,
-            license_state: licenseState,
-            license_expiry: licenseExpiry,
-            verification_status: 'pending',
-            professional_title: professionalTitle,
-            years_experience: yearsExperience,
-            education,
-            certifications,
-            bio,
-            approach_description: approachDescription,
-            languages_spoken: languagesSpoken,
-            hourly_rate: hourlyRate,
-            session_types: sessionTypes,
-            accepts_insurance: acceptsInsurance,
-            insurance_networks: insuranceNetworks,
-            timezone,
-            is_active: true,
-            hipaa_training_completed: false,
-            background_check_completed: false
-          }]);
+      if (profileError) throw profileError;
 
-        if (profileError) throw profileError;
-
-        // Handle profile image upload
-        if (profileImage) {
-          const fileExt = profileImage.name.split('.').pop();
-          const fileName = `${signUpData.user.id}-${Date.now()}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('profile_images')
-            .upload(fileName, profileImage);
-            
-          if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage
-              .from('profile_images')
-              .getPublicUrl(fileName);
-              
-            await supabase.auth.updateUser({
-              data: { avatar_url: publicUrlData.publicUrl }
-            });
-          }
-        }
-
-        // Send admin notification
-        try {
-          console.log('🔔 Attempting to send admin notification...');
-          
-          // Get admin user ID directly from auth users table
-          const { data: adminUser, error: adminError } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', 'youssef.arafat09@gmail.com')
-            .single();
-            
-          if (adminError) {
-            console.error('❌ Could not find admin user:', adminError);
-          } else if (adminUser) {
-            console.log('✅ Found admin user:', adminUser.id);
-            
-            // Create notification directly in database
-            const { data: notification, error: notificationError } = await supabase
-              .from('user_notifications')
-              .insert([{
-                user_id: adminUser.id,
-                title: 'New Therapist Application',
-                message: `${fullName} (${email}) has submitted a therapist application for review.`,
-                type: 'alert',
-                priority: 'high',
-                read: false,
-                action_url: '/admin',
-                action_text: 'Review Application',
-                metadata: {
-                  therapist_id: signUpData.user.id,
-                  therapist_name: fullName,
-                  therapist_email: email,
-                  license_state: licenseState,
-                  professional_title: professionalTitle
-                }
-              }])
-              .select();
-              
-            if (notificationError) {
-              console.error('❌ Failed to create admin notification:', notificationError);
-            } else {
-              console.log('✅ Admin notification created successfully:', notification);
-            }
-          }
-          
-        } catch (notificationError) {
-          console.error('Error sending admin notification:', notificationError);
-        }
-
-        toast.success('Therapist application submitted successfully!');
+      // Handle profile image upload
+      if (profileImage) {
+        const fileExt = profileImage.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         
-        if (onComplete) {
-          onComplete();
+        const { error: uploadError } = await supabase.storage
+          .from('profile_images')
+          .upload(fileName, profileImage);
+          
+        if (!uploadError) {
+          const { data: publicUrlData } = supabase.storage
+            .from('profile_images')
+            .getPublicUrl(fileName);
+            
+          await supabase.auth.updateUser({
+            data: { avatar_url: publicUrlData.publicUrl }
+          });
         }
       }
+
+      // Send admin notification
+      try {
+        console.log('🔔 Attempting to send admin notification...');
+        
+        // Get admin user ID directly from auth users table
+        const { data: adminUser, error: adminError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', 'youssef.arafat09@gmail.com')
+          .single();
+          
+        if (adminError) {
+          console.error('❌ Could not find admin user:', adminError);
+        } else if (adminUser) {
+          console.log('✅ Found admin user:', adminUser.id);
+          
+          // Create notification directly in database
+          const { data: notification, error: notificationError } = await supabase
+            .from('user_notifications')
+            .insert([{
+              user_id: adminUser.id,
+              title: 'New Therapist Application',
+              message: `${fullName} has submitted a therapist application for review.`,
+              type: 'alert',
+              priority: 'high',
+              read: false,
+              action_url: '/admin',
+              action_text: 'Review Application',
+              metadata: {
+                therapist_id: user.id,
+                therapist_name: fullName,
+                therapist_email: user.email,
+                license_state: licenseState,
+                professional_title: professionalTitle
+              }
+            }])
+            .select();
+            
+          if (notificationError) {
+            console.error('❌ Failed to create admin notification:', notificationError);
+          } else {
+            console.log('✅ Admin notification created successfully:', notification);
+          }
+        }
+        
+      } catch (notificationError) {
+        console.error('Error sending admin notification:', notificationError);
+      }
+
+      toast.success('Therapist profile updated successfully!');
+      
+      if (onComplete) {
+        onComplete();
+      }
     } catch (error) {
-      console.error('Error submitting therapist application:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to submit application');
+      console.error('Error updating therapist profile:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to update profile');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const canProceedToStep2 = fullName && email && password && licenseNumber && licenseState && licenseExpiry && professionalTitle;
+  const canProceedToStep2 = fullName && licenseNumber && licenseState && licenseExpiry && professionalTitle;
   const canProceedToStep3 = bio && approachDescription && hourlyRate > 0;
   const canSubmit = education.length > 0 || certifications.length > 0;
 
@@ -416,45 +406,6 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                      Professional Email *
-                    </label>
-                    <div className="relative">
-                      <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="email"
-                        id="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="dr.smith@example.com"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <Lock size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="password"
-                        id="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="••••••••"
-                        minLength={6}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
                     <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-1">
                       License Number *
@@ -983,7 +934,7 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
                   leftIcon={<Shield size={18} />}
                   className="bg-gradient-to-r from-blue-500 to-purple-500"
                 >
-                  Submit Application
+                  Update Profile
                 </Button>
               )}
             </div>
