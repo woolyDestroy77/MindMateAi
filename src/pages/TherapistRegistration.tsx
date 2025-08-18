@@ -1,1244 +1,397 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
-  Award, 
-  GraduationCap, 
-  FileText, 
-  DollarSign, 
-  Clock, 
-  Shield, 
-  CheckCircle, 
-  ArrowRight, 
-  ArrowLeft,
-  AlertTriangle,
-  Calendar,
-  Globe,
-  Users,
-  Heart,
-  Brain,
-  Target
-} from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/layout/Navbar';
-import Button from '../components/ui/Button';
-import Card from '../components/ui/Card';
-import { supabase } from '../lib/supabase';
+import { X, Mail, Lock, User, ArrowRight, Calendar, MapPin, Image, Upload, Trash2, Shield, Award, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useAuth } from '../hooks/useAuth';
+import Button from '../ui/Button';
+import { supabase } from '../../lib/supabase';
+import { FcGoogle } from 'react-icons/fc';
+import { useAuth } from '../../hooks/useAuth';
 
-interface Education {
-  degree: string;
-  institution: string;
-  year: number;
-  field_of_study: string;
+interface AuthModalProps {
+  mode: 'signin' | 'signup';
+  onClose: () => void;
 }
 
-interface Certification {
-  name: string;
-  issuing_organization: string;
-  issue_date: string;
-  expiry_date?: string;
-  credential_id?: string;
-}
+const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
+  const { signInWithGoogle } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [licenseState, setLicenseState] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-interface TherapistRegistrationFormProps {
-  isEmbedded?: boolean;
-  onComplete?: () => void;
-}
-
-export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps> = ({ 
-  isEmbedded = false, 
-  onComplete 
-}) => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Form data state
-  const [formData, setFormData] = useState({
-    // Step 1: License Information
-    license_number: '',
-    license_state: '',
-    license_expiry: '',
-    professional_title: '',
-    years_experience: 1,
-    
-    // Step 2: Education
-    education: [] as Education[],
-    
-    // Step 3: Certifications
-    certifications: [] as Certification[],
-    
-    // Step 4: Professional Information
-    bio: '',
-    approach_description: '',
-    languages_spoken: ['English'],
-    specializations: [] as string[],
-    
-    // Step 5: Services & Pricing
-    hourly_rate: 100,
-    session_types: ['individual'] as string[],
-    accepts_insurance: false,
-    insurance_networks: [] as string[],
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-  });
-
-  // Temporary form states
-  const [newEducation, setNewEducation] = useState<Education>({
-    degree: '',
-    institution: '',
-    year: new Date().getFullYear(),
-    field_of_study: ''
-  });
-  
-  const [newCertification, setNewCertification] = useState<Certification>({
-    name: '',
-    issuing_organization: '',
-    issue_date: '',
-    expiry_date: '',
-    credential_id: ''
-  });
-
-  const [newLanguage, setNewLanguage] = useState('');
-  const [newSpecialization, setNewSpecialization] = useState('');
-  const [newInsuranceNetwork, setNewInsuranceNetwork] = useState('');
-
-  const states = [
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-  ];
-
-  const professionalTitles = [
-    'Licensed Clinical Social Worker (LCSW)',
-    'Licensed Professional Counselor (LPC)',
-    'Licensed Marriage and Family Therapist (LMFT)',
-    'Licensed Mental Health Counselor (LMHC)',
-    'Psychologist (PhD/PsyD)',
-    'Psychiatrist (MD)',
-    'Licensed Clinical Mental Health Counselor (LCMHC)',
-    'Licensed Professional Clinical Counselor (LPCC)',
-    'Licensed Addiction Counselor (LAC)',
-    'Other'
-  ];
-
-  const commonSpecializations = [
-    'Anxiety Disorders',
-    'Depression',
-    'Trauma & PTSD',
-    'Addiction Recovery',
-    'Relationship Issues',
-    'Family Therapy',
-    'Grief & Loss',
-    'Eating Disorders',
-    'ADHD',
-    'Bipolar Disorder',
-    'OCD',
-    'Stress Management',
-    'Life Transitions',
-    'Anger Management',
-    'Self-Esteem Issues'
-  ];
-
-  const sessionTypes = [
-    { value: 'individual', label: 'Individual Therapy' },
-    { value: 'couples', label: 'Couples Therapy' },
-    { value: 'family', label: 'Family Therapy' },
-    { value: 'group', label: 'Group Therapy' }
-  ];
-
-  const commonInsuranceNetworks = [
-    'Aetna',
-    'Anthem',
-    'Blue Cross Blue Shield',
-    'Cigna',
-    'Humana',
-    'Kaiser Permanente',
-    'Medicaid',
-    'Medicare',
-    'UnitedHealth',
-    'Tricare'
-  ];
-
-  // Add education entry
-  const addEducation = () => {
-    if (newEducation.degree && newEducation.institution && newEducation.field_of_study) {
-      setFormData(prev => ({
-        ...prev,
-        education: [...prev.education, newEducation]
-      }));
-      setNewEducation({
-        degree: '',
-        institution: '',
-        year: new Date().getFullYear(),
-        field_of_study: ''
-      });
-    }
-  };
-
-  // Remove education entry
-  const removeEducation = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Add certification
-  const addCertification = () => {
-    if (newCertification.name && newCertification.issuing_organization && newCertification.issue_date) {
-      setFormData(prev => ({
-        ...prev,
-        certifications: [...prev.certifications, newCertification]
-      }));
-      setNewCertification({
-        name: '',
-        issuing_organization: '',
-        issue_date: '',
-        expiry_date: '',
-        credential_id: ''
-      });
-    }
-  };
-
-  // Remove certification
-  const removeCertification = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      certifications: prev.certifications.filter((_, i) => i !== index)
-    }));
-  };
-
-  // Add language
-  const addLanguage = () => {
-    if (newLanguage && !formData.languages_spoken.includes(newLanguage)) {
-      setFormData(prev => ({
-        ...prev,
-        languages_spoken: [...prev.languages_spoken, newLanguage]
-      }));
-      setNewLanguage('');
-    }
-  };
-
-  // Remove language
-  const removeLanguage = (language: string) => {
-    if (language !== 'English') { // Don't allow removing English
-      setFormData(prev => ({
-        ...prev,
-        languages_spoken: prev.languages_spoken.filter(lang => lang !== language)
-      }));
-    }
-  };
-
-  // Add specialization
-  const addSpecialization = (specialization: string) => {
-    if (!formData.specializations.includes(specialization)) {
-      setFormData(prev => ({
-        ...prev,
-        specializations: [...prev.specializations, specialization]
-      }));
-    }
-  };
-
-  // Remove specialization
-  const removeSpecialization = (specialization: string) => {
-    setFormData(prev => ({
-      ...prev,
-      specializations: prev.specializations.filter(spec => spec !== specialization)
-    }));
-  };
-
-  // Add insurance network
-  const addInsuranceNetwork = (network: string) => {
-    if (!formData.insurance_networks.includes(network)) {
-      setFormData(prev => ({
-        ...prev,
-        insurance_networks: [...prev.insurance_networks, network]
-      }));
-    }
-  };
-
-  // Remove insurance network
-  const removeInsuranceNetwork = (network: string) => {
-    setFormData(prev => ({
-      ...prev,
-      insurance_networks: prev.insurance_networks.filter(net => net !== network)
-    }));
-  };
-
-  // Handle session type toggle
-  const toggleSessionType = (type: string) => {
-    setFormData(prev => ({
-      ...prev,
-      session_types: prev.session_types.includes(type)
-        ? prev.session_types.filter(t => t !== type)
-        : [...prev.session_types, type]
-    }));
-  };
-
-  // Submit form
-  const handleSubmit = async () => {
-    if (!user) {
-      toast.error('You must be logged in to complete registration');
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      setIsSubmitting(true);
+      if (mode === 'signup') {
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              user_type: 'therapist',
+              is_therapist: true,
+              license_number: licenseNumber,
+              license_state: licenseState
+            },
+          },
+        });
 
-      // Create or update therapist profile
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
+        if (signUpError) throw signUpError;
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError;
-      }
-
-      const profileData = {
-        user_id: user.id,
-        license_number: formData.license_number,
-        license_state: formData.license_state,
-        license_expiry: formData.license_expiry,
-        verification_status: 'pending',
-        professional_title: formData.professional_title,
-        years_experience: formData.years_experience,
-        education: formData.education,
-        certifications: formData.certifications,
-        bio: formData.bio,
-        approach_description: formData.approach_description,
-        languages_spoken: formData.languages_spoken,
-        hourly_rate: formData.hourly_rate,
-        session_types: formData.session_types,
-        accepts_insurance: formData.accepts_insurance,
-        insurance_networks: formData.insurance_networks,
-        timezone: formData.timezone,
-        is_active: true,
-        hipaa_training_completed: false,
-        background_check_completed: false
-      };
-
-      let profileId;
-
-      if (existingProfile) {
-        // Update existing profile
-        const { data, error } = await supabase
-          .from('therapist_profiles')
-          .update(profileData)
-          .eq('id', existingProfile.id)
-          .select('id')
-          .single();
-
-        if (error) throw error;
-        profileId = data.id;
-      } else {
-        // Create new profile
-        const { data, error } = await supabase
-          .from('therapist_profiles')
-          .insert([profileData])
-          .select('id')
-          .single();
-
-        if (error) throw error;
-        profileId = data.id;
-      }
-
-      // Add specializations
-      if (formData.specializations.length > 0) {
-        // First, delete existing specializations
-        await supabase
-          .from('therapist_specializations')
-          .delete()
-          .eq('therapist_id', profileId);
-
-        // Then add new ones
-        const specializationData = formData.specializations.map(spec => ({
-          therapist_id: profileId,
-          specialization: spec,
-          category: 'mental_health',
-          experience_level: 'intermediate'
-        }));
-
-        const { error: specError } = await supabase
-          .from('therapist_specializations')
-          .insert(specializationData);
-
-        if (specError) throw specError;
-      }
-
-      // Auto-approve for testing (simulate admin approval after 2 seconds)
-      setTimeout(async () => {
-        try {
-          await supabase
+        // If therapist account, create therapist profile
+        if (signUpData.user) {
+          const { error: profileError } = await supabase
             .from('therapist_profiles')
-            .update({ 
-              verification_status: 'verified',
-              hipaa_training_completed: true,
-              hipaa_training_date: new Date().toISOString().split('T')[0],
-              background_check_completed: true,
-              background_check_date: new Date().toISOString().split('T')[0]
-            })
-            .eq('id', profileId);
+            .insert([{
+              user_id: signUpData.user.id,
+              license_number: licenseNumber,
+              license_state: licenseState,
+              license_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              verification_status: 'pending',
+              professional_title: '',
+              years_experience: 0,
+              education: [],
+              certifications: [],
+              bio: '',
+              approach_description: '',
+              languages_spoken: ['English'],
+              hourly_rate: 0,
+              session_types: ['individual'],
+              accepts_insurance: false,
+              insurance_networks: [],
+              timezone: 'UTC',
+              is_active: false,
+              hipaa_training_completed: false,
+              background_check_completed: false
+            }]);
 
-          toast.success('🎉 Registration completed and auto-approved for testing!');
-        } catch (error) {
-          console.error('Auto-approval error:', error);
-        }
-      }, 2000);
+          if (profileError) {
+            console.error('Error creating therapist profile:', profileError);
+          }
+          
+          // Send notification to admin for new therapist signup
+          try {
+            console.log('🔔 Sending admin notification for new therapist account...');
+            
+            // Try to find admin user by email
+            const { data: adminUser, error: adminError } = await supabase
+              .from('users')
+              .select('id, email')
+              .eq('email', 'youssef.arafat09@gmail.com')
+              .maybeSingle();
 
-      toast.success('Registration submitted successfully! You will be notified once approved.');
-      
-      // Send notification to admin for new therapist application
-      try {
-        // Get the admin user ID
-        const { data: adminUsers, error: adminError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', 'youssef.arafat09@gmail.com')
-          .single();
+            console.log('Admin user lookup result:', { adminUser, adminError });
 
-        if (adminError) {
-          console.error('Error finding admin user:', adminError);
-          // Fallback: try to get from localStorage or use a known ID
-          const storedAdminId = localStorage.getItem('admin_user_id');
-          if (storedAdminId) {
-            await supabase
-              .from('user_notifications')
-              .insert([{
-                user_id: storedAdminId,
-                title: 'New Therapist Application',
-                message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
-                type: 'alert',
-                priority: 'high',
+            let adminUserId = null;
+
+            if (adminUser && !adminError) {
+              adminUserId = adminUser.id;
+              console.log('✅ Found admin user via email lookup:', adminUserId);
+            } else {
+              // Fallback to localStorage
+              const storedAdminId = localStorage.getItem('admin_user_id');
+              if (storedAdminId) {
+                adminUserId = storedAdminId;
+                console.log('✅ Using stored admin ID from localStorage:', adminUserId);
+              }
+            }
+
+            if (adminUserId) {
+              const notificationData = {
+                user_id: adminUserId,
+                title: 'New Therapist Account Created',
+                message: `${fullName} (${email}) has created a therapist account and needs to complete registration.`,
+                type: 'info',
+                priority: 'medium',
                 read: false,
                 action_url: '/admin',
-                action_text: 'Review Application',
+                action_text: 'View Account',
                 metadata: {
-                  therapist_id: profileId,
-                  applicant_name: user.user_metadata?.full_name,
-                  license_state: formData.license_state,
-                  professional_title: formData.professional_title
+                  new_user_id: signUpData.user.id,
+                  user_email: email,
+                  user_name: fullName,
+                  account_type: 'therapist'
                 }
-              }]);
-          }
-        } else if (adminUsers) {
-          await supabase
-            .from('user_notifications')
-            .insert([{
-              user_id: adminUsers.id,
-              title: 'New Therapist Application',
-              message: `${formData.professional_title} ${user.user_metadata?.full_name || 'Unknown'} has submitted a therapist application for review.`,
-              type: 'alert',
-              priority: 'high',
-              read: false,
-              action_url: '/admin',
-              action_text: 'Review Application',
-              metadata: {
-                therapist_id: profileId,
-                applicant_name: user.user_metadata?.full_name,
-                license_state: formData.license_state,
-                professional_title: formData.professional_title
+              };
+
+              console.log('📤 Sending account creation notification to admin:', notificationData);
+
+              const { data: notificationResult, error: notificationError } = await supabase
+                .from('user_notifications')
+                .insert([notificationData])
+                .select();
+
+              if (notificationError) {
+                console.error('❌ Error creating admin notification:', notificationError);
+              } else {
+                console.log('✅ Admin notification created successfully:', notificationResult);
               }
-            }]);
+            } else {
+              console.error('❌ No admin user ID available - notification not sent');
+            }
+          } catch (notificationError) {
+            console.error('Error sending admin notification:', notificationError);
+          }
         }
 
-        // Also create a general admin notification that doesn't depend on user lookup
-        await supabase
-          .from('therapist_applications_log')
-          .insert([{
-            therapist_id: profileId,
-            applicant_name: user.user_metadata?.full_name || 'Unknown',
-            applicant_email: user.email,
-            professional_title: formData.professional_title,
-            license_state: formData.license_state,
-            status: 'submitted',
-            submitted_at: new Date().toISOString()
-          }]);
-      } catch (notificationError) {
-        console.error('Error sending admin notification:', notificationError);
-      }
-
-      if (onComplete) {
-        onComplete();
+        toast.success('Therapist account created! Please complete your registration.');
+        onClose();
       } else {
-        navigate('/therapist-dashboard');
+        // Sign in therapist
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) throw signInError;
+
+        // Verify this is a therapist account
+        if (signInData.user) {
+          const userType = signInData.user.user_metadata?.user_type;
+          const isTherapist = signInData.user.user_metadata?.is_therapist;
+          
+          if (userType !== 'therapist' && !isTherapist) {
+            await supabase.auth.signOut();
+            throw new Error('This account is not registered as a therapist account. Please use the patient login or create a therapist account.');
+          }
+        }
+
+        toast.success('Successfully signed in as therapist!');
+        onClose();
       }
-
     } catch (error) {
-      console.error('Registration error:', error);
-      toast.error('Failed to submit registration. Please try again.');
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1:
-        return formData.license_number && formData.license_state && formData.license_expiry && 
-               formData.professional_title && formData.years_experience;
-      case 2:
-        return formData.education.length > 0;
-      case 3:
-        return true; // Certifications are optional
-      case 4:
-        return formData.bio && formData.approach_description && formData.specializations.length > 0;
-      case 5:
-        return formData.hourly_rate > 0 && formData.session_types.length > 0;
-      default:
-        return false;
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsGoogleLoading(true);
+      await signInWithGoogle();
+      onClose();
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
-
-  const nextStep = () => {
-    if (currentStep < 5) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      handleSubmit();
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const renderStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">License Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="license_number" className="block text-sm font-medium text-gray-700 mb-1">
-                    License Number *
-                  </label>
-                  <input
-                    type="text"
-                    id="license_number"
-                    value={formData.license_number}
-                    onChange={(e) => setFormData(prev => ({ ...prev, license_number: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="LIC123456"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="license_state" className="block text-sm font-medium text-gray-700 mb-1">
-                    License State *
-                  </label>
-                  <select
-                    id="license_state"
-                    value={formData.license_state}
-                    onChange={(e) => setFormData(prev => ({ ...prev, license_state: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select State</option>
-                    {states.map(state => (
-                      <option key={state} value={state}>{state}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label htmlFor="license_expiry" className="block text-sm font-medium text-gray-700 mb-1">
-                    License Expiry Date *
-                  </label>
-                  <input
-                    type="date"
-                    id="license_expiry"
-                    value={formData.license_expiry}
-                    onChange={(e) => setFormData(prev => ({ ...prev, license_expiry: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="years_experience" className="block text-sm font-medium text-gray-700 mb-1">
-                    Years of Experience *
-                  </label>
-                  <input
-                    type="number"
-                    id="years_experience"
-                    min="0"
-                    max="50"
-                    value={formData.years_experience}
-                    onChange={(e) => setFormData(prev => ({ ...prev, years_experience: parseInt(e.target.value) || 1 }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="mt-4">
-                <label htmlFor="professional_title" className="block text-sm font-medium text-gray-700 mb-1">
-                  Professional Title *
-                </label>
-                <select
-                  id="professional_title"
-                  value={formData.professional_title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, professional_title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="">Select Title</option>
-                  {professionalTitles.map(title => (
-                    <option key={title} value={title}>{title}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 2:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Education</h3>
-              
-              {/* Add Education Form */}
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h4 className="font-medium text-gray-900 mb-3">Add Education</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Degree *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEducation.degree}
-                      onChange={(e) => setNewEducation(prev => ({ ...prev, degree: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., Master of Social Work"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Institution *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEducation.institution}
-                      onChange={(e) => setNewEducation(prev => ({ ...prev, institution: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., University of California"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Year *
-                    </label>
-                    <input
-                      type="number"
-                      min="1950"
-                      max={new Date().getFullYear()}
-                      value={newEducation.year}
-                      onChange={(e) => setNewEducation(prev => ({ ...prev, year: parseInt(e.target.value) || new Date().getFullYear() }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Field of Study *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEducation.field_of_study}
-                      onChange={(e) => setNewEducation(prev => ({ ...prev, field_of_study: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., Clinical Psychology"
-                    />
-                  </div>
-                </div>
-                
-                <Button
-                  type="button"
-                  onClick={addEducation}
-                  disabled={!newEducation.degree || !newEducation.institution || !newEducation.field_of_study}
-                  className="mt-3"
-                  leftIcon={<GraduationCap size={16} />}
-                >
-                  Add Education
-                </Button>
-              </div>
-              
-              {/* Education List */}
-              <div className="space-y-3">
-                {formData.education.map((edu, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{edu.degree}</h4>
-                        <p className="text-sm text-gray-600">{edu.institution} • {edu.year}</p>
-                        <p className="text-sm text-gray-500">{edu.field_of_study}</p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeEducation(index)}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                
-                {formData.education.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    No education entries added yet. Please add at least one.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 3:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Certifications (Optional)</h3>
-              
-              {/* Add Certification Form */}
-              <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h4 className="font-medium text-gray-900 mb-3">Add Certification</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Certification Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newCertification.name}
-                      onChange={(e) => setNewCertification(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., Certified Clinical Trauma Professional"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Issuing Organization
-                    </label>
-                    <input
-                      type="text"
-                      value={newCertification.issuing_organization}
-                      onChange={(e) => setNewCertification(prev => ({ ...prev, issuing_organization: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="e.g., International Association for Trauma Professionals"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Issue Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newCertification.issue_date}
-                      onChange={(e) => setNewCertification(prev => ({ ...prev, issue_date: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Expiry Date (Optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={newCertification.expiry_date}
-                      onChange={(e) => setNewCertification(prev => ({ ...prev, expiry_date: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Credential ID (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newCertification.credential_id}
-                      onChange={(e) => setNewCertification(prev => ({ ...prev, credential_id: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Certification ID or number"
-                    />
-                  </div>
-                </div>
-                
-                <Button
-                  type="button"
-                  onClick={addCertification}
-                  disabled={!newCertification.name || !newCertification.issuing_organization || !newCertification.issue_date}
-                  className="mt-3"
-                  leftIcon={<Award size={16} />}
-                >
-                  Add Certification
-                </Button>
-              </div>
-              
-              {/* Certifications List */}
-              <div className="space-y-3">
-                {formData.certifications.map((cert, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{cert.name}</h4>
-                        <p className="text-sm text-gray-600">{cert.issuing_organization}</p>
-                        <p className="text-sm text-gray-500">
-                          Issued: {new Date(cert.issue_date).toLocaleDateString()}
-                          {cert.expiry_date && ` • Expires: ${new Date(cert.expiry_date).toLocaleDateString()}`}
-                        </p>
-                        {cert.credential_id && (
-                          <p className="text-xs text-gray-500">ID: {cert.credential_id}</p>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeCertification(index)}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                
-                {formData.certifications.length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
-                    No certifications added yet. This step is optional.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      case 4:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Professional Information</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
-                    Professional Bio *
-                  </label>
-                  <textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={4}
-                    placeholder="Tell potential clients about your background, experience, and what makes you unique as a therapist..."
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="approach_description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Therapeutic Approach *
-                  </label>
-                  <textarea
-                    id="approach_description"
-                    value={formData.approach_description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, approach_description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
-                    placeholder="Describe your therapeutic approach, methodologies, and treatment philosophy..."
-                    required
-                  />
-                </div>
-                
-                {/* Languages */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Languages Spoken
-                  </label>
-                  <div className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={newLanguage}
-                      onChange={(e) => setNewLanguage(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Add a language..."
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addLanguage())}
-                    />
-                    <Button
-                      type="button"
-                      onClick={addLanguage}
-                      disabled={!newLanguage}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.languages_spoken.map((language) => (
-                      <span
-                        key={language}
-                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center"
-                      >
-                        {language}
-                        {language !== 'English' && (
-                          <button
-                            type="button"
-                            onClick={() => removeLanguage(language)}
-                            className="ml-2 text-blue-600 hover:text-blue-800"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Specializations */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Specializations *
-                  </label>
-                  <div className="mb-3">
-                    <p className="text-xs text-gray-600 mb-2">Common specializations:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {commonSpecializations.map((spec) => (
-                        <button
-                          key={spec}
-                          type="button"
-                          onClick={() => addSpecialization(spec)}
-                          disabled={formData.specializations.includes(spec)}
-                          className={`text-xs px-3 py-1 rounded-full ${
-                            formData.specializations.includes(spec)
-                              ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {spec}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex space-x-2 mb-2">
-                    <input
-                      type="text"
-                      value={newSpecialization}
-                      onChange={(e) => setNewSpecialization(e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Add custom specialization..."
-                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), newSpecialization && addSpecialization(newSpecialization), setNewSpecialization(''))}
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        if (newSpecialization) {
-                          addSpecialization(newSpecialization);
-                          setNewSpecialization('');
-                        }
-                      }}
-                      disabled={!newSpecialization}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {formData.specializations.map((spec) => (
-                      <span
-                        key={spec}
-                        className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm flex items-center"
-                      >
-                        {spec}
-                        <button
-                          type="button"
-                          onClick={() => removeSpecialization(spec)}
-                          className="ml-2 text-purple-600 hover:text-purple-800"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  
-                  {formData.specializations.length === 0 && (
-                    <p className="text-sm text-red-600 mt-1">Please add at least one specialization.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Services & Pricing</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label htmlFor="hourly_rate" className="block text-sm font-medium text-gray-700 mb-1">
-                    Hourly Rate (USD) *
-                  </label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                      type="number"
-                      id="hourly_rate"
-                      min="50"
-                      max="500"
-                      value={formData.hourly_rate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, hourly_rate: parseInt(e.target.value) || 100 }))}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    You keep 85% of session fees. Platform fee: 15%
-                  </p>
-                </div>
-                
-                {/* Session Types */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Session Types Offered *
-                  </label>
-                  <div className="space-y-2">
-                    {sessionTypes.map((type) => (
-                      <label key={type.value} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.session_types.includes(type.value)}
-                          onChange={() => toggleSessionType(type.value)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{type.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  {formData.session_types.length === 0 && (
-                    <p className="text-sm text-red-600 mt-1">Please select at least one session type.</p>
-                  )}
-                </div>
-                
-                {/* Insurance */}
-                <div>
-                  <label className="flex items-center mb-3">
-                    <input
-                      type="checkbox"
-                      checked={formData.accepts_insurance}
-                      onChange={(e) => setFormData(prev => ({ ...prev, accepts_insurance: e.target.checked }))}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm font-medium text-gray-700">I accept insurance</span>
-                  </label>
-                  
-                  {formData.accepts_insurance && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Insurance Networks
-                      </label>
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-600 mb-2">Common networks:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {commonInsuranceNetworks.map((network) => (
-                            <button
-                              key={network}
-                              type="button"
-                              onClick={() => addInsuranceNetwork(network)}
-                              disabled={formData.insurance_networks.includes(network)}
-                              className={`text-xs px-3 py-1 rounded-full ${
-                                formData.insurance_networks.includes(network)
-                                  ? 'bg-green-100 text-green-800 cursor-not-allowed'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {network}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      
-                      <div className="flex space-x-2 mb-2">
-                        <input
-                          type="text"
-                          value={newInsuranceNetwork}
-                          onChange={(e) => setNewInsuranceNetwork(e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Add custom insurance network..."
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), newInsuranceNetwork && addInsuranceNetwork(newInsuranceNetwork), setNewInsuranceNetwork(''))}
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            if (newInsuranceNetwork) {
-                              addInsuranceNetwork(newInsuranceNetwork);
-                              setNewInsuranceNetwork('');
-                            }
-                          }}
-                          disabled={!newInsuranceNetwork}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2">
-                        {formData.insurance_networks.map((network) => (
-                          <span
-                            key={network}
-                            className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center"
-                          >
-                            {network}
-                            <button
-                              type="button"
-                              onClick={() => removeInsuranceNetwork(network)}
-                              className="ml-2 text-green-600 hover:text-green-800"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Timezone */}
-                <div>
-                  <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-1">
-                    Timezone
-                  </label>
-                  <select
-                    id="timezone"
-                    value={formData.timezone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, timezone: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="America/New_York">Eastern Time (ET)</option>
-                    <option value="America/Chicago">Central Time (CT)</option>
-                    <option value="America/Denver">Mountain Time (MT)</option>
-                    <option value="America/Los_Angeles">Pacific Time (PT)</option>
-                    <option value="America/Anchorage">Alaska Time (AKT)</option>
-                    <option value="Pacific/Honolulu">Hawaii Time (HT)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const content = (
-    <div className="space-y-8">
-      {/* Progress Indicator */}
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2">
-          {[1, 2, 3, 4, 5].map((step) => (
-            <div
-              key={step}
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                step === currentStep
-                  ? 'bg-blue-600 text-white'
-                  : step < currentStep
-                  ? 'bg-green-600 text-white'
-                  : 'bg-gray-200 text-gray-600'
-              }`}
-            >
-              {step < currentStep ? <CheckCircle size={16} /> : step}
-            </div>
-          ))}
-        </div>
-        <div className="text-sm text-gray-600">
-          Step {currentStep} of 5
-        </div>
-      </div>
-
-      {/* Step Content */}
-      <Card>
-        <div className="p-6">
-          {renderStep()}
-        </div>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={prevStep}
-          disabled={currentStep === 1}
-          leftIcon={<ArrowLeft size={16} />}
-        >
-          Previous
-        </Button>
-        
-        <Button
-          type="button"
-          variant="primary"
-          onClick={nextStep}
-          disabled={!canProceed()}
-          isLoading={isSubmitting && currentStep === 5}
-          rightIcon={currentStep === 5 ? <CheckCircle size={16} /> : <ArrowRight size={16} />}
-          className="bg-gradient-to-r from-blue-500 to-purple-500"
-        >
-          {currentStep === 5 ? 'Complete Registration' : 'Next'}
-        </Button>
-      </div>
-    </div>
-  );
-
-  if (isEmbedded) {
-    return content;
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Complete Your Therapist Registration</h1>
-          <p className="text-gray-600">
-            Please provide your professional information to start accepting clients
-          </p>
-        </div>
-        
-        {content}
-      </main>
-    </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          className="bg-white rounded-xl shadow-xl max-w-md w-full overflow-hidden"
+          onClick={e => e.stopPropagation()}
+        >
+          <div className="relative p-6">
+            <button
+              onClick={onClose}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center space-x-2 mb-3">
+                <Shield className="w-8 h-8 text-blue-600" />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {mode === 'signin' ? 'Therapist Sign In' : 'Therapist Registration'}
+                </h2>
+              </div>
+              <p className="text-gray-600">
+                {mode === 'signin' 
+                  ? 'Access your therapist dashboard'
+                  : 'Join as a licensed mental health professional'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {mode === 'signup' && (
+                <>
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Full Name *
+                    </label>
+                    <div className="relative">
+                      <User size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Dr. Jane Smith"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                      License Number *
+                    </label>
+                    <div className="relative">
+                      <Award size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        id="licenseNumber"
+                        value={licenseNumber}
+                        onChange={(e) => setLicenseNumber(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="LIC123456"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="licenseState" className="block text-sm font-medium text-gray-700 mb-1">
+                      License State *
+                    </label>
+                    <select
+                      id="licenseState"
+                      value={licenseState}
+                      onChange={(e) => setLicenseState(e.target.value)}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select State</option>
+                      <option value="CA">California</option>
+                      <option value="NY">New York</option>
+                      <option value="TX">Texas</option>
+                      <option value="FL">Florida</option>
+                      <option value="IL">Illinois</option>
+                      <option value="PA">Pennsylvania</option>
+                      <option value="OH">Ohio</option>
+                      <option value="GA">Georgia</option>
+                      <option value="NC">North Carolina</option>
+                      <option value="MI">Michigan</option>
+                    </select>
+                  </div>
+                </>
+              )}
+              
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  Professional Email *
+                </label>
+                <div className="relative">
+                  <Mail size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="email"
+                    id="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="dr.smith@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Password *
+                </label>
+                <div className="relative">
+                  <Lock size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="password"
+                    id="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="••••••••"
+                    minLength={6}
+                    required
+                  />
+                </div>
+                {mode === 'signup' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Password must be at least 6 characters long
+                  </p>
+                )}
+              </div>
+
+              {mode === 'signup' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-start space-x-2">
+                    <FileText className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-blue-800">
+                      <p className="font-medium mb-1">Professional Requirements:</p>
+                      <ul className="space-y-0.5">
+                        <li>• Valid state license required</li>
+                        <li>• Background check will be conducted</li>
+                        <li>• HIPAA training verification needed</li>
+                        <li>• Professional liability insurance required</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                fullWidth
+                isLoading={isLoading}
+                rightIcon={<ArrowRight size={18} />}
+                className="mt-6 bg-gradient-to-r from-blue-500 to-purple-500"
+              >
+                {mode === 'signin' 
+                  ? 'Sign In to Dashboard' 
+                  : 'Create Therapist Account'}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                {mode === 'signin' ? (
+                  <>
+                    Don't have a therapist account?{' '}
+                    <button
+                      onClick={() => onClose()}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Register here
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    Already have a therapist account?{' '}
+                    <button
+                      onClick={() => onClose()}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      Sign in
+                    </button>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
-const TherapistRegistration: React.FC = () => {
-  return <TherapistRegistrationForm />;
-};
-
-export default TherapistRegistration;
+export default AuthModal;
