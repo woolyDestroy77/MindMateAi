@@ -273,21 +273,49 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
 
         // Send admin notification
         try {
-          await sendAdminNotification(
-            'New Therapist Application',
-            `${fullName} (${email}) has submitted a therapist application for review.`,
-            'alert',
-            'high',
-            '/admin',
-            'Review Application',
-            {
-              therapist_id: signUpData.user.id,
-              therapist_name: fullName,
-              therapist_email: email,
-              license_state: licenseState,
-              professional_title: professionalTitle
+          console.log('🔔 Attempting to send admin notification...');
+          
+          // Get admin user ID directly from auth users table
+          const { data: adminUser, error: adminError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', 'youssef.arafat09@gmail.com')
+            .single();
+            
+          if (adminError) {
+            console.error('❌ Could not find admin user:', adminError);
+          } else if (adminUser) {
+            console.log('✅ Found admin user:', adminUser.id);
+            
+            // Create notification directly in database
+            const { data: notification, error: notificationError } = await supabase
+              .from('user_notifications')
+              .insert([{
+                user_id: adminUser.id,
+                title: 'New Therapist Application',
+                message: `${fullName} (${email}) has submitted a therapist application for review.`,
+                type: 'alert',
+                priority: 'high',
+                read: false,
+                action_url: '/admin',
+                action_text: 'Review Application',
+                metadata: {
+                  therapist_id: signUpData.user.id,
+                  therapist_name: fullName,
+                  therapist_email: email,
+                  license_state: licenseState,
+                  professional_title: professionalTitle
+                }
+              }])
+              .select();
+              
+            if (notificationError) {
+              console.error('❌ Failed to create admin notification:', notificationError);
+            } else {
+              console.log('✅ Admin notification created successfully:', notification);
             }
-          );
+          }
+          
         } catch (notificationError) {
           console.error('Error sending admin notification:', notificationError);
         }
