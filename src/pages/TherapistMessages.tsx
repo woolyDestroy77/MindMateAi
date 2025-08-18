@@ -135,6 +135,42 @@ const TherapistMessages: React.FC = () => {
           .update({ is_read: true, read_at: new Date().toISOString() })
           .in('id', unreadMessages.map(msg => msg.id));
       }
+      
+      // Set up real-time subscription for new messages
+      const subscription = supabase
+        .channel('therapist_messages_changes')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'therapist_messages',
+          filter: `recipient_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('🔄 New message received:', payload);
+          
+          // Fetch the new message with sender data
+          supabase
+            .from('therapist_messages')
+            .select(`
+              *,
+              sender:users!therapist_messages_sender_id_fkey(
+                full_name,
+                avatar_url
+              )
+            `)
+            .eq('id', payload.new.id)
+            .single()
+            .then(({ data: newMessage }) => {
+              if (newMessage) {
+                setMessages(prev => [...prev, newMessage]);
+                toast.success('New message received');
+              }
+            });
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast.error('Failed to load messages');

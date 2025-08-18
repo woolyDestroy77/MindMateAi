@@ -844,6 +844,18 @@ const Dashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.7 }}
           >
+            <TherapySessionCard 
+              sessions={therapySessions}
+              isLoading={therapyLoading}
+            />
+          </motion.div>
+
+          {/* Achievements */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+          >
             <AchievementsCard 
               moodData={moodData}
               journalEntries={journalEntries}
@@ -857,7 +869,7 @@ const Dashboard = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
+            transition={{ duration: 0.5, delay: 0.9 }}
           >
             <Card variant="elevated" className="h-full">
               <div className="space-y-4">
@@ -893,14 +905,14 @@ const Dashboard = () => {
                       Write Journal
                     </Button>
                   </Link>
-                  <Link to="/addiction-support">
+                  <Link to="/therapists">
                     <Button
                       variant="outline"
                       size="lg"
                       className="flex-col h-24 w-full"
-                      leftIcon={<Heart size={24} />}
+                      leftIcon={<Users size={24} />}
                     >
-                      Recovery Support
+                      Find Therapists
                     </Button>
                   </Link>
                 </div>

@@ -228,6 +228,11 @@ const TherapistDashboard: React.FC = () => {
       await fetchTherapistData();
       
       toast.success('Dashboard refreshed! Check verification status.');
+      
+      // Force page reload after 1 second to ensure fresh data
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     }
   }, [therapistUser, fetchTherapistData]);
 

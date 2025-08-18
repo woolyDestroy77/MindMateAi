@@ -40,6 +40,8 @@ export const useTherapySessions = () => {
       if (userError) throw userError;
       if (!user) return;
 
+      console.log('🔍 Fetching therapy sessions for user:', user.id);
+
       const { data, error } = await supabase
         .from('therapy_sessions')
         .select(`
@@ -58,7 +60,36 @@ export const useTherapySessions = () => {
         .order('scheduled_start', { ascending: false });
 
       if (error) throw error;
+      
+      console.log('✅ Found therapy sessions:', data?.length || 0);
       setSessions(data || []);
+      
+      // Set up real-time subscription for session updates
+      const subscription = supabase
+        .channel('therapy_sessions_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'therapy_sessions',
+          filter: `client_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('🔄 Real-time therapy session update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            setSessions(prev => [payload.new as TherapySession, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setSessions(prev => prev.map(session => 
+              session.id === payload.new.id ? payload.new as TherapySession : session
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setSessions(prev => prev.filter(session => session.id !== payload.old.id));
+          }
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     } catch (err) {
       console.error('Error fetching therapy sessions:', err);
       setError('Failed to load therapy sessions');
@@ -74,6 +105,8 @@ export const useTherapySessions = () => {
       if (userError) throw userError;
       if (!user) return false;
 
+      console.log('🚫 Cancelling session:', sessionId);
+
       const { error } = await supabase
         .from('therapy_sessions')
         .update({
@@ -87,13 +120,7 @@ export const useTherapySessions = () => {
 
       if (error) throw error;
 
-      // Update local state
-      setSessions(prev => prev.map(session => 
-        session.id === sessionId 
-          ? { ...session, status: 'cancelled' as const }
-          : session
-      ));
-
+      console.log('✅ Session cancelled successfully');
       toast.success('Session cancelled successfully');
       return true;
     } catch (error) {

@@ -96,6 +96,52 @@ const TherapistSessions: React.FC = () => {
       })));
       
       setSessions(data || []);
+      
+      // Set up real-time subscription for new session bookings
+      const subscription = supabase
+        .channel('therapist_sessions_changes')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'therapy_sessions',
+          filter: `therapist_id=eq.${therapistProfile.id}`
+        }, (payload) => {
+          console.log('🔄 Real-time therapist session update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            // Fetch the new session with client data
+            supabase
+              .from('therapy_sessions')
+              .select(`
+                *,
+                client:users!therapy_sessions_client_id_fkey(
+                  id,
+                  full_name,
+                  email,
+                  avatar_url
+                )
+              `)
+              .eq('id', payload.new.id)
+              .single()
+              .then(({ data: newSession }) => {
+                if (newSession) {
+                  setSessions(prev => [newSession, ...prev]);
+                  toast.success('New session booking received!');
+                }
+              });
+          } else if (payload.eventType === 'UPDATE') {
+            setSessions(prev => prev.map(session => 
+              session.id === payload.new.id ? { ...session, ...payload.new } : session
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            setSessions(prev => prev.filter(session => session.id !== payload.old.id));
+          }
+        })
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     } catch (error) {
       console.error('Error fetching sessions:', error);
       toast.error('Failed to load sessions');
