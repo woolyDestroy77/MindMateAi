@@ -500,12 +500,74 @@ const AdminPanel: React.FC = () => {
               <Card className="bg-blue-50 border-blue-200">
                 <div className="p-4">
                   <h3 className="font-medium text-blue-900 mb-2">Other Applications (Debug)</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     {pendingTherapists
                       .filter(t => !['pending', 'rejected'].includes(t.verification_status))
                       .map(therapist => (
-                        <div key={therapist.id} className="text-sm text-blue-800">
-                          {therapist.user?.full_name} - Status: {therapist.verification_status}
+                        <div key={therapist.id} className="bg-white rounded-lg p-4 border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100">
+                                {therapist.user?.avatar_url ? (
+                                  <img 
+                                    src={therapist.user.avatar_url} 
+                                    alt={therapist.user.full_name} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <User className="w-full h-full p-2 text-gray-400" />
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="font-medium text-gray-900">{therapist.user?.full_name}</h4>
+                                <p className="text-sm text-gray-600">{therapist.professional_title}</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium border flex items-center space-x-1 ${getStatusColor(therapist.verification_status)}`}>
+                                    {getStatusIcon(therapist.verification_status)}
+                                    <span className="capitalize">{therapist.verification_status}</span>
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {therapist.license_state} • ${therapist.hourly_rate}/hr
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedTherapist(therapist)}
+                                leftIcon={<Eye size={16} />}
+                              >
+                                Review
+                              </Button>
+                              
+                              {therapist.verification_status === 'verified' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => rejectTherapist(therapist.id)}
+                                  leftIcon={<X size={16} />}
+                                  className="text-red-600 border-red-300 hover:bg-red-50"
+                                >
+                                  Revoke
+                                </Button>
+                              )}
+                              
+                              {therapist.verification_status === 'rejected' && (
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={() => approveTherapist(therapist.id)}
+                                  leftIcon={<CheckCircle size={16} />}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  Approve
+                                </Button>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       ))}
                   </div>
