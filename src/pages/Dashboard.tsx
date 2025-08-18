@@ -40,12 +40,14 @@ import AchievementsCard from '../components/dashboard/AchievementsCard';
 import PhotoMemoriesCard from '../components/dashboard/PhotoMemoriesCard';
 import UpcomingEventsCard from '../components/anxiety/UpcomingEventsCard';
 import AIGoalsCard from '../components/dashboard/AIGoalsCard';
+import TherapySessionCard from '../components/dashboard/TherapySessionCard';
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useDailyReset } from '../hooks/useDailyReset';
 import { useMoodTrends } from '../hooks/useMoodTrends';
 import { useAddictionSupport } from '../hooks/useAddictionSupport';
 import { useJournal } from '../hooks/useJournal';
 import { useAnxietySupport } from '../hooks/useAnxietySupport';
+import { useTherapySessions } from '../hooks/useTherapySessions';
 
 const Dashboard = () => {
   const { dashboardData, isLoading: dashboardLoading, refreshDashboardData, updateTrigger } = useDashboardData();
@@ -76,6 +78,9 @@ const Dashboard = () => {
   
   // Get anxiety sessions for achievements
   const { todaysSessions: anxietySessions, isLoading: anxietyLoading } = useAnxietySupport();
+  
+  // Get therapy sessions
+  const { sessions: therapySessions, isLoading: therapyLoading } = useTherapySessions();
   
   const [showAddGoalModal, setShowAddGoalModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
