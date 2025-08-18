@@ -116,25 +116,37 @@ const AdminPanel: React.FC = () => {
   const fetchPendingTherapists = async () => {
     try {
       setIsLoading(true);
-      console.log('🔍 Fetching pending therapists...');
+      console.log('🔍 Fetching ALL therapist profiles...');
       
       const { data, error } = await supabase
         .from('therapist_profiles')
         .select(`
           *,
-          user:users!therapist_profiles_user_id_fkey(
+          user:users(
             full_name,
             email,
             avatar_url
           )
         `)
-        .in('verification_status', ['pending', 'rejected'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      console.log('📋 Found therapist profiles:', data?.length || 0);
+      console.log('📋 ALL therapist profiles found:', data?.length || 0);
       console.log('🔍 Pending applications:', data?.filter(t => t.verification_status === 'pending').length || 0);
+      console.log('✅ Verified applications:', data?.filter(t => t.verification_status === 'verified').length || 0);
+      console.log('❌ Rejected applications:', data?.filter(t => t.verification_status === 'rejected').length || 0);
+      
+      // Log each profile for debugging
+      data?.forEach((profile, index) => {
+        console.log(`Profile ${index + 1}:`, {
+          id: profile.id,
+          name: profile.user?.full_name,
+          email: profile.user?.email,
+          status: profile.verification_status,
+          created: profile.created_at
+        });
+      });
       
       setPendingTherapists(data || []);
     } catch (error) {
@@ -351,11 +363,24 @@ const AdminPanel: React.FC = () => {
           <Card className="text-center py-12">
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Applications</h3>
-            <p className="text-gray-600">No therapist applications to review at this time.</p>
+            <p className="text-gray-600 mb-4">No therapist applications found in the database.</p>
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>Debug: Check browser console for detailed logs</p>
+              <p>If applications exist but don't appear, there may be a database query issue</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={fetchPendingTherapists}
+              className="mt-4"
+            >
+              Refresh & Debug
+            </Button>
           </Card>
         ) : (
           <div className="space-y-6">
-            {pendingTherapists.map((therapist) => (
+            {pendingTherapists
+              .filter(therapist => ['pending', 'rejected'].includes(therapist.verification_status))
+              .map((therapist) => (
               <motion.div
                 key={therapist.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -469,6 +494,24 @@ const AdminPanel: React.FC = () => {
                 </Card>
               </motion.div>
             ))}
+            
+            {/* Show all applications for debugging */}
+            {pendingTherapists.filter(t => !['pending', 'rejected'].includes(t.verification_status)).length > 0 && (
+              <Card className="bg-blue-50 border-blue-200">
+                <div className="p-4">
+                  <h3 className="font-medium text-blue-900 mb-2">Other Applications (Debug)</h3>
+                  <div className="space-y-2">
+                    {pendingTherapists
+                      .filter(t => !['pending', 'rejected'].includes(t.verification_status))
+                      .map(therapist => (
+                        <div key={therapist.id} className="text-sm text-blue-800">
+                          {therapist.user?.full_name} - Status: {therapist.verification_status}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
         )}
 
