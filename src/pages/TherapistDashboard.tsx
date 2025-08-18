@@ -24,7 +24,7 @@ import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { TherapistRegistrationForm } from './TherapistRegistration';
+import { TherapistRegistrationForm } from '../components/therapist/TherapistRegistrationForm';
 
 interface TherapistStats {
   totalSessions: number;
