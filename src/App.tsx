@@ -24,6 +24,8 @@ const TherapistSchedule = lazy(() => import('./pages/TherapistSchedule'));
 const TherapistEarnings = lazy(() => import('./pages/TherapistEarnings'));
 const BookSession = lazy(() => import('./pages/BookSession'));
 const TherapistProfile = lazy(() => import('./pages/TherapistProfile'));
+const MyTherapySessions = lazy(() => import('./pages/MyTherapySessions'));
+const TherapistMessages = lazy(() => import('./pages/TherapistMessages'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -179,6 +181,20 @@ function App() {
                 ? <Navigate to="/therapist-dashboard" replace />
                 : <Navigate to="/dashboard" replace />
             ) : <Navigate to="/" replace />
+          } />
+          <Route path="/my-therapy-sessions" element={
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <MyTherapySessions />
+              </Suspense>
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-messages/:therapistId" element={
+            user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistMessages />
+              </Suspense>
+            ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
         </Routes>
         <Toaster position="top-right" />

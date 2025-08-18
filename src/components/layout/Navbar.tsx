@@ -16,7 +16,8 @@ import {
   Image,
   BookOpen,
   Users,
-  Shield
+  Shield,
+  Calendar
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
@@ -407,10 +408,17 @@ const Navbar: React.FC<NavbarProps> = ({
                               </Link>
                               <Link
                                 to="/therapists"
-                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600"
                               >
                                 <Users size={16} />
                                 <span>Find Therapists</span>
+                              </Link>
+                              <Link
+                                to="/my-therapy-sessions"
+                                className="flex items-center space-x-2 px-4 py-3 text-sm text-gray-700 hover:bg-lavender-50 hover:text-lavender-600 last:rounded-b-lg"
+                              >
+                                <Calendar size={16} />
+                                <span>My Sessions</span>
                               </Link>
                             </div>
                           </div>
@@ -687,6 +695,14 @@ const Navbar: React.FC<NavbarProps> = ({
                       >
                         <Users size={16} />
                         <span>Find Therapists</span>
+                      </Link>
+                      <Link
+                        to="/my-therapy-sessions"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Calendar size={16} />
+                        <span>My Sessions</span>
                       </Link>
                       {user?.email === 'youssef.arafat09@gmail.com' && (
                         <Link
