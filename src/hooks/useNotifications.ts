@@ -559,6 +559,7 @@ export const useNotifications = () => {
         
         // Store admin user ID for future use
         localStorage.setItem('admin_user_id', user.id);
+        console.log('✅ Admin user ID stored:', user.id);
         
         const { data: pendingTherapists } = await supabase
           .from('therapist_profiles')
@@ -567,12 +568,14 @@ export const useNotifications = () => {
             professional_title, 
             license_state,
             created_at,
+            verification_status,
             user:users!therapist_profiles_user_id_fkey(full_name, email)
           `)
           .eq('verification_status', 'pending');
 
         if (pendingTherapists && pendingTherapists.length > 0) {
           console.log('🚨 Found pending therapist applications:', pendingTherapists.length);
+          console.log('📋 Pending applications details:', pendingTherapists);
           
           createNotification(
             `${pendingTherapists.length} Pending Therapist Applications`,

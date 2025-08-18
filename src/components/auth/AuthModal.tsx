@@ -132,20 +132,48 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           
           // Send notification to admin for new therapist signup
           try {
-            await sendAdminNotification(
-              'New Therapist Account Created',
-              `${name} (${email}) has created a therapist account and needs to complete registration.`,
-              'info',
-              'medium',
-              '/admin',
-              'View Account',
-              {
-                new_user_id: signUpData.user.id,
-                user_email: email,
-                user_name: name,
-                account_type: 'therapist'
+            console.log('🔔 Attempting to send admin notification for therapist signup...');
+            
+            // Get admin user ID directly from auth users table
+            const { data: adminUser, error: adminError } = await supabase
+              .from('users')
+              .select('id')
+              .eq('email', 'youssef.arafat09@gmail.com')
+              .single();
+              
+            if (adminError) {
+              console.error('❌ Could not find admin user:', adminError);
+            } else if (adminUser) {
+              console.log('✅ Found admin user for signup notification:', adminUser.id);
+              
+              // Create notification directly in database
+              const { data: notification, error: notificationError } = await supabase
+                .from('user_notifications')
+                .insert([{
+                  user_id: adminUser.id,
+                  title: 'New Therapist Account Created',
+                  message: `${name} (${email}) has created a therapist account and needs to complete registration.`,
+                  type: 'info',
+                  priority: 'medium',
+                  read: false,
+                  action_url: '/admin',
+                  action_text: 'View Account',
+                  metadata: {
+                    new_user_id: signUpData.user.id,
+                    user_email: email,
+                    user_name: name,
+                    account_type: 'therapist'
+                  }
+                }])
+                .select();
+                
+              if (notificationError) {
+                console.error('❌ Failed to create admin notification:', notificationError);
+              } else {
+                console.log('✅ Admin notification created successfully:', notification);
               }
-            );
+            }
+            
           } catch (notificationError) {
             console.error('Error sending admin notification:', notificationError);
           }

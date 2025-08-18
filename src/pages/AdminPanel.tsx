@@ -77,6 +77,24 @@ const AdminPanel: React.FC = () => {
           toast.error('Access denied. Admin privileges required.');
           navigate('/dashboard');
           return;
+        
+        // Also create admin_users entry if it doesn't exist
+        const { error: adminError } = await supabase
+          .from('admin_users')
+          .upsert([{
+            user_id: user.id,
+            email: user.email,
+            role: 'admin',
+            last_login: new Date().toISOString()
+          }], {
+            onConflict: 'user_id'
+          });
+          
+        if (adminError) {
+          console.error('Error creating admin user entry:', adminError);
+        } else {
+          console.log('✅ Admin user entry created/updated');
+        }
         }
       } catch (error) {
         console.error('Error checking admin auth:', error);
