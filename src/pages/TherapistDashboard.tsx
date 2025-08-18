@@ -92,23 +92,32 @@ const TherapistDashboard: React.FC = () => {
   const fetchTherapistData = async () => {
     try {
       setIsLoading(true);
+      console.log('🔍 Fetching therapist profile for user:', therapistUser?.id);
 
       // Get therapist profile
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
         .eq('user_id', therapistUser?.id)
-        .maybeSingle();
+        .single();
 
       if (profileError) {
+        console.error('❌ Error fetching therapist profile:', profileError);
+        if (profileError.code === 'PGRST116') {
+          // No profile found - user needs to complete registration
+          console.log('📝 No therapist profile found, showing registration form');
+          setTherapistProfile(null);
+          return;
+        }
         throw profileError;
       }
 
-      if (!profile) {
-        // No profile found - user needs to complete registration
-        console.log('No therapist profile found for user:', therapistUser?.id);
-        return;
-      }
+      console.log('✅ Therapist profile found:', {
+        id: profile.id,
+        verification_status: profile.verification_status,
+        is_active: profile.is_active,
+        professional_title: profile.professional_title
+      });
 
       setTherapistProfile(profile);
 
@@ -152,6 +161,15 @@ const TherapistDashboard: React.FC = () => {
         verificationStatus: profile.verification_status
       });
 
+      console.log('📊 Therapist stats calculated:', {
+        totalSessions,
+        upcomingSessions,
+        totalEarnings,
+        averageRating: Math.round(averageRating * 10) / 10,
+        totalReviews: reviews?.length || 0,
+        verificationStatus: profile.verification_status
+      });
+
     } catch (error) {
       console.error('Error fetching therapist data:', error);
       toast.error('Failed to load dashboard data');
@@ -159,6 +177,14 @@ const TherapistDashboard: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Add a refresh function that can be called manually
+  const refreshDashboard = useCallback(async () => {
+    if (therapistUser) {
+      console.log('🔄 Manually refreshing therapist dashboard...');
+      await fetchTherapistData();
+    }
+  }, [therapistUser]);
 
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
@@ -277,7 +303,7 @@ const TherapistDashboard: React.FC = () => {
 
         {/* Verification Status Alert */}
         {stats.verificationStatus !== 'verified' && (
-          <Card className="mb-8 bg-yellow-50 border-yellow-200">
+          <div className="mb-8 bg-yellow-50 border-yellow-200 rounded-xl transition-all duration-300 overflow-hidden bg-white p-5">
             <div className="p-4">
               <div className="flex items-start space-x-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
@@ -294,8 +320,21 @@ const TherapistDashboard: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <div className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={refreshDashboard}
+                  leftIcon={<Settings size={16} />}
+                  className="mr-3"
+                >
+                  Refresh Status
+                </Button>
+                <span className="text-xs text-yellow-700">
+                  Status not updated? Click refresh to check for changes.
+                </span>
+              </div>
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Stats Grid */}
