@@ -165,7 +165,7 @@ const AdminPanel: React.FC = () => {
         .from('therapist_profiles')
         .update({ 
           verification_status: 'verified',
-          is_active: true, // Enable therapist to be discoverable
+          is_active: true, // CRITICAL: Enable therapist to be discoverable in search
           hipaa_training_completed: true,
           hipaa_training_date: new Date().toISOString().split('T')[0],
           background_check_completed: true,
@@ -176,7 +176,7 @@ const AdminPanel: React.FC = () => {
 
       if (error) throw error;
 
-      console.log('✅ Therapist approved successfully');
+      console.log('✅ Therapist approved and activated for search');
       
       // Get therapist details for notification
       const therapist = pendingTherapists.find(t => t.id === therapistId);
@@ -565,7 +565,7 @@ const AdminPanel: React.FC = () => {
                             leftIcon={<CheckCircle size={16} />}
                             className="bg-green-600 hover:bg-green-700"
                           >
-                            Approve
+                            Approve & Activate
                           </Button>
                         )}
                       </div>

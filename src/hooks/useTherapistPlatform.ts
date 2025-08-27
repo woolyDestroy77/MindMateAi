@@ -47,7 +47,8 @@ export const useTherapistPlatform = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 Searching for therapists with filters:', filters);
+      console.log('🔍 SEARCHING FOR THERAPISTS - ENHANCED DEBUG');
+      console.log('Applied filters:', filters);
       
       let query = supabase
         .from('therapist_profiles')
@@ -60,8 +61,10 @@ export const useTherapistPlatform = () => {
           specializations:therapist_specializations(*),
           availability:therapist_availability(*)
         `)
-        .in('verification_status', ['verified', 'pending']) // Show both verified and pending for testing
+        .eq('verification_status', 'verified') // ONLY show verified therapists
         .eq('is_active', true);
+
+      console.log('🔍 Base query: verified therapists only, is_active = true');
 
       // Apply filters
       if (filters.min_rate) {
@@ -87,17 +90,68 @@ export const useTherapistPlatform = () => {
 
       if (error) throw error;
       
-      console.log('✅ Found therapists:', data?.length || 0);
+      console.log('✅ RAW THERAPIST QUERY RESULTS:', data?.length || 0);
       data?.forEach((therapist, index) => {
-        console.log(`Therapist ${index + 1}:`, {
+        console.log(`🏥 Therapist ${index + 1}:`, {
+          id: therapist.id,
           name: therapist.user?.full_name,
           title: therapist.professional_title,
           rate: therapist.hourly_rate,
           state: therapist.license_state,
           active: therapist.is_active,
-          status: therapist.verification_status
+          status: therapist.verification_status,
+          user_id: therapist.user_id,
+          created_at: therapist.created_at
         });
       });
+      
+      // CRITICAL: Check if we have any verified therapists at all
+      if (!data || data.length === 0) {
+        console.log('❌ NO VERIFIED THERAPISTS FOUND IN DATABASE');
+        console.log('🔍 Let me check what therapists exist...');
+        
+        // Debug query to see ALL therapists regardless of status
+        const { data: allTherapists, error: debugError } = await supabase
+          .from('therapist_profiles')
+          .select(`
+            id,
+            verification_status,
+            is_active,
+            professional_title,
+            user:users!therapist_profiles_user_id_fkey(full_name)
+          `)
+          .order('created_at', { ascending: false });
+          
+        if (!debugError && allTherapists) {
+          console.log('🔍 ALL THERAPISTS IN DATABASE:', allTherapists.length);
+          allTherapists.forEach((t, i) => {
+            console.log(`Debug ${i + 1}:`, {
+              id: t.id,
+              name: t.user?.full_name,
+              status: t.verification_status,
+              active: t.is_active,
+              title: t.professional_title
+            });
+          });
+          
+          const verifiedCount = allTherapists.filter(t => t.verification_status === 'verified').length;
+          const activeCount = allTherapists.filter(t => t.is_active === true).length;
+          const verifiedAndActiveCount = allTherapists.filter(t => 
+            t.verification_status === 'verified' && t.is_active === true
+          ).length;
+          
+          console.log('📊 THERAPIST STATUS BREAKDOWN:');
+          console.log(`Total therapists: ${allTherapists.length}`);
+          console.log(`Verified: ${verifiedCount}`);
+          console.log(`Active: ${activeCount}`);
+          console.log(`Verified AND Active: ${verifiedAndActiveCount}`);
+          
+          if (verifiedAndActiveCount === 0) {
+            console.log('🚨 PROBLEM IDENTIFIED: No therapists are both verified AND active');
+            console.log('💡 SOLUTION: Admin needs to approve therapists or therapists need to be activated');
+          }
+        }
+      }
 
       // Filter by specializations if specified
       let filteredData = data || [];

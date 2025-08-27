@@ -293,20 +293,29 @@ const TherapistPlatform: React.FC = () => {
         ) : therapists.length === 0 ? (
           <Card className="text-center py-12">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No therapists found</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Verified Therapists Available</h3>
             <p className="text-gray-600 mb-6">
-              Try adjusting your search criteria or filters to find more therapists.
+              There are currently no verified therapists available. This could mean:
+              <br />• No therapists have been approved yet
+              <br />• All therapists are currently inactive
+              <br />• Your search filters are too restrictive
             </p>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setFilters({});
-                searchTherapists();
-              }}
-              className="bg-gradient-to-r from-blue-500 to-purple-500"
-            >
-              Show All Therapists
-            </Button>
+            <div className="space-y-3">
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setFilters({});
+                  searchTherapists();
+                }}
+                className="bg-gradient-to-r from-blue-500 to-purple-500"
+              >
+                Clear All Filters
+              </Button>
+              <div className="text-sm text-gray-500">
+                <p>If you're an admin, check the admin panel to approve pending therapists.</p>
+                <p>If you're a therapist, make sure your profile is verified and active.</p>
+              </div>
+            </div>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
