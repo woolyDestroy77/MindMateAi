@@ -69,10 +69,17 @@ const TherapistCard: React.FC<TherapistCardProps> = ({ therapist, onBook }) => {
                 <h3 className="text-lg font-semibold text-gray-900">
                   {therapist.user?.full_name}
                 </h3>
-                <div className="flex items-center space-x-1">
-                  <Shield className="w-4 h-4 text-green-600" />
-                  <span className="text-xs text-green-600 font-medium">Verified</span>
-                </div>
+                {therapist.verification_status === 'verified' ? (
+                  <div className="flex items-center space-x-1">
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span className="text-xs text-green-600 font-medium">Verified</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1">
+                    <Clock className="w-4 h-4 text-yellow-600" />
+                    <span className="text-xs text-yellow-600 font-medium">Pending Review</span>
+                  </div>
+                )}
               </div>
               
               <p className="text-sm text-gray-600 mb-2">{therapist.professional_title}</p>
