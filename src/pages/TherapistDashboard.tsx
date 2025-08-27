@@ -23,7 +23,6 @@ import Card from '../components/ui/Card';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { TherapistRegistrationForm } from '../components/therapist/TherapistRegistrationForm';
 
 interface TherapistStats {
@@ -36,9 +35,7 @@ interface TherapistStats {
 }
 
 const TherapistDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const [therapistUser, setTherapistUser] = useState<any>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const { user } = useAuth();
   const [stats, setStats] = useState<TherapistStats>({
     totalSessions: 0,
     upcomingSessions: 0,
@@ -51,51 +48,18 @@ const TherapistDashboard: React.FC = () => {
   const [therapistProfile, setTherapistProfile] = useState<any>(null);
 
   useEffect(() => {
-    const checkTherapistAuth = async () => {
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        if (error) throw error;
-        
-        if (user) {
-          const userType = user.user_metadata?.user_type;
-          const isTherapist = user.user_metadata?.is_therapist;
-          
-          if (userType === 'therapist' || isTherapist) {
-            setTherapistUser(user);
-          } else {
-            // Not a therapist account, redirect
-            navigate('/become-therapist');
-            return;
-          }
-        } else {
-          // Not signed in, redirect
-          navigate('/become-therapist');
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking therapist auth:', error);
-        navigate('/become-therapist');
-      } finally {
-        setIsCheckingAuth(false);
-      }
-    };
-
-    checkTherapistAuth();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (therapistUser) {
+    if (user) {
       fetchTherapistData();
     }
-  }, [therapistUser]);
+  }, [user]);
 
   const fetchTherapistData = async () => {
     try {
       setIsLoading(true);
       
       console.log('🔄 FETCHING FRESH THERAPIST DATA - ENHANCED DEBUG...');
-      console.log('👨‍⚕️ Therapist user ID:', therapistUser?.id);
-      console.log('📧 Therapist email:', therapistUser?.email);
+      console.log('👨‍⚕️ Therapist user ID:', user?.id);
+      console.log('📧 Therapist email:', user?.email);
       
       // Clear any cached data first
       setTherapistProfile(null);
@@ -114,7 +78,7 @@ const TherapistDashboard: React.FC = () => {
       const { data: userProfile, error: userProfileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', therapistUser?.id)
+        .eq('user_id', user?.id)
         .single();
         
       if (userProfileError) {
@@ -123,11 +87,11 @@ const TherapistDashboard: React.FC = () => {
         const { data: newProfile, error: createError } = await supabase
           .from('user_profiles')
           .insert([{
-            user_id: therapistUser?.id,
+            user_id: user?.id,
             user_type: 'therapist',
             account_status: 'pending',
-            full_name: therapistUser?.user_metadata?.full_name || '',
-            email: therapistUser?.email || ''
+            full_name: user?.user_metadata?.full_name || '',
+            email: user?.email || ''
           }])
           .select()
           .single();
@@ -148,7 +112,7 @@ const TherapistDashboard: React.FC = () => {
       const { data: profile, error: profileError } = await supabase
         .from('therapist_profiles')
         .select('*')
-        .eq('user_id', therapistUser?.id)
+        .eq('user_id', user?.id)
         .single();
 
       if (profileError) {
@@ -264,7 +228,7 @@ const TherapistDashboard: React.FC = () => {
 
   // Add a refresh function that can be called manually
   const refreshDashboard = useCallback(async () => {
-    if (therapistUser) {
+    if (user) {
       console.log('🔄 MANUAL REFRESH TRIGGERED...');
       
       // Clear all cached data
@@ -287,7 +251,7 @@ const TherapistDashboard: React.FC = () => {
         window.location.reload();
       }, 1000);
     }
-  }, [therapistUser, fetchTherapistData]);
+  }, [user, fetchTherapistData]);
 
   const getVerificationStatusColor = (status: string) => {
     switch (status) {
@@ -308,20 +272,6 @@ const TherapistDashboard: React.FC = () => {
       default: return <Clock className="w-4 h-4" />;
     }
   };
-
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Checking therapist authentication...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
