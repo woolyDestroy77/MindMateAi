@@ -189,7 +189,7 @@ const AdminPanel: React.FC = () => {
             .insert([{
               user_id: therapist.user_id,
               title: 'Therapist Application Approved! 🎉',
-              message: 'Congratulations! Your therapist application has been approved. You can now start accepting client session requests immediately.',
+              message: 'Congratulations! Your therapist application has been approved and your profile is now LIVE. Clients can find and book sessions with you immediately.',
               type: 'achievement',
               priority: 'high',
               read: false,
@@ -625,81 +625,4 @@ const AdminPanel: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Education</h3>
                   <div className="space-y-3">
                     {selectedTherapist.education.map((edu: any, index: number) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                        <div className="font-medium">{edu.degree} in {edu.field_of_study}</div>
-                        <div className="text-sm text-gray-600">{edu.institution} • {edu.year}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Certifications */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Certifications</h3>
-                  <div className="space-y-3">
-                    {selectedTherapist.certifications.map((cert: any, index: number) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                        <div className="font-medium">{cert.name}</div>
-                        <div className="text-sm text-gray-600">
-                          {cert.issuing_organization} • Issued: {format(new Date(cert.issue_date), 'MMM yyyy')}
-                          {cert.expiry_date && ` • Expires: ${format(new Date(cert.expiry_date), 'MMM yyyy')}`}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Bio */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Professional Bio</h3>
-                  <p className="text-gray-700 leading-relaxed">{selectedTherapist.bio}</p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex space-x-3 pt-4 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    fullWidth
-                    onClick={() => setSelectedTherapist(null)}
-                  >
-                    Close
-                  </Button>
-                  {selectedTherapist.verification_status === 'pending' && (
-                    <>
-                      <Button
-                        variant="outline"
-                        fullWidth
-                        onClick={() => {
-                          rejectTherapist(selectedTherapist.id);
-                          setSelectedTherapist(null);
-                        }}
-                        leftIcon={<X size={16} />}
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        Reject Application
-                      </Button>
-                      <Button
-                        variant="primary"
-                        fullWidth
-                        onClick={() => {
-                          approveTherapist(selectedTherapist.id);
-                          setSelectedTherapist(null);
-                        }}
-                        leftIcon={<CheckCircle size={16} />}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Approve Application
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-};
-
-export default AdminPanel;
+                      <div key={index} className="bg
