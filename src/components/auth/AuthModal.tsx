@@ -151,8 +151,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
                 .from('user_notifications')
                 .insert([{
                   user_id: adminUser.id,
-                  title: 'New Therapist Account Created',
-                  message: `${name} (${email}) has created a therapist account and needs to complete registration.`,
+                  title: 'New Therapist Application Received',
+                  message: `${name} (${email}) has submitted a therapist application for immediate review.`,
                   type: 'info',
                   priority: 'medium',
                   read: false,
@@ -211,7 +211,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ mode, onClose }) => {
           }
         }
 
-        toast.success('Therapist account created! Redirecting to complete your registration...');
+        toast.success('Therapist account created! Your application will be reviewed immediately.');
         
         // Redirect to therapist dashboard after a brief delay
         setTimeout(() => {

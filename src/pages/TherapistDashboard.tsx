@@ -417,7 +417,7 @@ const TherapistDashboard: React.FC = () => {
                     {stats.verificationStatus === 'suspended' && 'Account Suspended'}
                   </h3>
                   <p className="text-sm text-yellow-800 mt-1">
-                    {stats.verificationStatus === 'pending' && 'Your application is being reviewed. You\'ll receive an email within 3-5 business days.'}
+                    {stats.verificationStatus === 'pending' && 'Your application is being reviewed by our admin team. You\'ll be notified as soon as it\'s approved.'}
                     {stats.verificationStatus === 'rejected' && 'Your application was rejected. Please contact support for more information.'}
                     {stats.verificationStatus === 'suspended' && 'Your account has been suspended. Please contact support immediately.'}
                   </p>

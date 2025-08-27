@@ -58,7 +58,7 @@ const CTASection: React.FC = () => {
               </h3>
               <p className="text-white/90 mb-4 max-w-lg mx-auto">
                 Join our platform as a freelance therapist. Set your own rates, manage your schedule, 
-                and help clients on their mental health journey with secure, HIPAA-compliant sessions.
+                and start helping clients immediately with secure, HIPAA-compliant sessions.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-3">
                 <a

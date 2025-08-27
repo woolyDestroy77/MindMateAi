@@ -283,8 +283,8 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
             .from('user_notifications')
             .insert([{
               user_id: adminUser.id,
-              title: 'New Therapist Application',
-              message: `${fullName} has submitted a therapist application for review.`,
+              title: 'New Therapist Application - Immediate Review Required',
+              message: `${fullName} has submitted a therapist application and is waiting for approval to start accepting clients.`,
               type: 'alert',
               priority: 'high',
               read: false,
@@ -311,7 +311,7 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
         console.error('Error sending admin notification:', notificationError);
       }
 
-      toast.success('Therapist profile updated successfully!');
+      toast.success('Application submitted! You\'ll be notified immediately when approved.');
       
       if (onComplete) {
         onComplete();
@@ -953,9 +953,10 @@ export const TherapistRegistrationForm: React.FC<TherapistRegistrationFormProps>
                 <li>• Valid state license with current expiration date</li>
                 <li>• Minimum 1 year of professional experience</li>
                 <li>• Professional liability insurance (verification required)</li>
-                <li>• Background check will be conducted upon approval</li>
-                <li>• HIPAA training certification required</li>
+                <li>• Background check conducted during review process</li>
+                <li>• HIPAA training verification completed during approval</li>
                 <li>• At least one form of education (degree or certification)</li>
+                <li>• <strong>Applications are reviewed immediately by our admin team</strong></li>
               </ul>
             </div>
           </div>

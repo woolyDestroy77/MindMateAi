@@ -188,8 +188,8 @@ const AdminPanel: React.FC = () => {
             .from('user_notifications')
             .insert([{
               user_id: therapist.user_id,
-              title: 'Application Approved! 🎉',
-              message: 'Congratulations! Your therapist application has been approved. You can now start accepting clients and managing your practice.',
+              title: 'Therapist Application Approved! 🎉',
+              message: 'Congratulations! Your therapist application has been approved. You can now start accepting client session requests immediately.',
               type: 'achievement',
               priority: 'high',
               read: false,

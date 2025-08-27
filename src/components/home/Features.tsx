@@ -180,7 +180,7 @@ const Features: React.FC = () => {
               <ArrowRight className="ml-2 w-5 h-5" />
             </a>
             <p className="text-sm text-gray-500 mt-2">
-              License verification required • Background check included
+              License verification required • Fast approval process
             </p>
           </div>
         </div>

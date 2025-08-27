@@ -109,7 +109,7 @@ const TherapistRegistration: React.FC = () => {
               size="lg"
               onClick={() => setShowSignIn(true)}
             >
-              Sign In to Dashboard
+              License verification required • Immediate review process
             </Button>
           </div>
           <p className="text-sm text-gray-500 mt-4">
