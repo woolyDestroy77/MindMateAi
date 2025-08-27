@@ -220,9 +220,13 @@ export const useTherapistPlatform = () => {
         .eq('id', therapistId)
         .in('verification_status', ['verified', 'pending']) // Allow both for testing
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        return null;
+      }
 
       // Get average rating
       const { data: reviews } = await supabase

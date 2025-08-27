@@ -91,9 +91,15 @@ const TherapistProfile: React.FC = () => {
         .eq('id', therapistId)
         .eq('verification_status', 'verified')
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      if (!data) {
+        toast.error('Therapist not found');
+        navigate('/therapists');
+        return;
+      }
 
       // Calculate average rating
       const { data: reviewData } = await supabase
