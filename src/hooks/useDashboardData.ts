@@ -235,20 +235,20 @@ export const useDashboardData = () => {
       console.log('Setting up real-time subscription for user:', user.id);
 
       try {
-        // Clean up any existing subscription first
-        if (subscriptionRef.current) {
-          console.log('🧹 Cleaning up existing mood data subscription');
-          await supabase.removeChannel(subscriptionRef.current);
-          subscriptionRef.current = null;
-          isSubscribedRef.current = false;
-        }
-
         const channelName = `mood_data_changes_${user.id}`;
         
+        // Get the channel instance
+        const currentChannel = supabase.channel(channelName);
+        
+        // Check if the channel is already joined or joining
+        if (currentChannel.state === 'joined' || currentChannel.state === 'joining') {
+          console.log('Channel already active, skipping subscription setup');
+          return;
+        }
+
         isSubscribedRef.current = true;
 
-        const subscription = supabase
-          .channel(channelName)
+        const subscription = currentChannel
           .on(
             'postgres_changes',
             {
@@ -285,17 +285,20 @@ export const useDashboardData = () => {
               console.log('Successfully subscribed to real-time updates');
             } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
               console.error('Subscription error:', status);
-              // Clean up failed subscription
-              if (subscriptionRef.current) {
-                supabase.removeChannel(subscriptionRef.current);
-                subscriptionRef.current = null;
-              }
               isSubscribedRef.current = false;
             }
           });
 
         subscriptionRef.current = subscription;
 
+        return () => {
+          console.log('Cleaning up real-time subscription');
+          if (subscriptionRef.current) {
+            subscriptionRef.current.unsubscribe();
+            subscriptionRef.current = null;
+          }
+          isSubscribedRef.current = false;
+        };
       } catch (error) {
         console.error('Error setting up real-time subscription:', error);
         isSubscribedRef.current = false;
@@ -308,7 +311,7 @@ export const useDashboardData = () => {
     return () => {
       if (subscriptionRef.current) {
         console.log('Cleaning up subscription on unmount');
-        supabase.removeChannel(subscriptionRef.current);
+        subscriptionRef.current.unsubscribe();
         subscriptionRef.current = null;
       }
       isSubscribedRef.current = false;

@@ -30,7 +30,6 @@ export const useTherapySessions = () => {
   const [sessions, setSessions] = useState<TherapySession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const subscriptionRef = useRef<any>(null);
 
   const fetchSessions = useCallback(async () => {
     try {
@@ -64,33 +63,10 @@ export const useTherapySessions = () => {
       
       console.log('✅ Found therapy sessions:', data?.length || 0);
       setSessions(data || []);
-    } catch (err) {
-      console.error('Error fetching therapy sessions:', err);
-      setError('Failed to load therapy sessions');
-      toast.error('Failed to load your therapy sessions');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  // Set up real-time subscription separately to avoid multiple subscriptions
-  useEffect(() => {
-    const setupSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Clean up existing subscription
-      if (subscriptionRef.current) {
-        console.log('🧹 Cleaning up existing therapy sessions subscription');
-        await supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
-
-      console.log('🔄 Setting up therapy sessions real-time subscription');
       
-      const channelName = `therapy_sessions_${user.id}`;
+      // Set up real-time subscription for session updates
       const subscription = supabase
-        .channel(channelName)
+        .channel('therapy_sessions_changes')
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
@@ -109,31 +85,20 @@ export const useTherapySessions = () => {
             setSessions(prev => prev.filter(session => session.id !== payload.old.id));
           }
         })
-        .subscribe((status) => {
-          console.log('Therapy sessions subscription status:', status);
-          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            console.error('Therapy sessions subscription error:', status);
-            // Clean up failed subscription
-            if (subscriptionRef.current) {
-              supabase.removeChannel(subscriptionRef.current);
-              subscriptionRef.current = null;
-            }
-          }
-        });
+        .subscribe();
 
-      subscriptionRef.current = subscription;
-    };
-
-    setupSubscription();
-
-    return () => {
-      if (subscriptionRef.current) {
-        console.log('🧹 Cleaning up therapy sessions subscription on unmount');
-        supabase.removeChannel(subscriptionRef.current);
-        subscriptionRef.current = null;
-      }
-    };
+      return () => {
+        subscription.unsubscribe();
+      };
+    } catch (err) {
+      console.error('Error fetching therapy sessions:', err);
+      setError('Failed to load therapy sessions');
+      toast.error('Failed to load your therapy sessions');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
   const cancelSession = useCallback(async (sessionId: string, reason: string = '') => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
