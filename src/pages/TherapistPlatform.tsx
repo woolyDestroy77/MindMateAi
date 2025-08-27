@@ -64,6 +64,7 @@ const TherapistPlatform: React.FC = () => {
     const searchFilters: TherapistSearchFilters = {
       ...filters
     };
+    console.log('🔍 MANUAL SEARCH TRIGGERED WITH FILTERS:', searchFilters);
     searchTherapists(searchFilters);
   };
 
@@ -293,12 +294,12 @@ const TherapistPlatform: React.FC = () => {
         ) : therapists.length === 0 ? (
           <Card className="text-center py-12">
             <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Verified Therapists Available</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Therapists Found</h3>
             <p className="text-gray-600 mb-6">
-              There are currently no verified therapists available. This could mean:
-              <br />• No therapists have been approved yet
-              <br />• All therapists are currently inactive
+              No therapists match your search criteria. This could mean:
+              <br />• No therapists have been approved and activated yet
               <br />• Your search filters are too restrictive
+              <br />• Database sync issue (try refreshing)
             </p>
             <div className="space-y-3">
               <Button
@@ -309,11 +310,20 @@ const TherapistPlatform: React.FC = () => {
                 }}
                 className="bg-gradient-to-r from-blue-500 to-purple-500"
               >
-                Clear All Filters
+                Clear Filters & Refresh
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log('🔄 FORCE REFRESH BUTTON CLICKED');
+                  window.location.reload();
+                }}
+              >
+                Force Page Refresh
               </Button>
               <div className="text-sm text-gray-500">
-                <p>If you're an admin, check the admin panel to approve pending therapists.</p>
-                <p>If you're a therapist, make sure your profile is verified and active.</p>
+                <p><strong>Debug:</strong> Check browser console for detailed logs</p>
+                <p>If you're an admin: <a href="/admin" className="text-blue-600 underline">Check admin panel</a></p>
               </div>
             </div>
           </Card>

@@ -47,8 +47,11 @@ export const useTherapistPlatform = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 SEARCHING FOR THERAPISTS - ENHANCED DEBUG');
+      console.log('🔍 SEARCHING FOR THERAPISTS - FORCE REFRESH DEBUG');
       console.log('Applied filters:', filters);
+      
+      // FORCE REFRESH: Clear any potential caching issues
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       let query = supabase
         .from('therapist_profiles')
@@ -61,10 +64,47 @@ export const useTherapistPlatform = () => {
           specializations:therapist_specializations(*),
           availability:therapist_availability(*)
         `)
-        .eq('verification_status', 'verified') // ONLY show verified therapists
+        .eq('verification_status', 'verified')
         .eq('is_active', true);
 
-      console.log('🔍 Base query: verified therapists only, is_active = true');
+      console.log('🔍 FORCE REFRESH: Base query for verified AND active therapists');
+      
+      // DEBUGGING: First check what therapists exist at all
+      const { data: allTherapists, error: debugError } = await supabase
+        .from('therapist_profiles')
+        .select(`
+          id,
+          verification_status,
+          is_active,
+          professional_title,
+          updated_at,
+          user:users!therapist_profiles_user_id_fkey(full_name)
+        `)
+        .order('updated_at', { ascending: false });
+        
+      if (!debugError && allTherapists) {
+        console.log('🔍 ALL THERAPISTS IN DATABASE:', allTherapists.length);
+        allTherapists.forEach((t, i) => {
+          console.log(`Debug ${i + 1}:`, {
+            id: t.id,
+            name: t.user?.full_name,
+            status: t.verification_status,
+            active: t.is_active,
+            title: t.professional_title,
+            updated: t.updated_at
+          });
+        });
+        
+        const verifiedAndActive = allTherapists.filter(t => 
+          t.verification_status === 'verified' && t.is_active === true
+        );
+        console.log('🎯 VERIFIED AND ACTIVE THERAPISTS:', verifiedAndActive.length);
+        
+        if (verifiedAndActive.length === 0) {
+          console.log('🚨 NO VERIFIED AND ACTIVE THERAPISTS FOUND!');
+          console.log('💡 Check admin panel to ensure therapists are properly approved');
+        }
+      }
 
       // Apply filters
       if (filters.min_rate) {

@@ -161,11 +161,12 @@ const AdminPanel: React.FC = () => {
     try {
       console.log('🔄 Approving therapist:', therapistId);
       
-      const { error } = await supabase
+      // STEP 1: Update therapist profile with ALL required fields
+      const { data: updatedTherapist, error } = await supabase
         .from('therapist_profiles')
         .update({ 
           verification_status: 'verified',
-          is_active: true, // CRITICAL: Enable therapist to be discoverable in search
+          is_active: true,
           hipaa_training_completed: true,
           hipaa_training_date: new Date().toISOString().split('T')[0],
           background_check_completed: true,
@@ -173,10 +174,49 @@ const AdminPanel: React.FC = () => {
           updated_at: new Date().toISOString()
         })
         .eq('id', therapistId);
+        .select('*')
+        .single();
 
       if (error) throw error;
 
-      console.log('✅ Therapist approved and activated for search');
+      console.log('✅ Therapist approved and activated:', updatedTherapist);
+      
+      // STEP 2: Force verify the therapist is now searchable
+      console.log('🔍 VERIFYING THERAPIST IS NOW SEARCHABLE...');
+      
+      const { data: searchTest, error: searchError } = await supabase
+        .from('therapist_profiles')
+        .select(`
+          id,
+          verification_status,
+          is_active,
+          professional_title,
+          user:users!therapist_profiles_user_id_fkey(full_name)
+        `)
+        .eq('verification_status', 'verified')
+        .eq('is_active', true);
+        
+      if (searchError) {
+        console.error('❌ Search test failed:', searchError);
+      } else {
+        console.log('🔍 SEARCH TEST RESULTS:', searchTest?.length || 0, 'verified therapists found');
+        searchTest?.forEach((t, i) => {
+          console.log(`Therapist ${i + 1}:`, {
+            id: t.id,
+            name: t.user?.full_name,
+            status: t.verification_status,
+            active: t.is_active,
+            title: t.professional_title
+          });
+        });
+        
+        const isTherapistInSearch = searchTest?.find(t => t.id === therapistId);
+        if (isTherapistInSearch) {
+          console.log('✅ THERAPIST IS NOW SEARCHABLE!');
+        } else {
+          console.log('❌ THERAPIST STILL NOT SEARCHABLE - INVESTIGATING...');
+        }
+      }
       
       // Get therapist details for notification
       const therapist = pendingTherapists.find(t => t.id === therapistId);
