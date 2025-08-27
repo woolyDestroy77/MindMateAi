@@ -372,6 +372,7 @@ const TherapistMessages: React.FC = () => {
                 <p className="text-gray-600">Start a conversation with your therapist</p>
               </div>
             ) : (
+              messages.map((message) => {
                 const isSentByMe = message.sender_id === user?.id;
                 
                 return (
