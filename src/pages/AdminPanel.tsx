@@ -77,6 +77,7 @@ const AdminPanel: React.FC = () => {
           toast.error('Access denied. Admin privileges required.');
           navigate('/dashboard');
           return;
+        }
         
         // Also create admin_users entry if it doesn't exist
         const { error: adminError } = await supabase
@@ -94,7 +95,6 @@ const AdminPanel: React.FC = () => {
           console.error('Error creating admin user entry:', adminError);
         } else {
           console.log('✅ Admin user entry created/updated');
-        }
         }
       } catch (error) {
         console.error('Error checking admin auth:', error);
@@ -173,7 +173,7 @@ const AdminPanel: React.FC = () => {
           background_check_date: new Date().toISOString().split('T')[0],
           updated_at: new Date().toISOString()
         })
-        .eq('id', therapistId);
+        .eq('id', therapistId)
         .select('*')
         .single();
 
@@ -665,4 +665,77 @@ const AdminPanel: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Education</h3>
                   <div className="space-y-3">
                     {selectedTherapist.education.map((edu: any, index: number) => (
-                      <div key={index} className="bg
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900">{edu.degree}</h4>
+                        <p className="text-gray-600">{edu.institution}</p>
+                        <p className="text-sm text-gray-500">{edu.year}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Certifications */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Certifications</h3>
+                  <div className="space-y-3">
+                    {selectedTherapist.certifications.map((cert: any, index: number) => (
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900">{cert.name}</h4>
+                        <p className="text-gray-600">{cert.issuer}</p>
+                        <p className="text-sm text-gray-500">{cert.year}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Professional Bio</h3>
+                  <p className="text-gray-700 whitespace-pre-wrap">{selectedTherapist.bio}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedTherapist(null)}
+                  >
+                    Close
+                  </Button>
+                  {selectedTherapist.verification_status === 'pending' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          rejectTherapist(selectedTherapist.id);
+                          setSelectedTherapist(null);
+                        }}
+                        leftIcon={<X size={16} />}
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          approveTherapist(selectedTherapist.id);
+                          setSelectedTherapist(null);
+                        }}
+                        leftIcon={<CheckCircle size={16} />}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Approve
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default AdminPanel;
