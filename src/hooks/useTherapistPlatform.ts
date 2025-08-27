@@ -47,7 +47,7 @@ export const useTherapistPlatform = () => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 Searching for verified therapists...');
+      console.log('🔍 Searching for therapists with filters:', filters);
       
       let query = supabase
         .from('therapist_profiles')
@@ -60,7 +60,7 @@ export const useTherapistPlatform = () => {
           specializations:therapist_specializations(*),
           availability:therapist_availability(*)
         `)
-        .eq('verification_status', 'verified')
+        .in('verification_status', ['verified', 'pending']) // Show both verified and pending for testing
         .eq('is_active', true);
 
       // Apply filters
@@ -87,7 +87,7 @@ export const useTherapistPlatform = () => {
 
       if (error) throw error;
       
-      console.log('✅ Found verified therapists:', data?.length || 0);
+      console.log('✅ Found therapists:', data?.length || 0);
       data?.forEach((therapist, index) => {
         console.log(`Therapist ${index + 1}:`, {
           name: therapist.user?.full_name,
@@ -95,7 +95,7 @@ export const useTherapistPlatform = () => {
           rate: therapist.hourly_rate,
           state: therapist.license_state,
           active: therapist.is_active,
-          verified: therapist.verification_status
+          status: therapist.verification_status
         });
       });
 
@@ -142,7 +142,7 @@ export const useTherapistPlatform = () => {
       setTherapists(filteredData);
     } catch (err) {
       console.error('Error searching therapists:', err);
-      setError('Failed to search therapists');
+      setError(`Failed to search therapists: ${err instanceof Error ? err.message : 'Unknown error'}`);
       toast.error('Failed to load therapists');
     } finally {
       setIsLoading(false);
@@ -164,7 +164,7 @@ export const useTherapistPlatform = () => {
           availability:therapist_availability(*)
         `)
         .eq('id', therapistId)
-        .eq('verification_status', 'verified')
+        .in('verification_status', ['verified', 'pending']) // Allow both for testing
         .eq('is_active', true)
         .single();
 
