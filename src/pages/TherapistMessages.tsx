@@ -20,6 +20,7 @@ import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../hooks/useAuth';
 
 interface TherapistMessage {
   id: string;
@@ -50,6 +51,7 @@ interface TherapistProfile {
 
 const TherapistMessages: React.FC = () => {
   const { therapistId } = useParams<{ therapistId: string }>();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<TherapistMessage[]>([]);
   const [therapist, setTherapist] = useState<TherapistProfile | null>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -380,8 +382,7 @@ const TherapistMessages: React.FC = () => {
               </div>
             ) : (
               messages.map((message) => {
-                const { data: { user } } = await supabase.auth.getUser();
-                const isSentByMe = message.sender_id === user?.user?.id;
+                const isSentByMe = message.sender_id === user?.id;
                 
                 return (
                   <motion.div
