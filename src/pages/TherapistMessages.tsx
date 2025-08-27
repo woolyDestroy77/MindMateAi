@@ -11,7 +11,8 @@ import {
   Calendar,
   Clock,
   Shield,
-  Award
+  Award,
+  AlertTriangle
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -62,9 +63,14 @@ const TherapistMessages: React.FC = () => {
   useEffect(() => {
     if (therapistId) {
       fetchTherapist();
-      fetchMessages();
     }
   }, [therapistId]);
+
+  useEffect(() => {
+    if (therapist && user) {
+      fetchMessages();
+    }
+  }, [therapist, user]);
 
   useEffect(() => {
     scrollToBottom();
@@ -80,15 +86,19 @@ const TherapistMessages: React.FC = () => {
         .from('therapist_profiles')
         .select(`
           *,
-          user:users!therapist_profiles_user_id_fkey(
+          user:user_profiles!therapist_profiles_user_id_fkey(
             full_name,
             avatar_url
           )
         `)
         .eq('id', therapistId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) {
+        console.error('No therapist found with ID:', therapistId);
+        return;
+      }
       setTherapist(data);
     } catch (error) {
       console.error('Error fetching therapist:', error);
@@ -97,20 +107,9 @@ const TherapistMessages: React.FC = () => {
   };
 
   const fetchMessages = async () => {
+    if (!therapist || !user) return;
+    
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!user) return;
-
-      // Get therapist user ID
-      const { data: therapistData, error: therapistError } = await supabase
-        .from('therapist_profiles')
-        .select('user_id')
-        .eq('id', therapistId)
-        .single();
-
-      if (therapistError) throw therapistError;
-
       const { data, error } = await supabase
         .from('therapist_messages')
         .select(`
@@ -120,7 +119,7 @@ const TherapistMessages: React.FC = () => {
             avatar_url
           )
         `)
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${therapistData.user_id}),and(sender_id.eq.${therapistData.user_id},recipient_id.eq.${user.id})`)
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${therapist.user_id}),and(sender_id.eq.${therapist.user_id},recipient_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -193,19 +192,11 @@ const TherapistMessages: React.FC = () => {
       if (!user) return;
 
       // Get therapist user ID
-      const { data: therapistData, error: therapistError } = await supabase
-        .from('therapist_profiles')
-        .select('user_id')
-        .eq('id', therapistId)
-        .single();
-
-      if (therapistError) throw therapistError;
-
       const { data, error } = await supabase
         .from('therapist_messages')
         .insert([{
           sender_id: user.id,
-          recipient_id: therapistData.user_id,
+          recipient_id: therapist.user_id,
           message_content: newMessage.trim(),
           message_type: 'text',
           is_read: false
@@ -229,7 +220,7 @@ const TherapistMessages: React.FC = () => {
         await supabase
           .from('user_notifications')
           .insert([{
-            user_id: therapistData.user_id,
+            user_id: therapist.user_id,
             title: 'New Message from Client',
             message: `${user.user_metadata.full_name || 'A client'} sent you a message`,
             type: 'message',
@@ -381,7 +372,6 @@ const TherapistMessages: React.FC = () => {
                 <p className="text-gray-600">Start a conversation with your therapist</p>
               </div>
             ) : (
-              messages.map((message) => {
                 const isSentByMe = message.sender_id === user?.id;
                 
                 return (
