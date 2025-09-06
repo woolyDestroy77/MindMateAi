@@ -595,22 +595,6 @@ const TherapistMessages: React.FC = () => {
                     <p className="text-gray-600">Send your first message to {targetTherapistName}</p>
                   </div>
                 </div>
-              <Card className="h-full flex items-center justify-center">
-                <div className="text-center">
-                  <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
-                  <p className="text-gray-600">
-                    Choose a conversation from the left to start messaging
-                  </p>
-                </div>
-              </Card>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-};
 
                 {/* Message Input for New Conversation */}
                 <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
@@ -639,4 +623,21 @@ const TherapistMessages: React.FC = () => {
                 </form>
               </Card>
             ) : (
+              <Card className="h-full flex items-center justify-center">
+                <div className="text-center">
+                  <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Select a conversation</h3>
+                  <p className="text-gray-600">
+                    Choose a conversation from the left to start messaging
+                  </p>
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
 export default TherapistMessages;
