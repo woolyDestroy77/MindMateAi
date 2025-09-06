@@ -336,7 +336,7 @@ const Navbar: React.FC<NavbarProps> = ({
                           </Link>
                           
                           <Link
-                            to="/therapist-messages"
+                            to="/messages"
                             className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
                           >
                             <span className="relative z-10">Messages</span>
@@ -638,7 +638,7 @@ const Navbar: React.FC<NavbarProps> = ({
                         Earnings
                       </Link>
                       <Link
-                        to="/therapist-messages"
+                        to="/messages"
                         className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
                         onClick={() => setIsMenuOpen(false)}
                       >

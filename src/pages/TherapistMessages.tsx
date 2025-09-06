@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   MessageSquare, 
@@ -13,7 +13,8 @@ import {
   Shield,
   Award,
   Search,
-  Filter
+  Filter,
+  Plus
 } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -49,40 +50,46 @@ interface ConversationUser {
 }
 
 const TherapistMessages: React.FC = () => {
-  const { clientId } = useParams<{ clientId?: string }>();
+  const { userId } = useParams<{ userId?: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [messages, setMessages] = useState<TherapistMessage[]>([]);
   const [conversations, setConversations] = useState<ConversationUser[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(clientId || null);
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [targetTherapistId, setTargetTherapistId] = useState<string | null>(null);
-  const [targetTherapistName, setTargetTherapistName] = useState<string>('');
+  const [targetUser, setTargetUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
 
   const isTherapist = user?.user_metadata?.user_type === 'therapist' || user?.user_metadata?.is_therapist;
 
+  // Handle URL parameters for new conversations
   useEffect(() => {
-    // Check if we're trying to message a specific therapist from URL params
     const urlParams = new URLSearchParams(window.location.search);
-    const therapistIdFromUrl = urlParams.get('therapist');
-    const therapistNameFromUrl = urlParams.get('name');
+    const targetUserId = urlParams.get('user') || userId;
+    const targetUserName = urlParams.get('name');
     
-    console.log('🔍 TherapistMessages URL params:', {
-      therapistId: therapistIdFromUrl,
-      therapistName: therapistNameFromUrl,
+    console.log('🔍 Message page loaded with params:', {
+      targetUserId,
+      targetUserName,
+      userId,
       currentUser: user?.id
     });
     
-    if (therapistIdFromUrl && therapistNameFromUrl) {
-      console.log('✅ Setting target therapist from URL params');
-      setTargetTherapistId(therapistIdFromUrl);
-      setTargetTherapistName(decodeURIComponent(therapistNameFromUrl));
-      setSelectedConversation(therapistIdFromUrl);
+    if (targetUserId && targetUserName) {
+      console.log('✅ Setting up new conversation with:', targetUserName);
+      setTargetUser({
+        id: targetUserId,
+        name: decodeURIComponent(targetUserName),
+        avatar: undefined
+      });
+      setSelectedConversation(targetUserId);
     }
-    
+  }, [userId, user]);
+
+  useEffect(() => {
     if (user) {
       fetchConversations();
       if (selectedConversation) {
@@ -105,6 +112,8 @@ const TherapistMessages: React.FC = () => {
       if (userError) throw userError;
       if (!currentUser) return;
 
+      console.log('📱 Fetching conversations for user:', currentUser.id);
+
       // Get all messages for this user
       const { data: allMessages, error } = await supabase
         .from('therapist_messages')
@@ -125,6 +134,8 @@ const TherapistMessages: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+
+      console.log('📨 Found messages:', allMessages?.length || 0);
 
       // Process conversations
       const conversationMap = new Map<string, ConversationUser>();
@@ -163,6 +174,7 @@ const TherapistMessages: React.FC = () => {
           new Date(a.latestMessage?.created_at || '').getTime()
         );
       
+      console.log('💬 Processed conversations:', conversationList.length);
       setConversations(conversationList);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -178,6 +190,8 @@ const TherapistMessages: React.FC = () => {
       if (userError) throw userError;
       if (!currentUser) return;
 
+      console.log('📨 Fetching messages between:', currentUser.id, 'and', partnerId);
+
       const { data, error } = await supabase
         .from('therapist_messages')
         .select(`
@@ -191,6 +205,8 @@ const TherapistMessages: React.FC = () => {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
+      
+      console.log('📨 Found messages in conversation:', data?.length || 0);
       setMessages(data || []);
 
       // Mark messages as read
@@ -228,6 +244,8 @@ const TherapistMessages: React.FC = () => {
       if (userError) throw userError;
       if (!currentUser) return;
 
+      console.log('📤 Sending message to:', selectedConversation);
+
       const { data, error } = await supabase
         .from('therapist_messages')
         .insert([{
@@ -248,15 +266,32 @@ const TherapistMessages: React.FC = () => {
 
       if (error) throw error;
 
+      console.log('✅ Message sent successfully');
+
       setMessages(prev => [...prev, data]);
       setNewMessage('');
       
-      // Update conversation list
-      setConversations(prev => prev.map(conv => 
-        conv.id === selectedConversation 
-          ? { ...conv, latestMessage: data }
-          : conv
-      ));
+      // Update conversation list - add new conversation if it doesn't exist
+      setConversations(prev => {
+        const existingIndex = prev.findIndex(conv => conv.id === selectedConversation);
+        
+        if (existingIndex >= 0) {
+          // Update existing conversation
+          const updated = [...prev];
+          updated[existingIndex] = { ...updated[existingIndex], latestMessage: data };
+          return updated;
+        } else {
+          // Add new conversation
+          const newConversation: ConversationUser = {
+            id: selectedConversation,
+            full_name: targetUser?.name || 'Unknown User',
+            avatar_url: targetUser?.avatar,
+            unreadCount: 0,
+            latestMessage: data
+          };
+          return [newConversation, ...prev];
+        }
+      });
       
       // Send notification to recipient
       try {
@@ -269,7 +304,7 @@ const TherapistMessages: React.FC = () => {
             type: 'message',
             priority: 'medium',
             read: false,
-            action_url: `/therapist-messages/${currentUser.id}`,
+            action_url: `/messages/${currentUser.id}?name=${encodeURIComponent(currentUser.user_metadata.full_name || 'User')}`,
             action_text: 'View Message'
           }]);
       } catch (notifError) {
@@ -289,7 +324,7 @@ const TherapistMessages: React.FC = () => {
     conv.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedUser = conversations.find(conv => conv.id === selectedConversation);
+  const selectedUser = conversations.find(conv => conv.id === selectedConversation) || targetUser;
 
   if (isLoading) {
     return (
@@ -310,15 +345,23 @@ const TherapistMessages: React.FC = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="mb-6">
+          <Link 
+            to={isTherapist ? "/therapist-dashboard" : "/dashboard"} 
+            className="inline-flex items-center text-lavender-600 hover:text-lavender-800"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back to Dashboard
+          </Link>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           {/* Conversations List */}
           <div className="lg:col-span-1">
             <Card className="h-full flex flex-col">
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {isTherapist ? 'Client Messages' : 'Therapist Messages'}
-                  </h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
                   <MessageSquare className="w-5 h-5 text-lavender-600" />
                 </div>
                 
@@ -335,7 +378,40 @@ const TherapistMessages: React.FC = () => {
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {filteredConversations.length === 0 ? (
+                {/* Show target user if starting new conversation */}
+                {targetUser && !conversations.find(c => c.id === targetUser.id) && (
+                  <div className="border-b border-gray-100">
+                    <button
+                      onClick={() => setSelectedConversation(targetUser.id)}
+                      className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
+                        selectedConversation === targetUser.id ? 'bg-lavender-50 border-r-2 border-lavender-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-full overflow-hidden bg-lavender-100">
+                          {targetUser.avatar ? (
+                            <img 
+                              src={targetUser.avatar} 
+                              alt={targetUser.name} 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-full h-full p-2 text-lavender-600" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900">{targetUser.name}</div>
+                          <div className="text-sm text-gray-500">Start a new conversation</div>
+                        </div>
+                        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          New
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {filteredConversations.length === 0 && !targetUser ? (
                   <div className="p-4 text-center">
                     <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No conversations</h3>
@@ -399,17 +475,17 @@ const TherapistMessages: React.FC = () => {
 
           {/* Message Area */}
           <div className="lg:col-span-2">
-            {selectedConversation && (selectedUser || targetTherapistId) ? (
+            {selectedConversation && selectedUser ? (
               <Card className="h-full flex flex-col">
                 {/* Message Header */}
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100">
-                        {(selectedUser?.avatar_url) ? (
+                        {selectedUser.avatar_url || (targetUser && selectedUser.id === targetUser.id && targetUser.avatar) ? (
                           <img 
-                            src={selectedUser.avatar_url} 
-                            alt={selectedUser.full_name} 
+                            src={selectedUser.avatar_url || targetUser?.avatar || ''} 
+                            alt={selectedUser.full_name || selectedUser.name} 
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -419,7 +495,7 @@ const TherapistMessages: React.FC = () => {
                       <div>
                         <div className="flex items-center space-x-2">
                           <h3 className="font-semibold text-gray-900">
-                            {selectedUser?.full_name || targetTherapistName}
+                            {selectedUser.full_name || selectedUser.name}
                           </h3>
                           <div className="flex items-center space-x-1">
                             <Shield className="w-4 h-4 text-green-600" />
@@ -433,24 +509,6 @@ const TherapistMessages: React.FC = () => {
                     </div>
                     
                     <div className="flex space-x-2">
-                      {isTherapist && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Phone size={16} />}
-                          >
-                            Call
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Video size={16} />}
-                          >
-                            Video
-                          </Button>
-                        </>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -467,9 +525,9 @@ const TherapistMessages: React.FC = () => {
                   {messages.length === 0 ? (
                     <div className="text-center py-8">
                       <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No messages yet</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Start Your Conversation</h3>
                       <p className="text-gray-600">
-                        Start a conversation with {selectedUser?.full_name || targetTherapistName}
+                        Send your first message to {selectedUser.full_name || selectedUser.name}
                       </p>
                     </div>
                   ) : (
@@ -535,57 +593,7 @@ const TherapistMessages: React.FC = () => {
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={`Message ${selectedUser?.full_name || targetTherapistName}...`}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
-                      disabled={isSending}
-                    />
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      disabled={!newMessage.trim() || isSending}
-                      isLoading={isSending}
-                      leftIcon={<Send size={16} />}
-                    >
-                      Send
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    All messages are encrypted and HIPAA compliant
-                  </p>
-                </form>
-              </Card>
-            ) : targetTherapistId ? (
-              <Card className="h-full flex flex-col">
-                {/* New Conversation Header */}
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100">
-                      <User className="w-full h-full p-2 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{targetTherapistName}</h3>
-                      <p className="text-sm text-gray-600">Start a new conversation</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Empty Messages Area */}
-                <div className="flex-1 overflow-y-auto p-4">
-                  <div className="text-center py-8">
-                    <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Start Your Conversation</h3>
-                    <p className="text-gray-600">Send your first message to {targetTherapistName}</p>
-                  </div>
-                </div>
-
-                {/* Message Input for New Conversation */}
-                <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
-                  <div className="flex space-x-3">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={`Send your first message to ${targetTherapistName}...`}
+                      placeholder={`Message ${selectedUser?.full_name || selectedUser?.name}...`}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                       disabled={isSending}
                     />

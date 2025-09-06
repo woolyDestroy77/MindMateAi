@@ -533,29 +533,33 @@ const MyTherapySessions: React.FC = () => {
                     <Button
                       variant="outline"
                       fullWidth
-                      onClick={() => setShowCancelModal(null)}
-                      disabled={isCancelling}
-                    >
-                      Keep Session
-                    </Button>
-                    <Button
-                      variant="primary"
-                      fullWidth
-                      onClick={() => cancelSession(showCancelModal)}
-                      isLoading={isCancelling}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      Cancel Session
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </main>
-    </div>
-  );
-};
-
-export default MyTherapySessions;
+                       onClick={async () => {
+                         const therapistName = session.therapist?.user?.full_name || 'Therapist';
+                         console.log('🔍 Message Therapist clicked from session');
+                         
+                         if (session.therapist_id) {
+                           try {
+                             const { data, error } = await supabase
+                               .from('therapist_profiles')
+                               .select('user_id')
+                               .eq('id', session.therapist_id)
+                               .single();
+                               
+                             if (error) {
+                               console.error('Error getting therapist user_id:', error);
+                               toast.error('Failed to open messaging');
+                               return;
+                             }
+                             
+                             if (data?.user_id) {
+                               console.log('✅ Navigating to messages with therapist:', data.user_id);
+                               navigate(`/messages/${data.user_id}?name=${encodeURIComponent(therapistName)}`);
+                             } else {
+                               toast.error('Therapist messaging not available');
+                             }
+                           } catch (error) {
+                             console.error('Error in messaging navigation:', error);
+                             toast.error('Failed to open messaging');
+                           }
+                         }
+                       }}

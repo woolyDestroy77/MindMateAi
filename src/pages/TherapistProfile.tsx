@@ -378,36 +378,34 @@ const TherapistProfile: React.FC = () => {
                   variant="outline"
                   fullWidth
                   leftIcon={<MessageSquare size={18} />}
-                  onClick={() => {
-                    // Navigate to messaging with this therapist
-                    const therapistName = therapist.user?.full_name || 'Therapist';
-                    console.log('🔍 Message Therapist clicked from profile:', {
-                      therapist_profile_id: therapist.id,
-                      therapist_user: therapist.user,
-                      therapist_name: therapistName
-                    });
-                    
-                    // Get the therapist's user_id for messaging
-                    supabase
-                      .from('therapist_profiles')
-                      .select('user_id')
-                      .eq('id', therapist.id)
-                      .single()
-                      .then(({ data, error }) => {
-                        if (error) {
-                          console.error('Error getting therapist user_id:', error);
-                          toast.error('Failed to open messaging');
-                          return;
-                        }
-                        
-                        if (data?.user_id) {
-                          console.log('✅ Found therapist user_id for messaging:', data.user_id);
-                          window.location.href = `/therapist-messages?therapist=${data.user_id}&name=${encodeURIComponent(therapistName)}`;
-                        } else {
-                          toast.error('Therapist messaging not available');
-                        }
-                      });
-                  }}
+                   onClick={async () => {
+                     const therapistName = therapist.user?.full_name || 'Therapist';
+                     console.log('🔍 Message Therapist clicked from profile');
+                     
+                     try {
+                       const { data, error } = await supabase
+                         .from('therapist_profiles')
+                         .select('user_id')
+                         .eq('id', therapist.id)
+                         .single();
+                         
+                       if (error) {
+                         console.error('Error getting therapist user_id:', error);
+                         toast.error('Failed to open messaging');
+                         return;
+                       }
+                       
+                       if (data?.user_id) {
+                         console.log('✅ Navigating to messages with therapist:', data.user_id);
+                         navigate(`/messages/${data.user_id}?name=${encodeURIComponent(therapistName)}`);
+                       } else {
+                         toast.error('Therapist messaging not available');
+                       }
+                     } catch (error) {
+                       console.error('Error in messaging navigation:', error);
+                       toast.error('Failed to open messaging');
+                     }
+                   }}
                 >
                   Send Message
                 </Button>

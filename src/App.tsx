@@ -190,6 +190,20 @@ function App() {
               </Suspense>
             ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
           } />
+          <Route path="/messages" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistMessages />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
+          <Route path="/messages/:userId" element={
+            user ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <TherapistMessages />
+              </Suspense>
+            ) : <Navigate to="/" replace />
+          } />
           <Route path="/therapist-messages/:therapistId" element={
             user && user.user_metadata?.user_type !== 'therapist' && !user.user_metadata?.is_therapist ? (
               <Suspense fallback={<LoadingFallback />}>
