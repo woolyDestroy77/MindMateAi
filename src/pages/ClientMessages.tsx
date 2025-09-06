@@ -48,7 +48,7 @@ interface ConversationUser {
   latestMessage?: TherapistMessage;
 }
 
-const TherapistMessages: React.FC = () => {
+const ClientMessages: React.FC = () => {
   const { clientId } = useParams<{ clientId?: string }>();
   const { user } = useAuth();
   const [messages, setMessages] = useState<TherapistMessage[]>([]);
@@ -249,7 +249,7 @@ const TherapistMessages: React.FC = () => {
             type: 'message',
             priority: 'medium',
             read: false,
-            action_url: `/therapist-messages/${currentUser.id}`,
+            action_url: isTherapist ? `/client-messages/${currentUser.id}` : `/therapist-messages/${currentUser.id}`,
             action_text: 'View Message'
           }]);
       } catch (notifError) {
@@ -290,6 +290,16 @@ const TherapistMessages: React.FC = () => {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="mb-6">
+          <Link 
+            to={isTherapist ? "/therapist-dashboard" : "/dashboard"} 
+            className="inline-flex items-center text-lavender-600 hover:text-lavender-800"
+          >
+            <ArrowLeft size={18} className="mr-2" />
+            Back to Dashboard
+          </Link>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-200px)]">
           {/* Conversations List */}
           <div className="lg:col-span-1">
@@ -411,24 +421,6 @@ const TherapistMessages: React.FC = () => {
                     </div>
                     
                     <div className="flex space-x-2">
-                      {isTherapist && (
-                        <>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Phone size={16} />}
-                          >
-                            Call
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            leftIcon={<Video size={16} />}
-                          >
-                            Video
-                          </Button>
-                        </>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -546,6 +538,8 @@ const TherapistMessages: React.FC = () => {
       </main>
     </div>
   );
+
+  const selectedUser = conversations.find(conv => conv.id === selectedConversation);
 };
 
-export default TherapistMessages;
+export default ClientMessages;

@@ -26,6 +26,7 @@ const BookSession = lazy(() => import('./pages/BookSession'));
 const TherapistProfile = lazy(() => import('./pages/TherapistProfile'));
 const MyTherapySessions = lazy(() => import('./pages/MyTherapySessions'));
 const TherapistMessages = lazy(() => import('./pages/TherapistMessages'));
+const ClientMessages = lazy(() => import('./pages/ClientMessages'));
 
 // Loading fallback
 const LoadingFallback = () => (
@@ -195,6 +196,20 @@ function App() {
                 <TherapistMessages />
               </Suspense>
             ) : user ? <Navigate to="/therapist-dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/therapist-messages" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <ClientMessages />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
+          } />
+          <Route path="/client-messages/:clientId" element={
+            user && (user.user_metadata?.user_type === 'therapist' || user.user_metadata?.is_therapist) ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <ClientMessages />
+              </Suspense>
+            ) : user ? <Navigate to="/dashboard" replace /> : <Navigate to="/" replace />
           } />
         </Routes>
         <Toaster position="top-right" />

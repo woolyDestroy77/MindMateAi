@@ -335,6 +335,14 @@ const Navbar: React.FC<NavbarProps> = ({
                             <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
                           </Link>
                           
+                          <Link
+                            to="/therapist-messages"
+                            className="relative text-gray-700 hover:text-blue-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Messages</span>
+                            <span className="absolute inset-0 bg-blue-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
                           {/* Admin Panel for authorized users */}
                           {user?.email === 'youssef.arafat09@gmail.com' && (
                             <Link
@@ -628,6 +636,13 @@ const Navbar: React.FC<NavbarProps> = ({
                         onClick={() => setIsMenuOpen(false)}
                       >
                         Earnings
+                      </Link>
+                      <Link
+                        to="/therapist-messages"
+                        className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        Messages
                       </Link>
                       {user?.email === 'youssef.arafat09@gmail.com' && (
                         <Link

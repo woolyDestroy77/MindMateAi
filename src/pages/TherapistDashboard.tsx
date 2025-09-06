@@ -516,6 +516,15 @@ const TherapistDashboard: React.FC = () => {
                   >
                     Earnings Report
                   </Button>
+                   <Link to="/therapist-messages">
+                     <Button
+                       variant="outline"
+                       fullWidth
+                       leftIcon={<MessageSquare size={16} />}
+                     >
+                       Client Messages
+                     </Button>
+                   </Link>
                   <Button
                     variant="outline"
                     fullWidth

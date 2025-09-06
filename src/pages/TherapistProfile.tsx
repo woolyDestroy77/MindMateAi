@@ -378,6 +378,10 @@ const TherapistProfile: React.FC = () => {
                   variant="outline"
                   fullWidth
                   leftIcon={<MessageSquare size={18} />}
+                  onClick={() => {
+                    // Navigate to messaging with this therapist
+                    window.location.href = `/therapist-messages/${therapist.user_id}`;
+                  }}
                 >
                   Send Message
                 </Button>

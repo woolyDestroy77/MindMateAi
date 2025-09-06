@@ -170,8 +170,29 @@ const BookSession: React.FC = () => {
       
       console.log('✅ PAYMENT TRANSACTION CREATED');
       
-      // Notification will be sent automatically by database trigger
-      console.log('🔔 NOTIFICATION WILL BE SENT BY DATABASE TRIGGER');
+       // Send notification to therapist about new booking
+       try {
+         const { error: notificationError } = await supabase
+           .from('user_notifications')
+           .insert([{
+             user_id: therapistCheck.user_id,
+             title: 'New Session Booking',
+             message: `${user.user_metadata.full_name || 'A client'} has booked a session with you`,
+             type: 'info',
+             priority: 'high',
+             read: false,
+             action_url: '/therapist-sessions',
+             action_text: 'View Sessions'
+           }]);
+           
+         if (notificationError) {
+           console.error('Error sending therapist notification:', notificationError);
+         } else {
+           console.log('✅ Therapist notification sent');
+         }
+       } catch (notifError) {
+         console.error('Error creating therapist notification:', notifError);
+       }
 
       toast.success('Session booked successfully!');
       navigate('/my-therapy-sessions');

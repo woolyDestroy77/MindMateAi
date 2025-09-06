@@ -418,6 +418,15 @@ const TherapistSessions: React.FC = () => {
                       >
                         Session Notes
                       </Button>
+                      <Link to={`/client-messages/${session.client_id}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          leftIcon={<MessageSquare size={16} />}
+                        >
+                          Message Client
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </Card>

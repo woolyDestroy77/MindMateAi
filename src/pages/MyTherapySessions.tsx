@@ -401,7 +401,7 @@ const MyTherapySessions: React.FC = () => {
                         leftIcon={<MessageSquare size={16} />}
                         onClick={() => {
                           // Navigate to messaging with this therapist
-                          window.location.href = `/therapist-messages/${session.therapist_id}`;
+                          window.location.href = `/therapist-messages/${session.therapist?.user?.id || session.therapist_id}`;
                         }}
                       >
                         Message Therapist
