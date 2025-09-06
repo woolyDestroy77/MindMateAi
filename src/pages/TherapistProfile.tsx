@@ -379,10 +379,34 @@ const TherapistProfile: React.FC = () => {
                   fullWidth
                   leftIcon={<MessageSquare size={18} />}
                   onClick={() => {
-                    // Navigate to messaging with this therapist using proper ID and name
-                    const therapistUserId = therapist.user?.id || therapist.user_id;
+                    // Navigate to messaging with this therapist
                     const therapistName = therapist.user?.full_name || 'Therapist';
-                    window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
+                    console.log('🔍 Message Therapist clicked from profile:', {
+                      therapist_profile_id: therapist.id,
+                      therapist_user: therapist.user,
+                      therapist_name: therapistName
+                    });
+                    
+                    // Get the therapist's user_id for messaging
+                    supabase
+                      .from('therapist_profiles')
+                      .select('user_id')
+                      .eq('id', therapist.id)
+                      .single()
+                      .then(({ data, error }) => {
+                        if (error) {
+                          console.error('Error getting therapist user_id:', error);
+                          toast.error('Failed to open messaging');
+                          return;
+                        }
+                        
+                        if (data?.user_id) {
+                          console.log('✅ Found therapist user_id for messaging:', data.user_id);
+                          window.location.href = `/therapist-messages?therapist=${data.user_id}&name=${encodeURIComponent(therapistName)}`;
+                        } else {
+                          toast.error('Therapist messaging not available');
+                        }
+                      });
                   }}
                 >
                   Send Message

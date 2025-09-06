@@ -400,11 +400,39 @@ const MyTherapySessions: React.FC = () => {
                         variant="outline"
                         leftIcon={<MessageSquare size={16} />}
                         onClick={() => {
-                          // Navigate to messaging with this therapist using proper parameters
-                          const therapistUserId = session.therapist?.user?.id;
+                          // Navigate to messaging with this therapist
                           const therapistName = session.therapist?.user?.full_name || 'Therapist';
-                          if (therapistUserId) {
-                            window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
+                          console.log('🔍 Message Therapist clicked:', {
+                            therapist_id: session.therapist_id,
+                            therapist_user: session.therapist?.user,
+                            therapist_name: therapistName
+                          });
+                          
+                          // Use the therapist_id from the session (this is the therapist_profiles.id)
+                          // We need to get the actual user_id for messaging
+                          if (session.therapist_id) {
+                            // First get the therapist's user_id
+                            supabase
+                              .from('therapist_profiles')
+                              .select('user_id')
+                              .eq('id', session.therapist_id)
+                              .single()
+                              .then(({ data, error }) => {
+                                if (error) {
+                                  console.error('Error getting therapist user_id:', error);
+                                  toast.error('Failed to open messaging');
+                                  return;
+                                }
+                                
+                                if (data?.user_id) {
+                                  console.log('✅ Found therapist user_id:', data.user_id);
+                                  window.location.href = `/therapist-messages?therapist=${data.user_id}&name=${encodeURIComponent(therapistName)}`;
+                                } else {
+                                  toast.error('Therapist messaging not available');
+                                }
+                              });
+                          } else {
+                            toast.error('Therapist information not available');
                           }
                         }}
                       >

@@ -70,7 +70,14 @@ const TherapistMessages: React.FC = () => {
     const therapistIdFromUrl = urlParams.get('therapist');
     const therapistNameFromUrl = urlParams.get('name');
     
+    console.log('🔍 TherapistMessages URL params:', {
+      therapistId: therapistIdFromUrl,
+      therapistName: therapistNameFromUrl,
+      currentUser: user?.id
+    });
+    
     if (therapistIdFromUrl && therapistNameFromUrl) {
+      console.log('✅ Setting target therapist from URL params');
       setTargetTherapistId(therapistIdFromUrl);
       setTargetTherapistName(decodeURIComponent(therapistNameFromUrl));
       setSelectedConversation(therapistIdFromUrl);
@@ -212,7 +219,10 @@ const TherapistMessages: React.FC = () => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || isSending || !selectedConversation) return;
+    
+    // Allow sending to either existing conversation or target therapist
+    const recipientId = selectedConversation || targetTherapistId;
+    if (!newMessage.trim() || isSending || !recipientId) return;
 
     try {
       setIsSending(true);
@@ -221,11 +231,16 @@ const TherapistMessages: React.FC = () => {
       if (userError) throw userError;
       if (!currentUser) return;
 
+      console.log('📤 Sending message:', {
+        sender: currentUser.id,
+        recipient: recipientId,
+        message: newMessage.trim()
+      });
       const { data, error } = await supabase
         .from('therapist_messages')
         .insert([{
           sender_id: currentUser.id,
-          recipient_id: selectedConversation,
+          recipient_id: recipientId,
           message_content: newMessage.trim(),
           message_type: 'text',
           is_read: false
@@ -241,12 +256,20 @@ const TherapistMessages: React.FC = () => {
 
       if (error) throw error;
 
+      console.log('✅ Message sent successfully:', data);
       setMessages(prev => [...prev, data]);
       setNewMessage('');
       
+      // If this was a new conversation, set it as selected and clear target
+      if (!selectedConversation && targetTherapistId) {
+        setSelectedConversation(targetTherapistId);
+        setTargetTherapistId(null);
+        setTargetTherapistName('');
+      }
+      
       // Update conversation list
       setConversations(prev => prev.map(conv => 
-        conv.id === selectedConversation 
+        conv.id === recipientId 
           ? { ...conv, latestMessage: data }
           : conv
       ));
@@ -256,7 +279,7 @@ const TherapistMessages: React.FC = () => {
         await supabase
           .from('user_notifications')
           .insert([{
-            user_id: selectedConversation,
+            user_id: recipientId,
             title: 'New Message',
             message: `${currentUser.user_metadata.full_name || 'Someone'} sent you a message`,
             type: 'message',
@@ -269,6 +292,8 @@ const TherapistMessages: React.FC = () => {
         console.error('Error sending notification:', notifError);
       }
 
+      // Refresh conversations to show the new one
+      await fetchConversations();
       toast.success('Message sent');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -547,7 +572,29 @@ const TherapistMessages: React.FC = () => {
                   </p>
                 </form>
               </Card>
-            ) : (
+            ) : targetTherapistId ? (
+              <Card className="h-full flex flex-col">
+                {/* New Conversation Header */}
+                <div className="p-4 border-b border-gray-200">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100">
+                      <User className="w-full h-full p-2 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{targetTherapistName}</h3>
+                      <p className="text-sm text-gray-600">Start a new conversation</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Empty Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="text-center py-8">
+                    <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Start Your Conversation</h3>
+                    <p className="text-gray-600">Send your first message to {targetTherapistName}</p>
+                  </div>
+                </div>
               <Card className="h-full flex items-center justify-center">
                 <div className="text-center">
                   <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -556,21 +603,6 @@ const TherapistMessages: React.FC = () => {
                     Choose a conversation from the left to start messaging
                   </p>
                 </div>
-                
-                {/* Show target therapist if no existing conversation */}
-                {targetTherapistId && !filteredConversations.find(c => c.id === targetTherapistId) && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-100">
-                        <User className="w-full h-full p-2 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-blue-900">{targetTherapistName}</div>
-                        <div className="text-sm text-blue-700">Start a new conversation</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </Card>
             )}
           </div>
@@ -580,4 +612,31 @@ const TherapistMessages: React.FC = () => {
   );
 };
 
+                {/* Message Input for New Conversation */}
+                <form onSubmit={sendMessage} className="p-4 border-t border-gray-200">
+                  <div className="flex space-x-3">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={`Send your first message to ${targetTherapistName}...`}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
+                      disabled={isSending}
+                    />
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      disabled={!newMessage.trim() || isSending}
+                      isLoading={isSending}
+                      leftIcon={<Send size={16} />}
+                    >
+                      Send
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    All messages are encrypted and HIPAA compliant
+                  </p>
+                </form>
+              </Card>
+            ) : (
 export default TherapistMessages;
