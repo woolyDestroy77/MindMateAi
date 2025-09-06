@@ -219,10 +219,7 @@ const TherapistMessages: React.FC = () => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Allow sending to either existing conversation or target therapist
-    const recipientId = selectedConversation || targetTherapistId;
-    if (!newMessage.trim() || isSending || !recipientId) return;
+    if (!newMessage.trim() || isSending || !selectedConversation) return;
 
     try {
       setIsSending(true);
@@ -231,16 +228,11 @@ const TherapistMessages: React.FC = () => {
       if (userError) throw userError;
       if (!currentUser) return;
 
-      console.log('📤 Sending message:', {
-        sender: currentUser.id,
-        recipient: recipientId,
-        message: newMessage.trim()
-      });
       const { data, error } = await supabase
         .from('therapist_messages')
         .insert([{
           sender_id: currentUser.id,
-          recipient_id: recipientId,
+          recipient_id: selectedConversation,
           message_content: newMessage.trim(),
           message_type: 'text',
           is_read: false
@@ -256,20 +248,12 @@ const TherapistMessages: React.FC = () => {
 
       if (error) throw error;
 
-      console.log('✅ Message sent successfully:', data);
       setMessages(prev => [...prev, data]);
       setNewMessage('');
       
-      // If this was a new conversation, set it as selected and clear target
-      if (!selectedConversation && targetTherapistId) {
-        setSelectedConversation(targetTherapistId);
-        setTargetTherapistId(null);
-        setTargetTherapistName('');
-      }
-      
       // Update conversation list
       setConversations(prev => prev.map(conv => 
-        conv.id === recipientId 
+        conv.id === selectedConversation 
           ? { ...conv, latestMessage: data }
           : conv
       ));
@@ -279,7 +263,7 @@ const TherapistMessages: React.FC = () => {
         await supabase
           .from('user_notifications')
           .insert([{
-            user_id: recipientId,
+            user_id: selectedConversation,
             title: 'New Message',
             message: `${currentUser.user_metadata.full_name || 'Someone'} sent you a message`,
             type: 'message',
@@ -292,8 +276,6 @@ const TherapistMessages: React.FC = () => {
         console.error('Error sending notification:', notifError);
       }
 
-      // Refresh conversations to show the new one
-      await fetchConversations();
       toast.success('Message sent');
     } catch (error) {
       console.error('Error sending message:', error);
