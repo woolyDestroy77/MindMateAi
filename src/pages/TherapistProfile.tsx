@@ -369,10 +369,8 @@ const TherapistProfile: React.FC = () => {
                     fullWidth
                     leftIcon={<Calendar size={18} />}
                     className="bg-gradient-to-r from-blue-500 to-purple-500 mb-3"
-                      // Navigate to messaging with this therapist using proper ID and name
-                      const therapistUserId = therapist.user?.id || therapist.user_id;
-                      const therapistName = therapist.user?.full_name || 'Therapist';
-                      window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
+                  >
+                    Book Session
                   </Button>
                 </Link>
                 
@@ -381,8 +379,10 @@ const TherapistProfile: React.FC = () => {
                   fullWidth
                   leftIcon={<MessageSquare size={18} />}
                   onClick={() => {
-                    // Navigate to messaging with this therapist
-                    window.location.href = `/therapist-messages/${therapist.user_id}`;
+                    // Navigate to messaging with this therapist using proper ID and name
+                    const therapistUserId = therapist.user?.id || therapist.user_id;
+                    const therapistName = therapist.user?.full_name || 'Therapist';
+                    window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
                   }}
                 >
                   Send Message
