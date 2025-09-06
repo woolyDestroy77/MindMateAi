@@ -400,8 +400,12 @@ const MyTherapySessions: React.FC = () => {
                         variant="outline"
                         leftIcon={<MessageSquare size={16} />}
                         onClick={() => {
-                          // Navigate to messaging with this therapist
-                          window.location.href = `/therapist-messages/${session.therapist?.user?.id || session.therapist_id}`;
+                          // Navigate to messaging with this therapist using proper parameters
+                          const therapistUserId = session.therapist?.user?.id;
+                          const therapistName = session.therapist?.user?.full_name || 'Therapist';
+                          if (therapistUserId) {
+                            window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
+                          }
                         }}
                       >
                         Message Therapist

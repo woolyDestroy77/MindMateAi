@@ -369,8 +369,10 @@ const TherapistProfile: React.FC = () => {
                     fullWidth
                     leftIcon={<Calendar size={18} />}
                     className="bg-gradient-to-r from-blue-500 to-purple-500 mb-3"
-                  >
-                    Book Session
+                      // Navigate to messaging with this therapist using proper ID and name
+                      const therapistUserId = therapist.user?.id || therapist.user_id;
+                      const therapistName = therapist.user?.full_name || 'Therapist';
+                      window.location.href = `/therapist-messages?therapist=${therapistUserId}&name=${encodeURIComponent(therapistName)}`;
                   </Button>
                 </Link>
                 

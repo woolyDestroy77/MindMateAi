@@ -59,10 +59,23 @@ const TherapistMessages: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [targetTherapistId, setTargetTherapistId] = useState<string | null>(null);
+  const [targetTherapistName, setTargetTherapistName] = useState<string>('');
 
   const isTherapist = user?.user_metadata?.user_type === 'therapist' || user?.user_metadata?.is_therapist;
 
   useEffect(() => {
+    // Check if we're trying to message a specific therapist from URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const therapistIdFromUrl = urlParams.get('therapist');
+    const therapistNameFromUrl = urlParams.get('name');
+    
+    if (therapistIdFromUrl && therapistNameFromUrl) {
+      setTargetTherapistId(therapistIdFromUrl);
+      setTargetTherapistName(decodeURIComponent(therapistNameFromUrl));
+      setSelectedConversation(therapistIdFromUrl);
+    }
+    
     if (user) {
       fetchConversations();
       if (selectedConversation) {
@@ -379,14 +392,14 @@ const TherapistMessages: React.FC = () => {
 
           {/* Message Area */}
           <div className="lg:col-span-2">
-            {selectedConversation && selectedUser ? (
+            {selectedConversation && (selectedUser || targetTherapistId) ? (
               <Card className="h-full flex flex-col">
                 {/* Message Header */}
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-lavender-100">
-                        {selectedUser.avatar_url ? (
+                        {(selectedUser?.avatar_url) ? (
                           <img 
                             src={selectedUser.avatar_url} 
                             alt={selectedUser.full_name} 
@@ -398,7 +411,9 @@ const TherapistMessages: React.FC = () => {
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <h3 className="font-semibold text-gray-900">{selectedUser.full_name}</h3>
+                          <h3 className="font-semibold text-gray-900">
+                            {selectedUser?.full_name || targetTherapistName}
+                          </h3>
                           <div className="flex items-center space-x-1">
                             <Shield className="w-4 h-4 text-green-600" />
                             <span className="text-xs text-green-600 font-medium">Secure</span>
@@ -446,7 +461,9 @@ const TherapistMessages: React.FC = () => {
                     <div className="text-center py-8">
                       <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">No messages yet</h3>
-                      <p className="text-gray-600">Start a conversation with {selectedUser.full_name}</p>
+                      <p className="text-gray-600">
+                        Start a conversation with {selectedUser?.full_name || targetTherapistName}
+                      </p>
                     </div>
                   ) : (
                     messages.map((message) => {
@@ -511,7 +528,7 @@ const TherapistMessages: React.FC = () => {
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={`Message ${selectedUser.full_name}...`}
+                      placeholder={`Message ${selectedUser?.full_name || targetTherapistName}...`}
                       className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lavender-500 focus:border-transparent"
                       disabled={isSending}
                     />
@@ -539,6 +556,21 @@ const TherapistMessages: React.FC = () => {
                     Choose a conversation from the left to start messaging
                   </p>
                 </div>
+                
+                {/* Show target therapist if no existing conversation */}
+                {targetTherapistId && !filteredConversations.find(c => c.id === targetTherapistId) && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-blue-100">
+                        <User className="w-full h-full p-2 text-blue-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-blue-900">{targetTherapistName}</div>
+                        <div className="text-sm text-blue-700">Start a new conversation</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Card>
             )}
           </div>

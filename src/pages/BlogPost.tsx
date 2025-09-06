@@ -255,7 +255,8 @@ export default function BlogPost() {
   // Handle message author
   const handleMessageAuthor = () => {
     if (!post?.author || !user || post.author.id === user.id) return;
-    window.location.href = `/blog/messages?user=${post.author.id}`;
+    // For blog messaging, use the blog direct messages system
+    window.location.href = `/blog/messages?user=${post.author.id}&name=${encodeURIComponent(post.author.full_name)}`;
   };
 
   if (isLoading) {
