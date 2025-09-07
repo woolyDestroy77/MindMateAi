@@ -181,7 +181,7 @@ export const useVoiceInput = () => {
   const stopRecording = useCallback((recognition?: any) => {
     const recognitionToStop = recognition || recognitionRef.current;
     
-    if (recognitionToStop) {
+    if (recognitionToStop && typeof recognitionToStop.stop === 'function') {
       recognitionToStop.stop();
       recognitionRef.current = null;
     }
