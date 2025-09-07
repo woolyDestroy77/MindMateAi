@@ -25,6 +25,7 @@ interface TherapistMessage {
   reactions?: { [key: string]: string[] }; // emoji -> user_ids
   voice_duration?: number;
   voice_url?: string;
+  attachment_url?: string;
   sender?: {
     full_name: string;
     avatar_url?: string;
@@ -1223,7 +1224,8 @@ const ClientMessages: React.FC = () => {
                     </p>
                   </div>
                 </div>
-              <VoiceMessagePlayer audioUrl={message.attachment_url} />
+                <VoiceMessagePlayer audioUrl={message.attachment_url} />
+              </Card>
             ) : (
               <Card className="h-full flex items-center justify-center bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <div className="text-center">
