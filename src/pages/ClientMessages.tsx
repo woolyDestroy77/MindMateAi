@@ -1,37 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  MessageSquare, 
-  Send, 
-  User, 
-  ArrowLeft, 
-  Phone, 
-  Video,
-  Calendar,
-  Clock,
-  Shield,
-  Award,
-  Search,
-  Filter,
-  Mic,
-  MicOff,
-  Play,
-  Pause,
-  Smile,
-  Heart,
-  ThumbsUp,
-  ThumbsDown,
-  Laugh,
-  Angry,
-  Sad,
-  MoreHorizontal,
-  Check,
-  CheckCheck,
-  Paperclip,
-  Image as ImageIcon,
-  X
-} from 'lucide-react';
+import { MessageSquare, Send, User, ArrowLeft, Phone, Video, Calendar, Clock, Shield, Award, Search, Filter, Mic, MicOff, Play, Pause, Smile, Heart, ThumbsUp, ThumbsDown, Laugh, Angry, Salad as Sad, MoreHorizontal, Check, CheckCheck, Paperclip, Image as ImageIcon, X } from 'lucide-react';
 import { format, formatDistanceToNow, parseISO, isToday, isYesterday } from 'date-fns';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
