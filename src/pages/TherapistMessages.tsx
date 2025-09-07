@@ -58,6 +58,10 @@ const TherapistMessages: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [targetUser, setTargetUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const [showMediaUpload, setShowMediaUpload] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaCaption, setMediaCaption] = useState('');
 
   const isTherapist = user?.user_metadata?.user_type === 'therapist' || user?.user_metadata?.is_therapist;
 
