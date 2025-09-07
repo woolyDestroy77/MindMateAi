@@ -1424,7 +1424,7 @@ const TherapistMessages: React.FC = () => {
                     </p>
                   </div>
                 </div>
-              <VoiceMessagePlayer audioUrl={message.attachment_url} />
+              </Card>
             ) : (
               <Card className="h-full flex items-center justify-center bg-white/80 backdrop-blur-sm border-0 shadow-xl">
                 <div className="text-center">
