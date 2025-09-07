@@ -538,8 +538,6 @@ const ClientMessages: React.FC = () => {
       </main>
     </div>
   );
-
-  const selectedUser = conversations.find(conv => conv.id === selectedConversation);
 };
 
 export default ClientMessages;
