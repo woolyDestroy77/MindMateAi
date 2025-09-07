@@ -64,21 +64,221 @@ const TherapistMessages: React.FC = () => {
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaCaption, setMediaCaption] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [showVoicePreview, setShowVoicePreview] = useState(false);
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [targetUser, setTargetUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const isTherapist = user?.user_metadata?.user_type === 'therapist' || user?.user_metadata?.is_therapist;
 
   // Voice recording
   const {
-    isRecording,
+    isRecording: voiceInputRecording,
     transcript,
-    audioBlob,
-    audioUrl,
-    recordingDuration,
-    startRecording,
-    stopRecording,
+    audioBlob: voiceInputAudioBlob,
+    audioUrl: voiceInputAudioUrl,
+    recordingDuration: voiceInputDuration,
+    startRecording: startVoiceInput,
+    stopRecording: stopVoiceInput,
     clearRecording,
     formatDuration
   } = useVoiceInput();
+
+  // Voice recording functions
+  const startVoiceRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      audioChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioBlob(audioBlob);
+        setAudioUrl(audioUrl);
+        setShowVoicePreview(true);
+        
+        // Stop all tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      mediaRecorder.start();
+      
+      // Start duration timer
+      durationIntervalRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error starting voice recording:', error);
+      toast.error('Failed to start voice recording');
+    }
+  };
+  
+  const stopVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    
+    setIsRecording(false);
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  };
+  
+  const cancelVoiceRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+    }
+    
+    setIsRecording(false);
+    setRecordingDuration(0);
+    setAudioBlob(null);
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+    }
+    setShowVoicePreview(false);
+    
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  };
+  
+  const sendVoiceMessage = async () => {
+    if (!audioBlob) return;
+    
+    try {
+      setIsSending(true);
+      
+      // Upload audio file to Supabase storage
+      const fileName = `voice_${Date.now()}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('message_attachments')
+        .upload(fileName, audioBlob);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('message_attachments')
+        .getPublicUrl(fileName);
+      
+      const { error } = await supabase
+        .from('therapist_messages')
+        .insert([{
+          sender_id: user?.id,
+          recipient_id: selectedConversation,
+          message_content: 'Voice message',
+          message_type: 'file',
+          is_read: false,
+          attachment_url: publicUrlData.publicUrl,
+          attachment_type: 'audio',
+          attachment_size: audioBlob.size
+        }]);
+      
+      if (error) throw error;
+      
+      // Reset voice recording state
+      setRecordingDuration(0);
+      setAudioBlob(null);
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+        setAudioUrl(null);
+      }
+      setShowVoicePreview(false);
+      
+      // Refresh messages
+      if (selectedConversation) {
+        fetchMessages(selectedConversation);
+      }
+      
+      toast.success('Voice message sent!');
+    } catch (error) {
+      console.error('Error sending voice message:', error);
+      toast.error('Failed to send voice message');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedMedia(file);
+    const preview = URL.createObjectURL(file);
+    setMediaPreview(preview);
+    setShowMediaUpload(false);
+  };
+
+  const sendMediaMessage = async () => {
+    if (!selectedMedia || !selectedConversation) return;
+
+    try {
+      setIsSending(true);
+      
+      // Upload media file to Supabase storage
+      const fileName = `media_${Date.now()}_${selectedMedia.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('message_attachments')
+        .upload(fileName, selectedMedia);
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('message_attachments')
+        .getPublicUrl(fileName);
+      
+      const { error } = await supabase
+        .from('therapist_messages')
+        .insert([{
+          sender_id: user?.id,
+          recipient_id: selectedConversation,
+          message_content: mediaCaption || (selectedMedia.type.startsWith('image/') ? 'Photo' : 'Video'),
+          message_type: 'file',
+          is_read: false,
+          attachment_url: publicUrlData.publicUrl,
+          attachment_type: selectedMedia.type.startsWith('image/') ? 'image' : 'video',
+          attachment_size: selectedMedia.size
+        }]);
+      
+      if (error) throw error;
+      
+      // Reset media state
+      setSelectedMedia(null);
+      setMediaPreview(null);
+      setMediaCaption('');
+      
+      // Refresh messages
+      fetchMessages(selectedConversation);
+      
+      toast.success('Media sent!');
+    } catch (error) {
+      console.error('Error sending media:', error);
+      toast.error('Failed to send media');
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   // Handle URL parameters for new conversations
   useEffect(() => {
@@ -336,74 +536,6 @@ const TherapistMessages: React.FC = () => {
       setMessages(prev => prev.filter(msg => msg.id !== messageId));
       setNewMessage(messageContent); // Restore message
       toast.error('Failed to send message');
-    } finally {
-      setIsSending(false);
-      setSendingMessageId(null);
-    }
-  };
-
-  const sendVoiceMessage = async () => {
-    if (!audioBlob || !selectedConversation || !transcript.trim()) return;
-
-    const messageId = `temp-voice-${Date.now()}`;
-    
-    try {
-      setIsSending(true);
-      setSendingMessageId(messageId);
-      
-      const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
-      if (!currentUser) return;
-
-      // Add optimistic voice message
-      const optimisticMessage: TherapistMessage = {
-        id: messageId,
-        sender_id: currentUser.id,
-        recipient_id: selectedConversation,
-        message_content: transcript.trim(),
-        message_type: 'voice',
-        is_read: false,
-        created_at: new Date().toISOString(),
-        voice_duration: recordingDuration,
-        voice_url: audioUrl || '',
-        sender: {
-          full_name: currentUser.user_metadata.full_name || 'You',
-          avatar_url: currentUser.user_metadata.avatar_url
-        }
-      };
-
-      setMessages(prev => [...prev, optimisticMessage]);
-      clearRecording();
-
-      const { data, error } = await supabase
-        .from('therapist_messages')
-        .insert([{
-          sender_id: currentUser.id,
-          recipient_id: selectedConversation,
-          message_content: transcript || 'Voice message',
-          message_type: 'file',
-          is_read: false
-        }])
-        .select(`
-          *,
-          sender:users!therapist_messages_sender_id_fkey(
-            full_name,
-            avatar_url
-          )
-        `)
-        .single();
-
-      if (error) throw error;
-
-      // Replace optimistic message with real one
-      setMessages(prev => prev.map(msg => 
-        msg.id === messageId ? { ...data, voice_duration: recordingDuration, voice_url: audioUrl } : msg
-      ));
-      
-    } catch (error) {
-      console.error('Error sending voice message:', error);
-      setMessages(prev => prev.filter(msg => msg.id !== messageId));
-      toast.error('Failed to send voice message');
     } finally {
       setIsSending(false);
       setSendingMessageId(null);
@@ -970,7 +1102,7 @@ const TherapistMessages: React.FC = () => {
                 <div className="p-4 bg-white/90 backdrop-blur-sm border-t border-gray-100">
                   {/* Voice Recording UI */}
                   <AnimatePresence>
-                    {(isRecording || (audioBlob && transcript)) && (
+                    {(isRecording || showVoicePreview) && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -988,16 +1120,13 @@ const TherapistMessages: React.FC = () => {
                               <div>
                                 <div className="font-medium text-blue-900">Recording voice message</div>
                                 <div className="text-sm text-blue-700">Duration: {formatDuration(recordingDuration)}</div>
-                                {transcript && (
-                                  <div className="text-xs text-blue-600 mt-1 italic">"{transcript}"</div>
-                                )}
                               </div>
                             </div>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={stopRecording}
+                                onClick={stopVoiceRecording}
                                 className="border-red-300 text-red-700 hover:bg-red-50"
                               >
                                 Stop
@@ -1005,38 +1134,38 @@ const TherapistMessages: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                                <Play size={20} className="text-white ml-0.5" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="font-medium text-blue-900">Voice message ready</div>
-                                <div className="text-sm text-blue-700">Duration: {formatDuration(recordingDuration)}</div>
-                                {transcript && (
-                                  <div className="text-xs text-blue-600 mt-1 italic bg-white/50 rounded px-2 py-1">
-                                    "{transcript}"
+                          <div className="bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl p-6 border border-blue-200">
+                            <div className="text-center space-y-4">
+                              <div className="text-4xl">🎤</div>
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Voice Message Ready</h3>
+                                <p className="text-sm text-gray-600">Duration: {formatDuration(recordingDuration)}</p>
+                                {audioUrl && (
+                                  <div className="mt-3 p-3 bg-white/50 rounded-lg">
+                                    <audio controls className="w-full">
+                                      <source src={audioUrl} type="audio/webm" />
+                                      Your browser does not support audio playback.
+                                    </audio>
                                   </div>
                                 )}
                               </div>
-                            </div>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={clearRecording}
-                                className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={sendVoiceMessage}
-                                className="bg-gradient-to-r from-blue-500 to-purple-500"
-                              >
-                                Send Voice Message
-                              </Button>
+                              <div className="flex justify-center space-x-3">
+                                <Button
+                                  variant="outline"
+                                  onClick={cancelVoiceRecording}
+                                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  variant="primary"
+                                  onClick={sendVoiceMessage}
+                                  disabled={isSending}
+                                  className="bg-gradient-to-r from-blue-500 to-purple-500"
+                                >
+                                  {isSending ? 'Sending...' : 'Send Voice Message'}
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         )}
@@ -1128,7 +1257,7 @@ const TherapistMessages: React.FC = () => {
                             <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                               {selectedMedia.type.startsWith('image/') ? (
                                 <img 
-                                  src={selectedMedia.preview} 
+                                  src={mediaPreview || ''} 
                                   alt="Preview" 
                                   className="w-full h-full object-cover"
                                 />
@@ -1218,12 +1347,12 @@ const TherapistMessages: React.FC = () => {
                     
                     {/* Voice/Send Button */}
                     <div className="flex space-x-2">
-                      {!isRecording && !audioBlob && (
+                      {!isRecording && !showVoicePreview && (
                         <motion.button
                           type="button"
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
-                          onClick={startRecording}
+                          onClick={startVoiceRecording}
                           className="p-3 rounded-full shadow-lg transition-all duration-200 bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-lavender-500 hover:to-blue-500"
                         >
                           <Mic size={20} />

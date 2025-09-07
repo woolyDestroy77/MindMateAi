@@ -655,9 +655,12 @@ const ClientMessages: React.FC = () => {
                             <img 
                               src={selectedUser.avatar_url} 
                               alt={selectedUser.full_name} 
-                              className="w-full h-full object-cover"
+                          {audioUrl && (
                             />
-                          ) : (
+                              <audio controls className="w-full">
+                                <source src={audioUrl} type="audio/webm" />
+                                Your browser does not support audio playback.
+                              </audio>
                             <User className="w-full h-full p-2 text-white" />
                           )}
                         </div>
