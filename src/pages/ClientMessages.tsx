@@ -655,12 +655,9 @@ const ClientMessages: React.FC = () => {
                             <img 
                               src={selectedUser.avatar_url} 
                               alt={selectedUser.full_name} 
-                          {audioUrl && (
+                              className="w-full h-full object-cover"
                             />
-                              <audio controls className="w-full">
-                                <source src={audioUrl} type="audio/webm" />
-                                Your browser does not support audio playback.
-                              </audio>
+                          ) : (
                             <User className="w-full h-full p-2 text-white" />
                           )}
                         </div>
@@ -977,6 +974,12 @@ const ClientMessages: React.FC = () => {
                                 )}
                               </div>
                             </div>
+                            {audioUrl && (
+                              <audio controls className="w-full">
+                                <source src={audioUrl} type="audio/webm" />
+                                Your browser does not support audio playback.
+                              </audio>
+                            )}
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
