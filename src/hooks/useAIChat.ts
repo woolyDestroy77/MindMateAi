@@ -332,7 +332,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
 
         // Upload audio file to Supabase storage
         const audioBlob = await fetch(audioUrl).then(r => r.blob());
-        const fileName = `voice_${Date.now()}.webm`;
+        const fileName = `${user.id}/voice_${Date.now()}.webm`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('message_attachments')
