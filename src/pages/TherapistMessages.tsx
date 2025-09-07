@@ -964,47 +964,206 @@ const TherapistMessages: React.FC = () => {
                 <div className="p-4 bg-white/90 backdrop-blur-sm border-t border-gray-100">
                   {/* Voice Recording UI */}
                   <AnimatePresence>
-                    {isRecording && (
+                    {(isRecording || (audioBlob && transcript)) && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
-                        className="mb-4 p-4 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-xl"
+                        className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <motion.div
-                              animate={{ scale: [1, 1.2, 1] }}
-                              transition={{ duration: 1, repeat: Infinity }}
-                              className="w-4 h-4 bg-red-500 rounded-full"
-                            />
-                            <div>
-                              <div className="font-medium text-red-900">Recording voice message</div>
-                              <div className="text-sm text-red-700">Duration: {formatDuration(recordingDuration)}</div>
-                              {transcript && (
-                                <div className="text-xs text-red-600 mt-1 italic">"{transcript}"</div>
-                              )}
+                        {isRecording ? (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <motion.div
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ duration: 1, repeat: Infinity }}
+                                className="w-4 h-4 bg-red-500 rounded-full"
+                              />
+                              <div>
+                                <div className="font-medium text-blue-900">Recording voice message</div>
+                                <div className="text-sm text-blue-700">Duration: {formatDuration(recordingDuration)}</div>
+                                {transcript && (
+                                  <div className="text-xs text-blue-600 mt-1 italic">"{transcript}"</div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={stopRecording}
+                                className="border-red-300 text-red-700 hover:bg-red-50"
+                              >
+                                Stop
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={stopRecording}
-                              className="border-red-300 text-red-700 hover:bg-red-50"
-                            >
-                              Stop
-                            </Button>
-                            {audioBlob && transcript && (
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                <Play size={20} className="text-white ml-0.5" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-medium text-blue-900">Voice message ready</div>
+                                <div className="text-sm text-blue-700">Duration: {formatDuration(recordingDuration)}</div>
+                                {transcript && (
+                                  <div className="text-xs text-blue-600 mt-1 italic bg-white/50 rounded px-2 py-1">
+                                    "{transcript}"
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={clearRecording}
+                                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                              >
+                                Cancel
+                              </Button>
                               <Button
                                 variant="primary"
                                 size="sm"
                                 onClick={sendVoiceMessage}
-                                className="bg-gradient-to-r from-green-500 to-emerald-500"
+                                className="bg-gradient-to-r from-blue-500 to-purple-500"
                               >
-                                Send
+                                Send Voice Message
                               </Button>
-                            )}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Media Upload UI */}
+                  <AnimatePresence>
+                    {showMediaUpload && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-green-900">Send Media</h4>
+                            <button
+                              onClick={() => setShowMediaUpload(false)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => mediaInputRef.current?.click()}
+                              className="flex flex-col items-center p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                            >
+                              <ImageIcon size={24} className="text-green-600 mb-2" />
+                              <span className="text-sm font-medium text-green-800">Photo</span>
+                              <span className="text-xs text-green-600">JPG, PNG, GIF</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => videoInputRef.current?.click()}
+                              className="flex flex-col items-center p-4 border-2 border-dashed border-green-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors"
+                            >
+                              <Video size={24} className="text-green-600 mb-2" />
+                              <span className="text-sm font-medium text-green-800">Video</span>
+                              <span className="text-xs text-green-600">MP4, MOV, AVI</span>
+                            </button>
+                          </div>
+                          
+                          <input
+                            ref={mediaInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleMediaUpload}
+                            className="hidden"
+                          />
+                          
+                          <input
+                            ref={videoInputRef}
+                            type="file"
+                            accept="video/*"
+                            onChange={handleMediaUpload}
+                            className="hidden"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Media Preview */}
+                  <AnimatePresence>
+                    {selectedMedia && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="mb-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-medium text-purple-900">Media Preview</h4>
+                            <button
+                              onClick={() => setSelectedMedia(null)}
+                              className="text-purple-600 hover:text-purple-800"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-start space-x-3">
+                            <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              {selectedMedia.type.startsWith('image/') ? (
+                                <img 
+                                  src={selectedMedia.preview} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-purple-100">
+                                  <Video size={24} className="text-purple-600" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-medium text-purple-900">{selectedMedia.name}</div>
+                              <div className="text-sm text-purple-700">
+                                {(selectedMedia.size / (1024 * 1024)).toFixed(1)} MB
+                              </div>
+                              <input
+                                type="text"
+                                value={mediaCaption}
+                                onChange={(e) => setMediaCaption(e.target.value)}
+                                placeholder="Add a caption..."
+                                className="mt-2 w-full px-3 py-2 border border-purple-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedMedia(null)}
+                              className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={sendMediaMessage}
+                              className="bg-gradient-to-r from-purple-500 to-pink-500"
+                            >
+                              Send {selectedMedia.type.startsWith('image/') ? 'Photo' : 'Video'}
+                            </Button>
                           </div>
                         </div>
                       </motion.div>
@@ -1016,7 +1175,12 @@ const TherapistMessages: React.FC = () => {
                       <div className="flex items-end space-x-2 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                         <button
                           type="button"
-                          className="p-3 text-gray-500 hover:text-lavender-600 transition-colors"
+                          onClick={() => setShowMediaUpload(!showMediaUpload)}
+                          className={`p-3 transition-colors ${
+                            showMediaUpload 
+                              ? 'text-green-600 bg-green-50' 
+                              : 'text-gray-500 hover:text-green-600'
+                          }`}
                         >
                           <Paperclip size={20} />
                         </button>
@@ -1048,19 +1212,17 @@ const TherapistMessages: React.FC = () => {
                     
                     {/* Voice/Send Button */}
                     <div className="flex space-x-2">
-                      <motion.button
-                        type="button"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={isRecording ? stopRecording : startRecording}
-                        className={`p-3 rounded-full shadow-lg transition-all duration-200 ${
-                          isRecording
-                            ? 'bg-gradient-to-r from-red-500 to-pink-500 text-white'
-                            : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-lavender-500 hover:to-blue-500'
-                        }`}
-                      >
-                        {isRecording ? <MicOff size={20} /> : <Mic size={20} />}
-                      </motion.button>
+                      {!isRecording && !audioBlob && (
+                        <motion.button
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={startRecording}
+                          className="p-3 rounded-full shadow-lg transition-all duration-200 bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-lavender-500 hover:to-blue-500"
+                        >
+                          <Mic size={20} />
+                        </motion.button>
+                      )}
 
                       {newMessage.trim() && (
                         <motion.button
