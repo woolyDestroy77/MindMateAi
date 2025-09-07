@@ -378,8 +378,8 @@ const TherapistMessages: React.FC = () => {
         .insert([{
           sender_id: currentUser.id,
           recipient_id: selectedConversation,
-          message_content: transcript.trim(),
-          message_type: 'voice',
+          message_content: transcript || 'Voice message',
+          message_type: 'file',
           is_read: false
         }])
         .select(`
