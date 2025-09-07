@@ -168,18 +168,39 @@ const TherapistMessages: React.FC = () => {
     try {
       setIsSending(true);
       
-      // Upload audio file to Supabase storage
-      const fileName = `voice_${Date.now()}.webm`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('message_attachments')
-        .upload(fileName, audioBlob);
+      // Try to upload audio file to Supabase storage, fallback to base64 if bucket doesn't exist
+      let finalAudioUrl = audioUrl;
+      let uploadedFileName = null;
       
-      if (uploadError) throw uploadError;
-      
-      // Get public URL
-      const { data: publicUrlData } = supabase.storage
-        .from('message_attachments')
-        .getPublicUrl(fileName);
+      try {
+        const fileName = `voice_${Date.now()}.webm`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('message_attachments')
+          .upload(fileName, audioBlob, {
+            contentType: 'audio/webm'
+          });
+
+        if (uploadError) {
+          console.warn('Storage upload failed, using base64 fallback:', uploadError);
+          // Convert to base64 as fallback
+          const reader = new FileReader();
+          finalAudioUrl = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(audioBlob);
+          });
+        } else {
+          // Get public URL for the uploaded audio
+          const { data: { publicUrl } } = supabase.storage
+            .from('message_attachments')
+            .getPublicUrl(fileName);
+          finalAudioUrl = publicUrl;
+          uploadedFileName = fileName;
+        }
+      } catch (storageError) {
+        console.warn('Storage operation failed, using original audio URL:', storageError);
+        // Keep the original audioUrl as fallback
+      }
       
       const { error } = await supabase
         .from('therapist_messages')
@@ -189,7 +210,7 @@ const TherapistMessages: React.FC = () => {
           message_content: 'Voice message',
           message_type: 'file',
           is_read: false,
-          attachment_url: publicUrlData.publicUrl,
+          attachment_url: finalAudioUrl,
           attachment_type: 'audio',
           attachment_size: audioBlob.size
         }]);
@@ -204,6 +225,17 @@ const TherapistMessages: React.FC = () => {
         setAudioUrl(null);
       }
       setShowVoicePreview(false);
+      
+      // Clean up uploaded file if there was an error
+      if (uploadedFileName && error) {
+        try {
+          await supabase.storage
+            .from('message_attachments')
+            .remove([uploadedFileName]);
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup uploaded file:', cleanupError);
+        }
+      }
       
       // Refresh messages
       if (selectedConversation) {
