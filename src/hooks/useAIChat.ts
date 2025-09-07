@@ -330,6 +330,23 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
         console.log('Voice transcript:', transcript);
         console.log('onMoodUpdate callback available:', !!onMoodUpdate);
 
+        // Upload audio file to Supabase storage
+        const audioBlob = await fetch(audioUrl).then(r => r.blob());
+        const fileName = `voice_${Date.now()}.webm`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('message_attachments')
+          .upload(fileName, audioBlob, {
+            contentType: 'audio/webm'
+          });
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL for the uploaded audio
+        const { data: { publicUrl } } = supabase.storage
+          .from('message_attachments')
+          .getPublicUrl(fileName);
+
         // Add voice message to chat immediately
         const voiceMessage: ChatMessage = {
           id: crypto.randomUUID(),
@@ -337,7 +354,7 @@ export const useAIChat = (sessionId?: string, onMoodUpdate?: (sentiment: string,
           content: transcript, // This will be used for AI processing
           timestamp: new Date(),
           isVoiceMessage: true,
-          audioUrl: audioUrl,
+          audioUrl: publicUrl,
           audioDuration: duration,
         };
         setMessages((prev) => [...prev, voiceMessage]);
