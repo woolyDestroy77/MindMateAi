@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import VoiceMessagePlayer from '../components/chat/VoiceMessagePlayer';
 
 interface TherapistMessage {
   id: string;
