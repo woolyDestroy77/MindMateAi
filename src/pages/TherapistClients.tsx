@@ -236,6 +236,14 @@ const TherapistClients: React.FC = () => {
                         size="sm"
                         fullWidth
                         leftIcon={<MessageSquare size={16} />}
+                        onClick={() => {
+                          console.log('🔍 Message Client clicked from therapist clients page');
+                          console.log('Client ID:', client.id);
+                          console.log('Client Name:', client.full_name);
+                          
+                          // Navigate to client messages with the client's user ID
+                          window.location.href = `/messages/${client.id}?name=${encodeURIComponent(client.full_name)}`;
+                        }}
                       >
                         Message
                       </Button>
