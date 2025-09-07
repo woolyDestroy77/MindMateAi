@@ -101,6 +101,12 @@ file_size_limit = "50MiB"
 # allowed_mime_types = ["image/png", "image/jpeg"]
 # objects_path = "./images"
 
+[storage.buckets.message_attachments]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["audio/webm", "audio/mpeg", "audio/ogg", "audio/wav", "image/png", "image/jpeg", "image/gif", "video/mp4", "video/mov", "video/avi"]
+objects_path = "./message_attachments"
+
 [auth]
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
