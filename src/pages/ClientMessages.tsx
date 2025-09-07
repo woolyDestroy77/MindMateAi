@@ -350,7 +350,7 @@ const ClientMessages: React.FC = () => {
         is_read: false,
         created_at: new Date().toISOString(),
         voice_duration: recordingDuration || 0,
-        voice_url: audioUrl || ''
+        voice_url: audioUrl || '',
         sender: {
           full_name: currentUser.user_metadata.full_name || 'You',
           avatar_url: currentUser.user_metadata.avatar_url
