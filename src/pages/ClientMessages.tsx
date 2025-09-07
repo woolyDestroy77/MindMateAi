@@ -613,15 +613,18 @@ const ClientMessages: React.FC = () => {
                                   <div className="flex items-center">
                                     {conversation.latestMessage.is_read ? (
                                       <CheckCheck size={12} className="text-blue-500" />
-                                    ) : (
-                                      <Check size={12} className="text-gray-400" />
-                                    )}
-                                  </div>
-                                )}
-                                <div className="text-sm text-gray-500 truncate flex items-center">
-                                  {conversation.latestMessage.message_type === 'voice' && (
-                                    <Mic size={12} className="mr-1 text-blue-500" />
-                                  )}
+                                 {message.attachment_url && (message.attachment_type === 'audio' || message.message_content === 'Voice message') ? (
+                                   <div className="space-y-2">
+                                     <VoiceMessagePlayer 
+                                       audioUrl={message.attachment_url}
+                                       duration={message.attachment_size}
+                                       className="bg-gray-50"
+                                     />
+                                     <p className="text-xs text-gray-600">Voice message</p>
+                                   </div>
+                                 ) : (
+                                   <p className="text-sm leading-relaxed">{message.message_content}</p>
+                                 )}
                                   {conversation.latestMessage.message_type === 'voice' 
                                     ? 'Voice message' 
                                     : conversation.latestMessage.message_content}
