@@ -173,7 +173,7 @@ const TherapistMessages: React.FC = () => {
       let uploadedFileName = null;
       
       try {
-        const fileName = `voice_${Date.now()}.webm`;
+        const fileName = `${user.id}/voice_${Date.now()}.webm`;
         
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('message_attachments')
