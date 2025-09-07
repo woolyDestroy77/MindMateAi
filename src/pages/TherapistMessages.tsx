@@ -54,9 +54,11 @@ const TherapistMessages: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [sendingMessageId, setSendingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [targetUser, setTargetUser] = useState<{ id: string; name: string; avatar?: string } | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const [showMediaUpload, setShowMediaUpload] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
