@@ -17,7 +17,8 @@ import {
   BookOpen,
   Users,
   Shield,
-  Calendar
+  Calendar,
+  MessageSquare
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import Button from "../ui/Button";
@@ -456,6 +457,14 @@ const Navbar: React.FC<NavbarProps> = ({
                             </div>
                           </div>
                           
+                          <Link
+                            to="/messages"
+                            className="relative text-gray-700 hover:text-lavender-600 transition-all duration-300 px-3 py-2 rounded-md font-medium group"
+                          >
+                            <span className="relative z-10">Messages</span>
+                            <span className="absolute inset-0 bg-lavender-50 rounded-md scale-0 group-hover:scale-100 transition-transform duration-300 -z-0"></span>
+                          </Link>
+                          
                           {/* Admin Panel for authorized users */}
                           {user?.email === 'youssef.arafat09@gmail.com' && (
                             <Link
@@ -702,6 +711,14 @@ const Navbar: React.FC<NavbarProps> = ({
                       >
                         <BookOpen size={16} />
                         <span>Blog</span>
+                      </Link>
+                      <Link
+                        to="/messages"
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-lavender-600 hover:bg-lavender-50 transition-all duration-300"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <MessageSquare size={16} />
+                        <span>Messages</span>
                       </Link>
                       <Link
                         to="/therapists"
